@@ -11,6 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
+  devToolbar: { enabled: false },
   integrations: [react()],
 
   vite: {

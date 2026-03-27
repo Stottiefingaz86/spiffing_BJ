@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Home, RefreshCw, Settings, Volume2, VolumeX, Zap } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
 
@@ -25,6 +26,7 @@ export default function FrootJarzClient() {
   const [soundOn, setSoundOn] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const [stakeOpen, setStakeOpen] = useState(false);
   const [displayedWin, setDisplayedWin] = useState(0);
   const targetWinRef = useRef(0);
   const rafRef = useRef<number>(0);
@@ -239,27 +241,19 @@ export default function FrootJarzClient() {
 
         <div className="flex-1" />
 
-        <button
-          type="button"
-          disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
+        <div
           className={cn(
             glassPill,
-            'flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all active:scale-[0.94] lg:px-3 lg:py-2 lg:text-xs',
-            snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
-              ? 'text-amber-400 hover:bg-amber-400/10'
-              : 'text-white/20',
+            'ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5',
           )}
-          onClick={() => {
-            session.buyBonus();
-            setDisplayedWin(0);
-            targetWinRef.current = 0;
-            refresh();
-          }}
         >
-          <Zap className="size-3.5" strokeWidth={2.2} />
-          <span>BONUS BUY</span>
-          <span className="hidden lg:inline">{formatMoney(BUY_BONUS_COST)}</span>
-        </button>
+          <span className="shrink-0 text-[7px] font-semibold uppercase leading-none tracking-[0.15em] text-white/40 lg:text-[8px]">
+            Balance
+          </span>
+          <span className="text-sm font-bold leading-none tabular-nums text-white lg:text-base">
+            {formatMoney(snap.balance)}
+          </span>
+        </div>
       </header>
 
       {/* ══════ Game logo above grid ══════ */}
@@ -269,7 +263,7 @@ export default function FrootJarzClient() {
 
       {/* ══════ Game canvas ══════ */}
       <div
-        className="relative min-h-0 flex-1 max-lg:-mt-[100px]"
+        className="relative min-h-0 flex-1 max-lg:-mt-[50px]"
         onClick={(e) => e.stopPropagation()}
       >
         <FrootJarzCanvas
@@ -326,7 +320,7 @@ export default function FrootJarzClient() {
       {/* ══════ MOBILE: Big centered spin button (overlaps canvas bottom) ══════ */}
       {!isFreeSpinActive && (
         <div
-          className="pointer-events-none absolute bottom-[4.875rem] left-0 right-0 z-30 flex justify-center lg:hidden"
+          className="pointer-events-none absolute bottom-[1.75rem] left-0 right-0 z-30 flex justify-center lg:hidden"
         >
           <button
             type="button"
@@ -351,17 +345,36 @@ export default function FrootJarzClient() {
         </div>
       )}
 
-      {/* ══════ MOBILE footer: Balance | Win | Bet ══════ */}
+      {/* ══════ MOBILE footer: BonusBuy | Win | Stake ══════ */}
       <footer
         className="shrink-0 px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] lg:hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-sm items-center gap-1.5">
-          {/* Balance — left */}
-          <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
-            <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Balance</span>
-            <span className="text-xs font-bold tabular-nums text-white">{formatMoney(snap.balance)}</span>
-          </div>
+          {/* Bonus Buy — left */}
+          <button
+            type="button"
+            disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
+            className={cn(
+              infoPill,
+              'flex flex-1 flex-col items-center px-2 py-1 transition-all active:scale-[0.94]',
+              snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
+                ? 'text-amber-400'
+                : 'text-white/20',
+            )}
+            onClick={() => {
+              session.buyBonus();
+              setDisplayedWin(0);
+              targetWinRef.current = 0;
+              refresh();
+            }}
+          >
+            <span className="flex items-center gap-0.5 text-[7px] font-semibold uppercase tracking-[0.15em] opacity-70">
+              <Zap className="size-2.5" strokeWidth={2.2} />
+              Bonus Buy
+            </span>
+            <span className="text-xs font-bold tabular-nums">{formatMoney(BUY_BONUS_COST)}</span>
+          </button>
 
           {/* Win — center */}
           {isFreeSpinActive ? (
@@ -383,29 +396,21 @@ export default function FrootJarzClient() {
             </div>
           )}
 
-          {/* Bet — right */}
-          <div className={cn(infoPill, 'flex flex-1 items-center gap-0.5 px-1 py-1')}>
-            <button
-              type="button"
-              onClick={() => { session.decreaseBet(); refresh(); }}
-              disabled={isSpinning}
-              className="flex size-5 items-center justify-center rounded bg-white/10 text-white/50 active:scale-90 disabled:opacity-30"
-            >
-              <ChevronDown className="size-3" />
-            </button>
+          {/* Stake — right */}
+          <button
+            type="button"
+            onClick={() => !isSpinning && setStakeOpen(true)}
+            disabled={isSpinning}
+            className={cn(infoPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
+          >
             <div className="flex flex-1 flex-col items-center">
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Bet</span>
+              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
               <span className="text-xs font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => { session.increaseBet(); refresh(); }}
-              disabled={isSpinning}
-              className="flex size-5 items-center justify-center rounded bg-white/10 text-white/50 active:scale-90 disabled:opacity-30"
-            >
-              <ChevronUp className="size-3" />
-            </button>
-          </div>
+            <div className="flex size-5 items-center justify-center rounded bg-white/10">
+              <ChevronDown className="size-3 text-white/50" />
+            </div>
+          </button>
         </div>
       </footer>
 
@@ -415,13 +420,32 @@ export default function FrootJarzClient() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-xl items-center gap-2">
-          {/* Balance */}
-          <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
-            <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Balance</span>
-            <span className="text-sm font-bold tabular-nums text-white">{formatMoney(snap.balance)}</span>
-          </div>
+          {/* Bonus Buy — left */}
+          <button
+            type="button"
+            disabled={isFreeSpinActive || snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
+            className={cn(
+              infoPill,
+              'flex flex-1 flex-col items-center px-3 py-1.5 transition-all active:scale-[0.94]',
+              snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST && !isFreeSpinActive
+                ? 'text-amber-400 hover:bg-amber-400/10'
+                : 'text-white/20',
+            )}
+            onClick={() => {
+              session.buyBonus();
+              setDisplayedWin(0);
+              targetWinRef.current = 0;
+              refresh();
+            }}
+          >
+            <span className="flex items-center gap-1 text-[8px] font-semibold uppercase tracking-[0.18em] opacity-70">
+              <Zap className="size-2.5" strokeWidth={2.2} />
+              Bonus Buy
+            </span>
+            <span className="text-sm font-bold tabular-nums">{formatMoney(BUY_BONUS_COST)}</span>
+          </button>
 
-          {/* Bet / Free Spins */}
+          {/* Stake / Free Spins */}
           {isFreeSpinActive ? (
             <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
               <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-amber-400/70">Free Spins</span>
@@ -430,28 +454,20 @@ export default function FrootJarzClient() {
               </span>
             </div>
           ) : (
-            <div className={cn(infoPill, 'flex flex-1 items-center gap-1 px-2 py-1.5')}>
-              <button
-                type="button"
-                onClick={() => { session.decreaseBet(); refresh(); }}
-                disabled={isSpinning}
-                className="flex size-6 items-center justify-center rounded-md bg-white/10 text-white/60 hover:bg-white/15 active:scale-95 disabled:opacity-30"
-              >
-                <ChevronDown className="size-3.5" />
-              </button>
+            <button
+              type="button"
+              onClick={() => !isSpinning && setStakeOpen(true)}
+              disabled={isSpinning}
+              className={cn(infoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
+            >
               <div className="flex flex-1 flex-col items-center">
-                <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Total Bet</span>
+                <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Stake</span>
                 <span className="text-sm font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => { session.increaseBet(); refresh(); }}
-                disabled={isSpinning}
-                className="flex size-6 items-center justify-center rounded-md bg-white/10 text-white/60 hover:bg-white/15 active:scale-95 disabled:opacity-30"
-              >
-                <ChevronUp className="size-3.5" />
-              </button>
-            </div>
+              <div className="flex size-6 items-center justify-center rounded-md bg-white/10">
+                <ChevronDown className="size-3.5 text-white/60" />
+              </div>
+            </button>
           )}
 
           {/* Win */}
@@ -491,6 +507,15 @@ export default function FrootJarzClient() {
         </div>
       </footer>
 
+      {/* ══════ Stake selector drawer ══════ */}
+      <StakeDrawer
+        open={stakeOpen}
+        onClose={() => setStakeOpen(false)}
+        betOptions={session.betOptions}
+        currentBet={snap.bet}
+        onSelect={(cents) => { session.setBet(cents); refresh(); }}
+      />
+
       <FrootJarzSettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
@@ -498,5 +523,90 @@ export default function FrootJarzClient() {
         onToggleSound={() => setSoundOn((v) => !v)}
       />
     </div>
+  );
+}
+
+// ── Stake Drawer (BJ-style slide-up panel) ──
+
+function StakeDrawer({
+  open,
+  onClose,
+  betOptions,
+  currentBet,
+  onSelect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  betOptions: number[];
+  currentBet: number;
+  onSelect: (cents: number) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const closingRef = useRef(false);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      closingRef.current = false;
+      requestAnimationFrame(() => requestAnimationFrame(() => setVisible(true)));
+    } else if (mounted) {
+      setVisible(false);
+      closingRef.current = true;
+      const timer = setTimeout(() => {
+        if (closingRef.current) setMounted(false);
+      }, 320);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
+
+  if (!mounted) return null;
+
+  const overlay = cn(
+    'fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 sm:items-center',
+    'transition-opacity duration-300',
+    visible ? 'opacity-100' : 'opacity-0 pointer-events-none',
+  );
+
+  const panel = cn(
+    'relative mx-0 flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#1a1525] shadow-2xl sm:mx-4 sm:rounded-2xl',
+    'transition-transform duration-300 ease-out',
+    visible ? 'translate-y-0' : 'translate-y-full sm:translate-y-8',
+  );
+
+  return createPortal(
+    <div className={overlay} onClick={onClose}>
+      <div className={panel} onClick={(e) => e.stopPropagation()}>
+        <header className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-white">Select Stake</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-8 items-center justify-center rounded-lg text-white/50 hover:bg-white/10 hover:text-white active:scale-95"
+          >
+            <X className="size-5" strokeWidth={2} />
+          </button>
+        </header>
+
+        <div className="grid grid-cols-3 gap-2.5 px-5 py-5">
+          {betOptions.map((cents) => (
+            <button
+              key={cents}
+              type="button"
+              onClick={() => { onSelect(cents); onClose(); }}
+              className={cn(
+                'flex items-center justify-center rounded-xl border-2 py-3.5 text-sm font-bold tabular-nums transition-all active:scale-95',
+                cents === currentBet
+                  ? 'border-purple-400 bg-purple-500/15 text-purple-300'
+                  : 'border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/20',
+              )}
+            >
+              {formatMoney(cents)}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
