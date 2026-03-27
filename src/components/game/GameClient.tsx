@@ -61,7 +61,7 @@ function PlayActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 rounded-[10px] border-2 bg-black/30 sm:bg-black/20 sm:backdrop-blur-md text-[11px] font-bold tracking-[0.06em] shadow-none hover:bg-white/[0.08] active:scale-[0.97] disabled:opacity-40 lg:min-h-[5.25rem] lg:flex-1 lg:rounded-[14px] lg:text-xs',
+        'flex min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 rounded-[10px] border-2 bg-white/[0.08] sm:bg-white/[0.06] sm:backdrop-blur-md text-[11px] font-bold tracking-[0.06em] shadow-none hover:bg-white/[0.12] active:scale-[0.97] disabled:opacity-40 lg:min-h-[5.25rem] lg:flex-1 lg:rounded-[14px] lg:text-xs',
         className,
       )}
     >
@@ -591,7 +591,7 @@ export default function GameClient() {
             <button
               type="button"
               onClick={() => { session.dispatch({ type: 'DOUBLE' }); playSfx('chipStack', 0.5); refresh(); }}
-              className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/25 bg-black/30 active:scale-[0.97]"
+              className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/25 bg-white/[0.08] active:scale-[0.97]"
             >
               <span className="text-xl font-black leading-none text-white">×2</span>
               <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.double}</span>
@@ -605,7 +605,7 @@ export default function GameClient() {
           <button
             type="button"
             onClick={() => { session.dispatch({ type: 'UNDO_LAST_BET' }); playSfxPitched('chipStack', 0.65, 0.5); refresh(); }}
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-white/[0.08] active:scale-[0.97]"
           >
             <RotateCcw className="size-7 text-white/70" strokeWidth={2} />
             <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.undo}</span>
@@ -624,7 +624,7 @@ export default function GameClient() {
           <button
             type="button"
             onClick={() => { session.dispatch({ type: 'CLEAR_ALL_BETS' }); playSfxPitched('chipStack', 0.65, 0.5); refresh(); }}
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-white/[0.08] active:scale-[0.97]"
           >
             <X className="size-7 text-white/70" strokeWidth={2} />
             <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.clear}</span>
@@ -654,7 +654,7 @@ export default function GameClient() {
           </button>
           <button
             type="button"
-            className="flex h-20 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
+            className="flex h-20 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-white/20 bg-white/[0.08] active:scale-[0.97]"
             onClick={() => { session.dispatch({ type: 'ACK_ROUND_COMPLETE' }); refresh(); }}
           >
             <RefreshCw className="size-6 text-pink-400" strokeWidth={2.5} />
