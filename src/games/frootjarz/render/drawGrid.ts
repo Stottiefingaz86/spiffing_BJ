@@ -486,28 +486,22 @@ export function updateGridScene(
     if (fi < fws.length) {
       const fw = fws[fi];
       const t = fw.elapsedMs / fw.durationMs;
-      const fa = t < 0.9 ? 1 : 1 - (t - 0.9) / 0.1;
+      const fa = t < 0.8 ? 1 : 1 - (t - 0.8) / 0.2;
 
       let nt: string;
       if (fw.label) {
         nt = fw.label;
       } else if (fw.multiplier && fw.multiplier > 1) {
-        if (t < 0.2) {
-          nt = `+$${(fw.baseAmount! / 100).toFixed(2)}`;
-        } else if (t < 0.35) {
-          nt = `+$${(fw.baseAmount! / 100).toFixed(2)} x${fw.multiplier}`;
-        } else {
-          nt = `+$${(fw.amount / 100).toFixed(2)}`;
-        }
+        const winStr = `+$${(fw.amount / 100).toFixed(2)}`;
+        nt = `${winStr}\nx${fw.multiplier}`;
       } else {
         nt = `+$${(fw.amount / 100).toFixed(2)}`;
       }
 
       if (ft.text !== nt) ft.text = nt;
-      const isMultStage = fw.multiplier && fw.multiplier > 1 && t >= 0.2 && t < 0.35;
-      (ft.style as TextStyle).fill = isMultStage ? 0xfdd835 : 0x6ee7b7;
+      (ft.style as TextStyle).fill = 0x6ee7b7;
       ft.x = fw.x;
-      ft.y = fw.y - t * cellSize * 2.5;
+      ft.y = fw.y - t * cellSize * 2.0;
       ft.alpha = Math.max(0, fa);
       ft.scale.set(Math.min(cellSize * 0.45, 32) / BASE_FLOAT_SIZE);
       ft.visible = true;

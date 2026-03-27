@@ -563,7 +563,7 @@ export interface FloatingWinText {
 const activeFloatingWins: FloatingWinText[] = [];
 
 export function spawnFloatingWin(
-  x: number, y: number, amount: number, durationMs = 4000,
+  x: number, y: number, amount: number, durationMs = 2500,
   label?: string, baseAmount?: number, multiplier?: number,
 ): void {
   activeFloatingWins.push({ x, y, amount, baseAmount, multiplier, elapsedMs: 0, durationMs, label });

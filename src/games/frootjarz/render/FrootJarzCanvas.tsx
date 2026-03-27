@@ -339,7 +339,7 @@ export function FrootJarzCanvas({
               const jar = step.jarStatesBefore.find((j) => j.row === jarRow && j.col === jarCol);
               const mult = jar?.multiplier ?? 1;
               const baseWin = mult > 1 ? Math.round(cWin / mult) : cWin;
-              spawnFloatingWin(jx, jy, cWin, 4000, undefined, baseWin, mult);
+              spawnFloatingWin(jx, jy, cWin, 2500, undefined, baseWin, mult);
             } else {
               let avgX = 0, avgY = 0;
               for (const { row, col } of cluster.cells) {
