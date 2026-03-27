@@ -29,6 +29,7 @@ export default function FrootJarzClient() {
   const [stakeOpen, setStakeOpen] = useState(false);
   const [displayedWin, setDisplayedWin] = useState(0);
   const targetWinRef = useRef(0);
+  const lastSpinWinRef = useRef(0);
   const rafRef = useRef<number>(0);
 
   const refresh = useCallback(() => {
@@ -64,6 +65,7 @@ export default function FrootJarzClient() {
     playFJ('spin', 0.25);
     setDisplayedWin(0);
     targetWinRef.current = 0;
+    lastSpinWinRef.current = 0;
     session.spin();
     refresh();
   }, [session, refresh, snap.phase, snap.balance, snap.bet]);
@@ -155,10 +157,12 @@ export default function FrootJarzClient() {
     if (!isCascading) targetWin = snap.freeSpinsTotalWin;
   } else if (isCascading) {
     targetWin = currentCascadeWin;
+    if (currentCascadeWin > 0) lastSpinWinRef.current = currentCascadeWin;
   } else if (isShowWin) {
     targetWin = snap.spinWin;
+    lastSpinWinRef.current = snap.spinWin;
   } else {
-    targetWin = snap.spinWin > 0 ? snap.spinWin : targetWinRef.current;
+    targetWin = lastSpinWinRef.current;
   }
 
   useEffect(() => {
@@ -366,6 +370,7 @@ export default function FrootJarzClient() {
               session.buyBonus();
               setDisplayedWin(0);
               targetWinRef.current = 0;
+              lastSpinWinRef.current = 0;
               refresh();
             }}
           >
@@ -435,6 +440,7 @@ export default function FrootJarzClient() {
               session.buyBonus();
               setDisplayedWin(0);
               targetWinRef.current = 0;
+              lastSpinWinRef.current = 0;
               refresh();
             }}
           >

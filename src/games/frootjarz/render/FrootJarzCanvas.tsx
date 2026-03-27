@@ -10,6 +10,7 @@ import { preloadAllTextures } from './symbolTextures';
 import { computeGridLayout, drawGridScene, destroyGridScene, type GridLayout } from './drawGrid';
 import {
   clearAllAnimations,
+  clearAllAnimationsAndFloats,
   hasActiveAnimations,
   queueDropOutAnimations,
   queueDropInAnimations,
@@ -173,7 +174,7 @@ export function FrootJarzCanvas({
     if (snap.phase === GamePhase.Dropping || snap.phase === GamePhase.FreeSpinDropping) {
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
-      clearAllAnimations();
+      clearAllAnimationsAndFloats();
       runningWinRef.current = 0;
       winCountRef.current = 0;
 

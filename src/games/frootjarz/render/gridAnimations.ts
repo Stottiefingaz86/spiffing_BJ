@@ -718,7 +718,11 @@ export function clearAllAnimations(): void {
   jarMoveMap.clear();
   fallMap.clear();
   activeParticles.length = 0;
-  activeFloatingWins.length = 0;
   winFlashActive = false;
   shakeActive = false;
+}
+
+export function clearAllAnimationsAndFloats(): void {
+  clearAllAnimations();
+  activeFloatingWins.length = 0;
 }
