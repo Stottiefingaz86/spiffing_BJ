@@ -43,7 +43,7 @@ export function computeGridLayout(canvasW: number, canvasH: number): GridLayout 
   const totalW = GRID_COLS * (cellSize + gap) - gap;
   const totalH = GRID_ROWS * (cellSize + gap) - gap;
   const gridX = (canvasW - totalW) / 2;
-  const gridY = (canvasH - totalH) / 2 + 20;
+  const gridY = (canvasH - totalH) / 2 + (isMobile ? 25 : 20);
   return { gridX, gridY, cellSize, gap };
 }
 
