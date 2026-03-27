@@ -148,19 +148,23 @@
   animation: delta-popup 1.4s ease-out forwards;
 }
 
-@keyframes result-slide-in {
+@keyframes result-drop-fade {
   0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-6px) scale(0.92);
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(8px);
   }
   100% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 0;
+    transform: translateX(-50%) translateY(16px);
   }
 }
 
-.animate-result-slide-in {
-  animation: result-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-result-drop-fade {
+  animation: result-drop-fade 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes gradient-flow {

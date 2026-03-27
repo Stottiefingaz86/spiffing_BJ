@@ -108,10 +108,10 @@ export function AnimatedBalance({
   const isLoss = visibleResult && visibleResult.payout < 0;
 
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="relative inline-block">
       <span
         className={cn(
-          'inline-block min-w-0 truncate tabular-nums tracking-tight transition-colors duration-500',
+          'inline-block tabular-nums tracking-tight transition-colors duration-500',
           flash === 'win' && 'text-emerald-400',
           flash === 'lose' && 'text-rose-400',
           className,
@@ -125,7 +125,7 @@ export function AnimatedBalance({
       {visibleResult && (
         <span
           className={cn(
-            'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-extrabold tabular-nums tracking-wide animate-result-slide-in',
+            'absolute left-1/2 top-full mt-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-extrabold tabular-nums tracking-wide animate-result-drop-fade',
             isWin && 'bg-emerald-500/20 text-emerald-400',
             isLoss && 'bg-rose-500/20 text-rose-400',
             !isWin && !isLoss && 'bg-white/10 text-white/70',
