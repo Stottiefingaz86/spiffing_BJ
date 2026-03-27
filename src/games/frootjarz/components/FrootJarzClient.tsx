@@ -258,12 +258,12 @@ export default function FrootJarzClient() {
 
       {/* ══════ Game logo above grid ══════ */}
       <div className="shrink-0 flex justify-center pb-0 pt-1 lg:py-1 relative" style={{ zIndex: 10 }}>
-        <img src="/frootshoot/LOGO.svg" alt="Froot Jarz" className="h-24 lg:h-24 w-auto mt-8 -mb-8 max-lg:-mt-[15px] lg:mt-0 lg:-mb-6" style={{ willChange: 'transform' }} />
+        <img src="/frootshoot/LOGO.svg" alt="Froot Jarz" className="h-24 lg:h-24 w-auto mt-8 -mb-8 max-lg:mt-0 lg:mt-0 lg:-mb-6" style={{ willChange: 'transform' }} />
       </div>
 
       {/* ══════ Game canvas ══════ */}
       <div
-        className="relative min-h-0 flex-1 max-lg:-mt-[20px]"
+        className="relative min-h-0 flex-1 max-lg:-mt-[10px]"
         onClick={(e) => e.stopPropagation()}
       >
         <FrootJarzCanvas
