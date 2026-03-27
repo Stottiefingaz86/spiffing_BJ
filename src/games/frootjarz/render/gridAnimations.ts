@@ -344,14 +344,14 @@ function cellStateFromSuck(s: SuckAnim): CellRenderState {
 
   // Motion blur: stretch along direction of travel as speed increases
   const velocity = 3 * t * t; // derivative of ease-in cubic
-  const stretch = Math.min(velocity * 0.6, 1.2);
+  const stretch = Math.min(velocity * 0.4, 0.7);
   const colDist = Math.abs(s.toCol - s.fromCol);
   const rowDist = Math.abs(s.toRow - s.fromRow);
   const total = colDist + rowDist || 1;
   const hRatio = colDist / total;
   const vRatio = rowDist / total;
-  const scaleX = baseScale * (1 - stretch * vRatio + stretch * hRatio * 0.5);
-  const scaleY = baseScale * (1 - stretch * hRatio + stretch * vRatio * 0.5);
+  const scaleX = Math.max(0.01, baseScale * (1 - stretch * vRatio + stretch * hRatio * 0.3));
+  const scaleY = Math.max(0.01, baseScale * (1 - stretch * hRatio + stretch * vRatio * 0.3));
 
   return { xOffset: dx, yOffset: dy, scale: 1, scaleX, scaleY, alpha };
 }
