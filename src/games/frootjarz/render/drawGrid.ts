@@ -504,6 +504,8 @@ export function updateGridScene(
       }
 
       if (ft.text !== nt) ft.text = nt;
+      const isMultStage = fw.multiplier && fw.multiplier > 1 && t >= 0.2 && t < 0.35;
+      (ft.style as TextStyle).fill = isMultStage ? 0xfdd835 : 0x6ee7b7;
       ft.x = fw.x;
       ft.y = fw.y - t * cellSize * 2.5;
       ft.alpha = Math.max(0, fa);
