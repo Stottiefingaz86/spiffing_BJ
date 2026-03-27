@@ -262,7 +262,7 @@ export default function FrootJarzClient() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Logo — absolutely positioned so it doesn't shrink the grid */}
-        <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[75px] max-lg:-top-[55px]">
+        <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[75px] max-lg:-top-[50px]">
           <img src="/frootshoot/LOGO.png" alt="Froot Jarz" className="h-64 lg:h-64 w-auto" style={{ willChange: 'transform' }} />
         </div>
 
@@ -307,7 +307,7 @@ export default function FrootJarzClient() {
 
         {/* Free Spin Counter Badge */}
         {isFreeSpinActive && !isFreeSpinIntro && !isFreeSpinOutro && (
-          <div className="absolute left-1/2 top-1 z-10 -translate-x-1/2">
+          <div className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2">
             <div className="rounded-full bg-amber-500/90 px-4 py-1 shadow-lg shadow-amber-500/30">
               <span className="text-xs font-black tabular-nums text-white">
                 FREE SPINS {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
