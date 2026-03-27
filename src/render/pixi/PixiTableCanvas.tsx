@@ -123,6 +123,8 @@ export function PixiTableCanvas({
       appRef.current = app;
       gameRef.current = gameLayer;
 
+      app.stage.eventMode = 'static';
+      gameLayer.eventMode = 'static';
       app.stage.addChild(bgGraphics);
       app.stage.addChild(gameLayer);
       initWinParticleLayer(app.stage);

@@ -11,10 +11,10 @@ import type { HandIndex } from '@/game/state/table-state';
 import { AnimatedBalance, type RoundResult } from '@/components/game/AnimatedBalance';
 import { formatMoney } from '@/lib/formatMoney';
 import { PixiTableCanvas } from '@/render/pixi/PixiTableCanvas';
-import { playSfx, preloadSfx, setSfxMuted, startBgm, setBgmMuted } from '@/audio/sfx';
+import { playSfx, playSfxPitched, preloadSfx, setSfxMuted, startBgm, setBgmMuted } from '@/audio/sfx';
 
 const headerGlassPill =
-  'rounded-[14px] bg-white/[0.06] backdrop-blur-xl transition-[box-shadow,background-color] duration-300 ease-out';
+  'rounded-[14px] bg-white/[0.06] backdrop-blur-xl border border-white/[0.07] shadow-[0_0_20px_rgba(168,85,247,0.06)] transition-[box-shadow,background-color] duration-300 ease-out';
 
 function DealActionButton({
   children,
@@ -202,6 +202,7 @@ export default function GameClient() {
 
   const onSelectChip = useCallback((cents: number) => {
     setSelectedChipCents(cents);
+    playSfx('buttonClick', 0.4);
   }, []);
 
   const betting = snap.phase === GamePhase.Betting;
@@ -240,10 +241,7 @@ export default function GameClient() {
 
   return (
     <div
-      className="box-border flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden text-white"
-      style={{
-        background: 'linear-gradient(168deg, #34264a 0%, #2a1f3d 38%, #231832 100%)',
-      }}
+      className="game-bg box-border flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden text-white"
     >
       <header className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-500 motion-safe:fill-mode-both flex shrink-0 items-center gap-2.5 px-3 pb-1.5 pt-[max(1rem,calc(env(safe-area-inset-top)+0.25rem))] sm:gap-3 lg:px-12 lg:pb-3 lg:pt-8">
         <div
@@ -349,10 +347,14 @@ export default function GameClient() {
               >
                 <Zap className="size-[22px] fill-white/95 text-white" strokeWidth={2.5} />
                 {session.operator.copy.deal}
+                {totalBet > 0 && (
+                  <span className="-mt-0.5 text-[11px] font-bold text-white/80">{formatMoney(totalBet)}</span>
+                )}
               </DealActionButton>
               <DealActionButton
                 onClick={() => {
                   session.dispatch({ type: 'UNDO_LAST_BET' });
+                  playSfxPitched('chipStack', 0.65, 0.5);
                   refresh();
                 }}
                 className="border border-white/35 bg-transparent text-white hover:bg-white/[0.06]"
@@ -363,6 +365,7 @@ export default function GameClient() {
               <DealActionButton
                 onClick={() => {
                   session.dispatch({ type: 'CLEAR_ALL_BETS' });
+                  playSfxPitched('chipStack', 0.65, 0.5);
                   refresh();
                 }}
                 className="border border-white/35 bg-transparent text-white hover:bg-white/[0.06]"
@@ -524,7 +527,7 @@ export default function GameClient() {
         <section className="mx-auto flex w-full max-w-md shrink-0 justify-center gap-2.5 px-4 pb-3 pt-1 lg:hidden">
           <button
             type="button"
-            onClick={() => { session.dispatch({ type: 'UNDO_LAST_BET' }); refresh(); }}
+            onClick={() => { session.dispatch({ type: 'UNDO_LAST_BET' }); playSfxPitched('chipStack', 0.65, 0.5); refresh(); }}
             className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/20 backdrop-blur-md active:scale-[0.97]"
           >
             <RotateCcw className="size-7 text-white/70" strokeWidth={2} />
@@ -543,7 +546,7 @@ export default function GameClient() {
           </button>
           <button
             type="button"
-            onClick={() => { session.dispatch({ type: 'CLEAR_ALL_BETS' }); refresh(); }}
+            onClick={() => { session.dispatch({ type: 'CLEAR_ALL_BETS' }); playSfxPitched('chipStack', 0.65, 0.5); refresh(); }}
             className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/20 backdrop-blur-md active:scale-[0.97]"
           >
             <X className="size-7 text-white/70" strokeWidth={2} />

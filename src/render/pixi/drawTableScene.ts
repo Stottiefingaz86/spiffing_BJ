@@ -208,18 +208,44 @@ function addBettingChipStack(
   root.addChild(totalPill);
 }
 
-/** Play phase: black bet caption (mockup) — no mini chip stack. */
+/** Play phase: bet amount pill with gradient stroke on desktop for polish. */
 function addBetAmountPill(
   root: Container,
   cx: number,
   cy: number,
   betCents: number,
   fontSize: number,
+  isDesktop = false,
 ): void {
-  const pill = pillLabel(formatBetCents(betCents), 0x0f0f12, 0xffffff, fontSize);
-  pill.x = cx;
-  pill.y = cy;
-  root.addChild(pill);
+  const wrap = new Container();
+  const t = new Text({
+    text: formatBetCents(betCents),
+    resolution: tablePixelRatio(),
+    roundPixels: false,
+    style: {
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      fontSize: isDesktop ? fontSize + 2 : fontSize,
+      fontWeight: isDesktop ? '700' : '600',
+      fill: 0xffffff,
+    },
+  });
+  const padX = isDesktop ? 14 : 8;
+  const padY = isDesktop ? 6 : 4;
+  const bw = t.width + padX * 2;
+  const bh = t.height + padY * 2;
+  const cr = Math.min(bw, bh) / 2;
+
+  const g = new Graphics();
+  g.roundRect(-bw / 2, -bh / 2, bw, bh, cr).fill({ color: 0x0f0f12, alpha: 0.92 });
+  if (isDesktop) {
+    g.roundRect(-bw / 2, -bh / 2, bw, bh, cr).stroke({ color: 0xc084fc, width: 1.5, alpha: 0.45 });
+  }
+  wrap.addChild(g);
+  t.anchor.set(0.5, 0.5);
+  wrap.addChild(t);
+  wrap.x = cx;
+  wrap.y = cy;
+  root.addChild(wrap);
 }
 
 function addDealerBadge(
@@ -235,17 +261,11 @@ function addDealerBadge(
   if (dealerIcon) {
     const sprite = new Sprite(dealerIcon);
     sprite.anchor.set(0.5, 0.5);
-    sprite.width = 28;
-    sprite.height = 28;
-    sprite.tint = 0xffffff;
-    sprite.alpha = 0.88;
-    sprite.y = -6;
+    const sc = 22 / Math.max(dealerIcon.width, dealerIcon.height);
+    sprite.scale.set(sc);
+    sprite.alpha = 0.85;
+    sprite.y = -8;
     cluster.addChild(sprite);
-  } else {
-    const ring = new Graphics();
-    ring.circle(0, -6, 14).fill({ color: 0xffffff, alpha: 0.14 });
-    ring.circle(0, -6, 14).stroke({ width: 2, color: 0xffffff, alpha: 0.88 });
-    cluster.addChild(ring);
   }
 
   const lbl = new Text({
@@ -254,14 +274,15 @@ function addDealerBadge(
     roundPixels: false,
     style: {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: 7,
+      fontSize: 6.5,
       fontWeight: '800',
-      letterSpacing: 1.4,
-      fill: TEXT_DIM,
+      letterSpacing: 1.2,
+      fill: 0xffffff,
     },
   });
   lbl.anchor.set(0.5, 0);
-  lbl.y = 10;
+  lbl.alpha = 0.45;
+  lbl.y = 6;
   cluster.addChild(lbl);
 
   root.addChild(cluster);
@@ -347,13 +368,22 @@ function bettingSpotContainer(
   const g = new Graphics();
 
   if (opts.muted) {
-    g.roundRect(-bw / 2, -bh / 2, bw, bh, spotR).fill({ color: SPOT_BG_SIDE, alpha: 0.38 });
-  } else {
-    g.roundRect(-bw / 2, -bh / 2, bw, bh, spotR).fill({ color: SPOT_BG_MAIN, alpha: 0.85 });
+    g.roundRect(-bw / 2, -bh / 2, bw, bh, spotR).stroke({
+      width: 1,
+      color: 0xffffff,
+      alpha: 0.08,
+    });
+  } else if (opts.hasBet) {
     g.roundRect(-bw / 2, -bh / 2, bw, bh, spotR).stroke({
       width: 1.5,
-      color: 0x4a3d6b,
-      alpha: 0.55,
+      color: ACCENT_GREEN,
+      alpha: 0.6,
+    });
+  } else {
+    g.roundRect(-bw / 2, -bh / 2, bw, bh, spotR).stroke({
+      width: 1.5,
+      color: 0xffffff,
+      alpha: 0.12,
     });
   }
 
@@ -659,15 +689,7 @@ export function drawGameLayer(
     const cards = seat.hand.cards;
 
     if (cards.length === 0) {
-      const sw = baseCw * 1.05;
-      const sh = baseCh * 0.82;
-      const spotG = new Graphics();
-      spotG.rect(sx - sw / 2, sy - sh / 2, sw, sh).stroke({
-        width: 1,
-        color: 0xffffff,
-        alpha: 0.045,
-      });
-      root.addChild(spotG);
+      /* empty seat — no box outline */
     }
   }
 
@@ -675,7 +697,12 @@ export function drawGameLayer(
   const dealerBounds = dealerHandBounds(layout, dealerCards);
   const dealerIcon = extras?.dealerIcon ?? null;
   if (dealerBounds) {
-    addDealerBadge(root, dealerBounds.cx, dealerBounds.bottom + 16, dealerIcon);
+    addDealerBadge(
+      root,
+      dealerBounds.left - 26,
+      (dealerBounds.top + dealerBounds.bottom) / 2,
+      dealerIcon,
+    );
   }
 
   for (const card of dealerCards) {
@@ -699,9 +726,10 @@ export function drawGameLayer(
       snapshot.phase === GamePhase.RoundComplete;
 
     const scoreText = animatedDealerScoreLabel(snapshot);
-    const scoreFill = vis.bust ? 0x7f1d1d : 0x111827;
-    const pill = pillLabel(scoreText, scoreFill, 0xffffff, narrow ? 12 : 11);
-    pill.x = dealerBounds.right + 10;
+    const scoreFill = vis.bust ? 0x7f1d1d : 0x1e1b2e;
+    const dealerBorderCol = vis.bust ? 0xef4444 : 0xa855f7;
+    const pill = borderedPill(scoreText, scoreFill, 0xffffff, dealerBorderCol, narrow ? 12 : 12);
+    pill.x = dealerBounds.right + 12;
     pill.y = dealerBounds.top;
     root.addChild(pill);
 
@@ -781,22 +809,24 @@ export function drawGameLayer(
       scorePill.y = cardTop - 12;
       root.addChild(scorePill);
     } else {
-      const scoreFs = shrunk ? 9 : 10;
-      const scorePill = pillLabel(
+      const scoreFs = isHeroLayout ? 14 : (shrunk ? 10 : 12);
+      const borderCol = total.bust ? 0xef4444 : 0xa855f7;
+      const scorePill = borderedPill(
         scoreLabel,
         total.bust ? 0x7f1d1d : 0x1e1b2e,
         0xffffff,
+        borderCol,
         scoreFs,
       );
-      scorePill.x = cardMaxX < Infinity ? cardMaxX + 8 : sx + 40;
+      scorePill.x = cardMaxX < Infinity ? cardMaxX + 10 : sx + 40;
       scorePill.y = cardTop + 4;
       root.addChild(scorePill);
     }
 
     if (seat.bet > 0 && snapshot.phase !== GamePhase.Betting) {
-      const betFs = narrow ? (isHeroLayout ? 12 : 8) : (shrunk ? 9 : 10);
-      const betY = cardBottom + (narrow ? 8 : 6);
-      addBetAmountPill(root, cardCx, betY, seat.bet, betFs);
+      const betFs = narrow ? (isHeroLayout ? 12 : 8) : (shrunk ? 10 : 12);
+      const betY = cardBottom + (narrow ? 8 : 8);
+      addBetAmountPill(root, cardCx, betY, seat.bet, betFs, !narrow);
     }
 
     const badgeRightX = cardMaxX < Infinity ? cardMaxX + 8 : sx + 40;
@@ -843,11 +873,10 @@ export function drawGameLayer(
     }
 
     const showSettlement =
+      !narrow &&
       seat.settlement &&
       (snapshot.phase === GamePhase.RoundComplete ||
-        (snapshot.phase === GamePhase.Settlement &&
-          // On mobile, only show the currently-revealed hand's badge to avoid overlap
-          (!narrow || snapshot.settlementRevealIndex === i)));
+        snapshot.phase === GamePhase.Settlement);
     if (showSettlement && seat.settlement) {
       const isWin = seat.settlement.kind === 'win' || seat.settlement.kind === 'blackjack';
       const isLose = seat.settlement.kind === 'lose' || seat.settlement.kind === 'bust';

@@ -102,7 +102,8 @@ export async function loadDealerIconTexture(): Promise<Texture | null> {
   if (dealerIconCache !== undefined) return dealerIconCache;
   try {
     const url = `${BASE}dealer_icon.svg`;
-    dealerIconCache = await loadSvgTexture(url, tablePixelRatio());
+    const ratio = Math.min(4, Math.max(2, Math.ceil((window.devicePixelRatio || 1) * 2)));
+    dealerIconCache = await loadSvgTexture(url, ratio);
     return dealerIconCache;
   } catch {
     dealerIconCache = null;

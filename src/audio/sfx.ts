@@ -14,6 +14,7 @@ const SFX_FILES = {
   stand: `${BASE}sounds/stand.wav`,
   chipStack: `${BASE}sounds/PokerChipStack_BW.48724.wav`,
   win: `${BASE}sounds/Win.wav`,
+  buttonClick: `${BASE}sounds/button_click.mp3`,
 } as const;
 
 export type SfxName = keyof typeof SFX_FILES;
@@ -69,6 +70,29 @@ export function playSfx(name: SfxName, volume = 0.5): void {
 
   const source = ac.createBufferSource();
   source.buffer = buf;
+
+  const gain = ac.createGain();
+  gain.gain.value = volume;
+
+  source.connect(gain);
+  gain.connect(ac.destination);
+  source.start(0);
+}
+
+/** Play a sound effect with a pitch shift (< 1 = lower, > 1 = higher). */
+export function playSfxPitched(name: SfxName, rate = 0.7, volume = 0.5): void {
+  if (muted) return;
+  const buf = buffers.get(name);
+  if (!buf) return;
+
+  const ac = getContext();
+  if (ac.state === 'suspended') {
+    ac.resume();
+  }
+
+  const source = ac.createBufferSource();
+  source.buffer = buf;
+  source.playbackRate.value = rate;
 
   const gain = ac.createGain();
   gain.gain.value = volume;

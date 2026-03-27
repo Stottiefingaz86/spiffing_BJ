@@ -172,3 +172,41 @@
   background-size: 300% 100%;
   animation: gradient-flow 6s linear infinite;
 }
+
+/* ---- Animated game background ---- */
+@keyframes bg-drift {
+  0%   { background-position: 0% 0%; }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+.game-bg {
+  background: linear-gradient(
+    135deg,
+    #2c1f4a 0%,
+    #34264e 20%,
+    #3a2252 40%,
+    #2e1d42 60%,
+    #2a1838 80%,
+    #2c1f4a 100%
+  );
+  background-size: 400% 400%;
+  animation: bg-drift 20s ease infinite;
+  position: relative;
+}
+
+.game-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 20%, rgba(236, 72, 153, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.game-bg > * {
+  position: relative;
+  z-index: 1;
+}
