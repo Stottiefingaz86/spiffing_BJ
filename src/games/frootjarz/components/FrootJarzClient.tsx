@@ -158,7 +158,7 @@ export default function FrootJarzClient() {
   } else if (isShowWin) {
     targetWin = snap.spinWin;
   } else {
-    targetWin = 0;
+    targetWin = snap.spinWin > 0 ? snap.spinWin : targetWinRef.current;
   }
 
   useEffect(() => {
