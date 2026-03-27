@@ -87,8 +87,9 @@ export function FrootJarzCanvas({
     winCells?: Set<number>,
     totalWin?: number,
     bet?: number,
+    inFreeSpins?: boolean,
   ) {
-    drawGridScene(gl, renderer, grid, jars, layout, winCells, totalWin, bet);
+    drawGridScene(gl, renderer, grid, jars, layout, winCells, totalWin, bet, inFreeSpins);
   }
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export function FrootJarzCanvas({
         const snap = snapRef.current;
         prevGridRef.current = snap.grid.map((row) => row.map((c) => (c ? { ...c } : c)));
         const layout = getLayout(app.renderer.width, app.renderer.height);
-        draw(gameLayer, app.renderer, snap.grid, snap.jarStates, layout);
+        draw(gameLayer, app.renderer, snap.grid, snap.jarStates, layout, undefined, undefined, undefined, snap.inFreeSpins);
 
         app.ticker.add(() => {
           tickAnimations(app.ticker.deltaMS);
@@ -137,7 +138,7 @@ export function FrootJarzCanvas({
             gl, app.renderer,
             d?.grid ?? s.grid,
             d?.jars ?? s.jarStates,
-            l, d?.winCells, d?.totalWin, d?.bet,
+            l, d?.winCells, d?.totalWin, d?.bet, s.inFreeSpins,
           );
         });
       });

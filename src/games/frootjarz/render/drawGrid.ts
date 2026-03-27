@@ -210,6 +210,7 @@ export function updateGridScene(
   winningCellIds?: Set<number>,
   totalWinAmount?: number,
   betAmount?: number,
+  inFreeSpins?: boolean,
 ): void {
   if (!_root) return;
   const now = performance.now();
@@ -225,7 +226,7 @@ export function updateGridScene(
 
   const jarPositions: { cx: number; cy: number; key: string }[] = [];
 
-  const lk = `${gridX | 0}:${gridY | 0}:${cellSize | 0}`;
+  const lk = `${gridX | 0}:${gridY | 0}:${cellSize | 0}:${inFreeSpins ? 1 : 0}`;
   const layoutChanged = lk !== prevLayoutKey;
 
   let winKey = '';
@@ -242,7 +243,7 @@ export function updateGridScene(
     prevLayoutKey = lk;
     bgGfx.clear();
     bgGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, 12);
-    bgGfx.fill({ color: 0x1a1230, alpha: 0.45 });
+    bgGfx.fill({ color: inFreeSpins ? 0x1a0e0a : 0x1a1230, alpha: 0.45 });
 
     maskGfx.clear();
     maskGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, 12);
@@ -269,10 +270,10 @@ export function updateGridScene(
           cellBgGfx.stroke({ color, width: 3, alpha: 0.8 });
         } else if (hasWinners) {
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
-          cellBgGfx.fill({ color: 0x0a0818, alpha: 0.7 });
+          cellBgGfx.fill({ color: inFreeSpins ? 0x0a0808 : 0x0a0818, alpha: 0.7 });
         } else {
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
-          cellBgGfx.fill({ color: 0x2a1f45, alpha: 0.3 });
+          cellBgGfx.fill({ color: inFreeSpins ? 0x2a1a10 : 0x2a1f45, alpha: 0.3 });
         }
       }
     }
@@ -545,7 +546,8 @@ export function drawGridScene(
   winningCellIds?: Set<number>,
   totalWinAmount?: number,
   betAmount?: number,
+  inFreeSpins?: boolean,
 ): void {
   if (!_root || _root !== root) initGridScene(root, renderer);
-  updateGridScene(renderer, grid, jarStates, layout, winningCellIds, totalWinAmount, betAmount);
+  updateGridScene(renderer, grid, jarStates, layout, winningCellIds, totalWinAmount, betAmount, inFreeSpins);
 }
