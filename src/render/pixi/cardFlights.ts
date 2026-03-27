@@ -41,6 +41,14 @@ const flips = new Map<string, Flip>();
 
 const FLIP_DURATION_MS = 280;
 
+let _speedMultiplier = 1;
+export function setAnimationSpeed(fast: boolean): void {
+  _speedMultiplier = fast ? 2 : 1;
+}
+function spd(ms: number): number {
+  return ms / _speedMultiplier;
+}
+
 function allCardIds(s: TableSnapshot): Set<string> {
   const set = new Set<string>();
   for (const c of s.dealer.hand.cards) set.add(c.id);
@@ -108,9 +116,9 @@ function queueLayoutTransitionFlights(
     if (dist < minDist && sizeDelta < 5) continue;
     flights.set(id, {
       dealIn: false,
-      delayMs: st * staggerMs,
+      delayMs: spd(st * staggerMs),
       elapsedMs: 0,
-      durationMs,
+      durationMs: spd(durationMs),
       sx: op.x,
       sy: op.y,
       ex: np.x,
@@ -155,9 +163,9 @@ function queueSplitTransitionFlights(
     const isDealer = dealerIds.has(id);
     flights.set(id, {
       dealIn: false,
-      delayMs: isDealer ? dealerDelayMs : 0,
+      delayMs: spd(isDealer ? dealerDelayMs : 0),
       elapsedMs: 0,
-      durationMs: isDealer ? dealerDurationMs : playerDurationMs,
+      durationMs: spd(isDealer ? dealerDurationMs : playerDurationMs),
       sx: op.x,
       sy: op.y,
       ex: np.x,
@@ -208,7 +216,7 @@ export function syncCardFlights(
     for (const [id, nowUp] of nextFaces) {
       const wasUp = prevFaces.get(id);
       if (wasUp === false && nowUp === true && !flips.has(id)) {
-        flips.set(id, { elapsedMs: 0, durationMs: FLIP_DURATION_MS });
+        flips.set(id, { elapsedMs: 0, durationMs: spd(FLIP_DURATION_MS) });
       }
     }
   }
@@ -307,8 +315,8 @@ export function syncCardFlights(
   }
 
   const isDealerTurn = next.phase === GamePhase.DealerTurn;
-  const dealFlightMs = isDealerTurn ? 300 : 220;
-  const dealStaggerMs = isDealerTurn ? 35 : 25;
+  const dealFlightMs = spd(isDealerTurn ? 300 : 220);
+  const dealStaggerMs = spd(isDealerTurn ? 35 : 25);
 
   const ordered = orderedCardIds(next);
   const newIds = ordered.filter((id) => !prevSet.has(id));

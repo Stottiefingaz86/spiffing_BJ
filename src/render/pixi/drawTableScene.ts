@@ -28,6 +28,7 @@ function clearCardFlightWrapRegistry(): void {
   cardFlightWraps.clear();
 }
 
+
 export function updateRegisteredCardFlightWraps(
   snapshot: TableSnapshot,
   w: number,
@@ -74,6 +75,7 @@ export interface TableDrawInteraction {
   selectedChipCents: number;
   onSelectChip: (cents: number) => void;
   onMainBet: (seat: HandIndex) => void;
+  onSideBet: (seat: HandIndex, kind: 'pp' | '21+3') => void;
 }
 
 /** Table surface: drawn transparent so the app shell provides the only background (no canvas “panel”). */
@@ -206,6 +208,33 @@ function addBettingChipStack(
   totalPill.x = cx;
   totalPill.y = stackBaseY + chipR + gap + pillH / 2;
   root.addChild(totalPill);
+}
+
+function addSideBetChipStack(
+  root: Container,
+  cx: number,
+  cy: number,
+  boxSz: number,
+  betCents: number,
+  chipTextures: (Texture | null)[] | null,
+): void {
+  const layers = betToChipDenomLayers(betCents, 4);
+  if (layers.length === 0) return;
+  const chipR = Math.min(12, boxSz * 0.22);
+  const dy = Math.max(2, chipR * 0.25);
+  const L = layers.length;
+  const stackH = (L - 1) * dy;
+  const baseY = cy + stackH / 2;
+  for (let i = 0; i < L; i++) {
+    const j = drawMiniBetChip(0, 0, chipR, layers[i]!, chipTextures, { showDenomLabel: false });
+    j.x = cx;
+    j.y = baseY - i * dy;
+    root.addChild(j);
+  }
+  const lbl = pillLabel(formatBetCents(betCents), 0x111827, 0xffffff, Math.min(9, boxSz * 0.15));
+  lbl.x = cx;
+  lbl.y = baseY - L * dy - 6;
+  root.addChild(lbl);
 }
 
 /** Play phase: bet amount pill with gradient stroke on desktop for polish. */
@@ -545,11 +574,15 @@ function drawBettingLayout(
 
     const seat = snapshot.seats[i]!;
     const hasBet = seat.bet > 0;
+    const has21 = seat.twentyOneBet > 0;
+    const hasPP = seat.ppBet > 0;
     const mainLabel = hasBet ? '' : 'BET';
 
     root.addChild(
-      bettingSpotContainer(cx, topY, sideSz, sideSz, '21+3', {
-        muted: true,
+      bettingSpotContainer(cx, topY, sideSz, sideSz, has21 ? '' : '21+3', {
+        muted: !has21,
+        hasBet: has21,
+        onPress: () => interaction.onSideBet(i as HandIndex, '21+3'),
       }),
     );
     root.addChild(
@@ -560,8 +593,10 @@ function drawBettingLayout(
       }),
     );
     root.addChild(
-      bettingSpotContainer(cx, botY, sideSz, sideSz, 'PP', {
-        muted: true,
+      bettingSpotContainer(cx, botY, sideSz, sideSz, hasPP ? '' : 'PP', {
+        muted: !hasPP,
+        hasBet: hasPP,
+        onPress: () => interaction.onSideBet(i as HandIndex, 'pp'),
       }),
     );
   }
@@ -569,9 +604,18 @@ function drawBettingLayout(
   // After every column's spots so later columns' felts do not cover earlier totals.
   for (let i = 0; i < 5; i++) {
     const seat = snapshot.seats[i]!;
-    if (seat.bet <= 0) continue;
     const { cx, midY } = seatGeom[i]!;
-    addBettingChipStack(root, cx, midY, mainH, seat.bet, chipTextures, colW);
+    if (seat.bet > 0) {
+      addBettingChipStack(root, cx, midY, mainH, seat.bet, chipTextures, colW);
+    }
+    const topY = baseY - mainH / 2 - stackGap - sideSz / 2;
+    const botY = baseY + mainH / 2 + stackGap + sideSz / 2;
+    if (seat.twentyOneBet > 0) {
+      addSideBetChipStack(root, cx, topY, sideSz, seat.twentyOneBet, chipTextures);
+    }
+    if (seat.ppBet > 0) {
+      addSideBetChipStack(root, cx, botY, sideSz, seat.ppBet, chipTextures);
+    }
   }
 
   const chipY = h * (narrow ? 0.755 : 0.785);
@@ -904,6 +948,23 @@ export function drawGameLayer(
       banner.x = narrow ? cardCx : cardCx;
       banner.y = settlementY;
       root.addChild(banner);
+
+      // Side-bet win badges — shown only during settlement/round complete
+      const sbFs = narrow ? (isHeroLayout ? 10 : 7) : (shrunk ? 8 : 9);
+      let sbY = settlementY + (narrow ? 16 : 18);
+      if (seat.ppResult?.won) {
+        const p = borderedPill(`PP ${seat.ppResult.name}`, 0x14532d, 0xbbf7d0, 0x22c55e, sbFs);
+        p.x = narrow ? cardCx : cardCx;
+        p.y = sbY;
+        root.addChild(p);
+        sbY += narrow ? 16 : 18;
+      }
+      if (seat.twentyOneResult?.won) {
+        const p = borderedPill(`21+3 ${seat.twentyOneResult.name}`, 0x14532d, 0xbbf7d0, 0x22c55e, sbFs);
+        p.x = narrow ? cardCx : cardCx;
+        p.y = sbY;
+        root.addChild(p);
+      }
     }
   }
 

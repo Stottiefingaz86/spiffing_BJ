@@ -141,8 +141,8 @@ function computeLayout(snapshot: TableSnapshot, width: number, height: number) {
   const showdownAvail = railZoneTop - topPad;
   const dealerY = dealerShowdown
     ? topPad + showdownAvail * 0.50
-    : dealerZoneTop + dealerCh / 2 + 6;
-  const dealerCx = dealerShowdown ? cx : (n ? width * 0.72 : width * 0.75);
+    : dealerZoneTop + dealerCh / 2 - 2;
+  const dealerCx = dealerShowdown ? cx : (n ? width * 0.76 : width * 0.78);
 
   // Hero: card center pushed up from zone midpoint
   const heroTopY = heroZoneTop + heroZoneH * 0.36;

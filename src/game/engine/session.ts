@@ -3,6 +3,7 @@ import { addMoney, money, subtractMoney, type MoneyCents } from '../domain/money
 import { DEFAULT_OPERATOR_CONFIG, type OperatorConfig } from '../operator';
 import { dealerShouldHit } from '../rules/dealer';
 import { settleHand } from '../rules/settlement';
+import { evaluatePerfectPairs, evaluateTwentyOnePlusThree } from '../rules/sideBets';
 import { isBlackjack, scoreHand } from '../rules/scoring';
 import { MathRandomSource } from '../rng/random-source';
 import { Shoe } from '../rng/shoe';
@@ -26,9 +27,13 @@ function makeSeats(): PlayerSeatState[] {
     inRound: false,
     bet: money(0),
     insuranceBet: money(0),
+    ppBet: money(0),
+    twentyOneBet: money(0),
     hand: emptyHand(),
     status: 'idle' as const,
     settlement: undefined,
+    ppResult: undefined,
+    twentyOneResult: undefined,
   }));
 }
 
@@ -48,9 +53,11 @@ export class GameSession {
   private settlementRevealIndex: HandIndex | null = null;
   /** Dealer finished drawing; next DEALER_PLAY_STEP runs settlement (visible pause). */
   private settlementPending = false;
+  private balanceBeforeDeal: MoneyCents;
   private revision = 0;
   private lastError?: string;
   private betHistory: { seat: HandIndex; amount: MoneyCents }[] = [];
+  private sideBetHistory: { seat: HandIndex; kind: 'pp' | '21+3'; amount: MoneyCents }[] = [];
   private dealQueue: DealQueueStep[] = [];
   /** DealerTurn: first step reveals hole; then hits one card per step until stand. */
   private dealerAwaitingHoleReveal = false;
@@ -64,6 +71,7 @@ export class GameSession {
       idPrefix: `shoe-${operator.tableId}`,
     });
     this.balance = money(500_00);
+    this.balanceBeforeDeal = this.balance;
     this.phase = GamePhase.Betting;
   }
 
@@ -71,6 +79,7 @@ export class GameSession {
     return {
       phase: this.phase,
       balance: this.balance,
+      balanceBeforeDeal: this.balanceBeforeDeal,
       dealer: {
         hand: { cards: this.dealer.hand.cards.map((c) => ({ ...c })) },
       },
@@ -78,6 +87,8 @@ export class GameSession {
         ...s,
         hand: { cards: s.hand.cards.map((c) => ({ ...c })) },
         settlement: s.settlement ? { ...s.settlement } : undefined,
+        ppResult: s.ppResult ? { ...s.ppResult } : undefined,
+        twentyOneResult: s.twentyOneResult ? { ...s.twentyOneResult } : undefined,
       })),
       activeSeatIndex: this.activeSeatIndex,
       handTransitionFrom: this.handTransitionFrom,
@@ -143,6 +154,15 @@ export class GameSession {
       case 'REBET_LAST':
         this.rebetLastRound();
         break;
+      case 'PLACE_SIDE_BET':
+        this.placeSideBet(action.seat, action.kind, action.chipValue);
+        break;
+      case 'CLEAR_SIDE_BET':
+        this.clearSideBet(action.seat, action.kind);
+        break;
+      case 'UNDO_LAST_SIDE_BET':
+        this.undoLastSideBet();
+        break;
       default:
         this.lastError = 'Unknown action';
         this.bump();
@@ -158,16 +178,16 @@ export class GameSession {
     if (!Number.isInteger(chipValue) || chipValue <= 0) return;
     const add = money(chipValue);
     const s = this.seats[seat];
-    const otherPending = this.seats.reduce(
-      (acc, x) => (x.index === s.index ? acc : addMoney(acc, x.bet)),
+    const allPending = this.seats.reduce(
+      (acc, x) => addMoney(acc, addMoney(x.bet, addMoney(x.ppBet, x.twentyOneBet))),
       money(0),
     );
-    const nextTotal = addMoney(s.bet, add);
-    if (addMoney(otherPending, nextTotal) > this.balance) {
+    if (addMoney(allPending, add) > this.balance) {
       this.lastError = 'Insufficient balance';
       this.bump();
       return;
     }
+    const nextTotal = addMoney(s.bet, add);
     if (nextTotal < this.operator.tableLimits.minBet && nextTotal !== add) {
       /* allow building to min */
     }
@@ -197,6 +217,7 @@ export class GameSession {
     if (this.phase !== GamePhase.Betting) return;
     this.seats = makeSeats();
     this.betHistory = [];
+    this.sideBetHistory = [];
     this.bump();
   }
 
@@ -229,13 +250,21 @@ export class GameSession {
       }
     }
 
-    const totalWager = active.reduce((acc, s) => addMoney(acc, s.bet), money(0));
+    const totalSideBets = this.seats.reduce(
+      (acc, s) => addMoney(acc, addMoney(s.ppBet, s.twentyOneBet)),
+      money(0),
+    );
+    const totalWager = addMoney(
+      active.reduce((acc, s) => addMoney(acc, s.bet), money(0)),
+      totalSideBets,
+    );
     if (totalWager > this.balance) {
       this.lastError = 'Insufficient balance';
       this.bump();
       return;
     }
 
+    this.balanceBeforeDeal = this.balance;
     this.balance = subtractMoney(this.balance, totalWager);
 
     if (this.shoe.needsReshuffle()) {
@@ -252,10 +281,14 @@ export class GameSession {
       if (s.inRound) {
         s.hand = emptyHand();
         s.settlement = undefined;
+        s.ppResult = undefined;
+        s.twentyOneResult = undefined;
         s.status = 'betting';
       } else {
         s.hand = emptyHand();
         s.settlement = undefined;
+        s.ppResult = undefined;
+        s.twentyOneResult = undefined;
         s.status = 'idle';
       }
     }
@@ -324,6 +357,7 @@ export class GameSession {
     for (const c of this.dealer.hand.cards) {
       c.faceUp = true;
     }
+    this.evaluateSideBets();
     for (const s of this.seats) {
       if (!s.inRound || s.insuranceBet <= 0) continue;
       const insurancePay = money(s.insuranceBet * 2);
@@ -374,6 +408,7 @@ export class GameSession {
   }
 
   private preparePlayerTurns(): void {
+    this.evaluateSideBets();
     for (const s of this.seats) {
       if (!s.inRound) continue;
       if (isBlackjack(s.hand.cards)) {
@@ -566,7 +601,16 @@ export class GameSession {
     const outcome = settleHand(s.hand, this.dealer.hand, s.bet, this.operator.rules);
     s.settlement = outcome;
     s.status = 'settled';
-    this.balance = addMoney(this.balance, addMoney(s.bet, outcome.payout));
+    let handPayout = addMoney(s.bet, outcome.payout);
+
+    if (s.ppResult?.won && s.ppBet > 0) {
+      handPayout = addMoney(handPayout, addMoney(s.ppBet, s.ppResult.payout));
+    }
+    if (s.twentyOneResult?.won && s.twentyOneBet > 0) {
+      handPayout = addMoney(handPayout, addMoney(s.twentyOneBet, s.twentyOneResult.payout));
+    }
+
+    this.balance = addMoney(this.balance, handPayout);
     this.settlementRevealIndex = next;
     this.heroSeatIndex = next;
     this.bump();
@@ -652,6 +696,79 @@ export class GameSession {
     this.deal();
   }
 
+  // ---- Side bet methods ----
+
+  private placeSideBet(seat: HandIndex, kind: 'pp' | '21+3', chipValue: number): void {
+    if (this.phase !== GamePhase.Betting) return;
+    if (!Number.isInteger(chipValue) || chipValue <= 0) return;
+    const add = money(chipValue);
+    const s = this.seats[seat];
+    const field = kind === 'pp' ? 'ppBet' : 'twentyOneBet';
+    const next = addMoney(s[field], add);
+
+    const totalPending = this.seats.reduce(
+      (acc, x) => addMoney(acc, addMoney(x.bet, addMoney(x.ppBet, x.twentyOneBet))),
+      money(0),
+    );
+    if (addMoney(totalPending, add) > this.balance) {
+      this.lastError = 'Insufficient balance';
+      this.bump();
+      return;
+    }
+
+    s[field] = next;
+    this.sideBetHistory.push({ seat, kind, amount: add });
+    this.bump();
+  }
+
+  private clearSideBet(seat: HandIndex, kind: 'pp' | '21+3'): void {
+    if (this.phase !== GamePhase.Betting) return;
+    const s = this.seats[seat];
+    if (kind === 'pp') s.ppBet = money(0);
+    else s.twentyOneBet = money(0);
+    this.sideBetHistory = this.sideBetHistory.filter(
+      (b) => !(b.seat === seat && b.kind === kind),
+    );
+    this.bump();
+  }
+
+  private undoLastSideBet(): void {
+    if (this.phase !== GamePhase.Betting || this.sideBetHistory.length === 0) return;
+    const last = this.sideBetHistory.pop();
+    if (!last) return;
+    const s = this.seats[last.seat];
+    const field = last.kind === 'pp' ? 'ppBet' : 'twentyOneBet';
+    s[field] = subtractMoney(s[field], last.amount);
+    this.bump();
+  }
+
+  private evaluateSideBets(): void {
+    const dealerUpcard = this.dealer.hand.cards.find((c) => c.faceUp);
+    for (const s of this.seats) {
+      if (!s.inRound) continue;
+
+      if (s.ppBet > 0) {
+        const outcome = evaluatePerfectPairs(s.hand.cards);
+        if (outcome) {
+          const winnings = money(s.ppBet * outcome.multiplier);
+          s.ppResult = { name: outcome.name, payout: winnings, won: true };
+        } else {
+          s.ppResult = { name: 'No Pair', payout: money(0), won: false };
+        }
+      }
+
+      if (s.twentyOneBet > 0 && dealerUpcard) {
+        const outcome = evaluateTwentyOnePlusThree(s.hand.cards, dealerUpcard);
+        if (outcome) {
+          const winnings = money(s.twentyOneBet * outcome.multiplier);
+          s.twentyOneResult = { name: outcome.name, payout: winnings, won: true };
+        } else {
+          s.twentyOneResult = { name: 'No Match', payout: money(0), won: false };
+        }
+      }
+    }
+  }
+
   private resetRound(): void {
     this.dealer = { hand: emptyHand() };
     this.seats = makeSeats();
@@ -661,6 +778,7 @@ export class GameSession {
     this.settlementRevealIndex = null;
     this.settlementPending = false;
     this.betHistory = [];
+    this.sideBetHistory = [];
     this.dealQueue = [];
     this.dealerAwaitingHoleReveal = false;
   }

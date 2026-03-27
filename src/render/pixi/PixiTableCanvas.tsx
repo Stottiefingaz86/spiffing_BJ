@@ -5,6 +5,7 @@ import type { Suit } from '@/game/domain/card';
 import { TABLE_CHIP_DENOMS } from '@/lib/tableChips';
 import { GamePhase } from '@/game/state/phases';
 import type { HandIndex, TableSnapshot } from '@/game/state/table-state';
+import { isBlackjack } from '@/game/rules/scoring';
 
 import {
   areCardFlightsActive,
@@ -43,6 +44,7 @@ export interface PixiTableCanvasProps {
   selectedChipCents: number;
   onSelectChip: (cents: number) => void;
   onMainBet: (seat: HandIndex) => void;
+  onSideBet: (seat: HandIndex, kind: 'pp' | '21+3') => void;
   className?: string;
 }
 
@@ -51,6 +53,7 @@ export function PixiTableCanvas({
   selectedChipCents,
   onSelectChip,
   onMainBet,
+  onSideBet,
   className,
 }: PixiTableCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -67,8 +70,9 @@ export function PixiTableCanvas({
     selectedChipCents,
     onSelectChip,
     onMainBet,
+    onSideBet,
   });
-  interactionRef.current = { selectedChipCents, onSelectChip, onMainBet };
+  interactionRef.current = { selectedChipCents, onSelectChip, onMainBet, onSideBet };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -223,6 +227,40 @@ export function PixiTableCanvas({
         }
       }
     }
+    // Confetti on side bet wins (detected when pp/21+3 results first appear after dealing)
+    if (
+      prev &&
+      snapshot.phase !== GamePhase.Betting &&
+      snapshot.phase !== GamePhase.Dealing
+    ) {
+      for (const seat of snapshot.seats) {
+        if (!seat.inRound) continue;
+        const prevSeat = prev.seats[seat.index];
+        const ppJustWon = seat.ppResult?.won && !prevSeat?.ppResult;
+        const t1JustWon = seat.twentyOneResult?.won && !prevSeat?.twentyOneResult;
+        if (ppJustWon || t1JustWon) {
+          const spots = buildSeatUiSpots(snapshot, fw, fh);
+          const spot = spots.find((s) => s.index === seat.index);
+          if (spot) emitWinParticles(spot.sx, spot.sy, false);
+        }
+      }
+    }
+
+    // Confetti on blackjack during PlayerTurn (not just settlement)
+    if (
+      snapshot.phase === GamePhase.PlayerTurn &&
+      prev?.phase !== GamePhase.PlayerTurn
+    ) {
+      for (const seat of snapshot.seats) {
+        if (!seat.inRound || seat.hand.cards.length !== 2) continue;
+        if (isBlackjack(seat.hand.cards)) {
+          const spots = buildSeatUiSpots(snapshot, fw, fh);
+          const spot = spots.find((s) => s.index === seat.index);
+          if (spot) emitWinParticles(spot.sx, spot.sy, true);
+        }
+      }
+    }
+
     // Clear particles when returning to betting
     if (snapshot.phase === GamePhase.Betting) {
       clearWinParticles();

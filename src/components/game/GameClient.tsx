@@ -11,7 +11,9 @@ import type { HandIndex } from '@/game/state/table-state';
 import { AnimatedBalance, type RoundResult } from '@/components/game/AnimatedBalance';
 import { formatMoney } from '@/lib/formatMoney';
 import { PixiTableCanvas } from '@/render/pixi/PixiTableCanvas';
+import { SettingsModal, type RoundHistoryEntry } from '@/components/game/SettingsModal';
 import { playSfx, playSfxPitched, preloadSfx, setSfxMuted, startBgm, setBgmMuted, unlockAudio } from '@/audio/sfx';
+import { setAnimationSpeed } from '@/render/pixi/cardFlights';
 
 const headerGlassPill =
   'rounded-[14px] bg-white/[0.10] sm:bg-white/[0.06] sm:backdrop-blur-xl border border-white/[0.07] shadow-[0_0_20px_rgba(168,85,247,0.06)]';
@@ -79,6 +81,17 @@ export default function GameClient() {
   const [selectedChipCents, setSelectedChipCents] = useState(500);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
+  const [musicOn, setMusicOn] = useState(false);
+  const [fastAnimations, setFastAnimations] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    setAnimationSpeed(fastAnimations);
+  }, [fastAnimations]);
+
+  const spd = useCallback((ms: number) => (fastAnimations ? ms / 2 : ms), [fastAnimations]);
+  const [handHistory, setHandHistory] = useState<RoundHistoryEntry[]>([]);
+  const roundCounterRef = useRef(0);
 
   useEffect(() => {
     setSfxMuted(!soundOn);
@@ -118,24 +131,22 @@ export default function GameClient() {
   useEffect(() => {
     if (snap.phase !== GamePhase.Dealing) return;
     playSfx('cardDeal', 0.4);
-    const delayMs = 180;
     const id = window.setTimeout(() => {
       session.dispatch({ type: 'DEAL_NEXT_CARD' });
       refresh();
-    }, delayMs);
+    }, spd(180));
     return () => window.clearTimeout(id);
-  }, [snap.phase, snap.revision, session, refresh]);
+  }, [snap.phase, snap.revision, session, refresh, spd]);
 
   /** Brief pause after a hand ends so the rail / next hero transition reads clearly. */
   useEffect(() => {
     if (snap.phase !== GamePhase.HandTransition) return;
-    const delayMs = 720;
     const id = window.setTimeout(() => {
       session.dispatch({ type: 'COMPLETE_HAND_TRANSITION' });
       refresh();
-    }, delayMs);
+    }, spd(720));
     return () => window.clearTimeout(id);
-  }, [snap.phase, snap.revision, session, refresh]);
+  }, [snap.phase, snap.revision, session, refresh, spd]);
 
   const prevDealerAllUpRef = useRef(false);
   const prevDealerCardCountRef = useRef(0);
@@ -162,13 +173,12 @@ export default function GameClient() {
       playSfx('cardDeal', 0.4);
     }
 
-    const delayMs = justRevealedHole ? 1200 : 900;
     const id = window.setTimeout(() => {
       session.dispatch({ type: 'DEALER_PLAY_STEP' });
       refresh();
-    }, delayMs);
+    }, spd(justRevealedHole ? 1200 : 900));
     return () => window.clearTimeout(id);
-  }, [snap.phase, snap.revision, session, refresh]);
+  }, [snap.phase, snap.revision, session, refresh, spd]);
 
   const prevSettlementIdxRef = useRef<number | null>(null);
 
@@ -193,17 +203,76 @@ export default function GameClient() {
     prevSettlementIdxRef.current = snap.settlementRevealIndex;
 
     const isFirst = snap.settlementRevealIndex === null;
-    const delayMs = isFirst ? 350 : 550;
     const id = window.setTimeout(() => {
       session.dispatch({ type: 'SETTLE_NEXT_HAND' });
       refresh();
-    }, delayMs);
+    }, spd(isFirst ? 350 : 550));
     return () => window.clearTimeout(id);
-  }, [snap.phase, snap.revision, session, refresh]);
+  }, [snap.phase, snap.revision, session, refresh, spd]);
+
+  const prevSideBetResultsRef = useRef(false);
+  useEffect(() => {
+    const hasSideBetResults = snap.seats.some((s) => s.ppResult || s.twentyOneResult);
+    if (hasSideBetResults && !prevSideBetResultsRef.current) {
+      const anyWin = snap.seats.some(
+        (s) => s.ppResult?.won || s.twentyOneResult?.won,
+      );
+      if (anyWin) playSfx('win', 0.5);
+    }
+    prevSideBetResultsRef.current = hasSideBetResults;
+  }, [snap.revision, snap.seats]);
+
+  const prevPhaseForHistoryRef = useRef(snap.phase);
+  useEffect(() => {
+    const prev = prevPhaseForHistoryRef.current;
+    prevPhaseForHistoryRef.current = snap.phase;
+    if (snap.phase !== GamePhase.RoundComplete || prev === GamePhase.RoundComplete) return;
+
+    roundCounterRef.current += 1;
+    const dealerCards = snap.dealer.hand.cards.map((c) => ({ rank: c.rank, suit: c.suit }));
+    const dealerTotal = scoreHand(snap.dealer.hand.cards).total;
+    const hands = snap.seats
+      .filter((s) => s.inRound && s.hand.cards.length > 0)
+      .map((s) => {
+        const sc = scoreHand(s.hand.cards);
+        return {
+          cards: s.hand.cards.map((c) => ({ rank: c.rank, suit: c.suit })),
+          total: sc.bust ? sc.total : sc.total,
+          bet: s.bet,
+          outcome: s.settlement?.kind ?? 'unknown',
+          payout: s.settlement?.payout ?? 0,
+          ppBet: s.ppBet,
+          ppResult: s.ppResult?.name,
+          ppPayout: s.ppResult?.won ? s.ppResult.payout : 0,
+          t1Bet: s.twentyOneBet,
+          t1Result: s.twentyOneResult?.name,
+          t1Payout: s.twentyOneResult?.won ? s.twentyOneResult.payout : 0,
+        };
+      });
+    const netResult = snap.balance - snap.balanceBeforeDeal;
+    const entry: RoundHistoryEntry = {
+      id: roundCounterRef.current,
+      timestamp: Date.now(),
+      dealerCards,
+      dealerTotal,
+      hands,
+      netResult,
+    };
+    setHandHistory((prev) => [...prev.slice(-49), entry]);
+  }, [snap.phase, snap.revision, snap.seats, snap.dealer, snap.balance, snap.balanceBeforeDeal]);
 
   const onMainBet = useCallback(
     (seat: HandIndex) => {
       session.dispatch({ type: 'PLACE_BET', seat, chipValue: selectedChipCents });
+      playSfx('chipStack', 0.5);
+      refresh();
+    },
+    [session, selectedChipCents, refresh],
+  );
+
+  const onSideBet = useCallback(
+    (seat: HandIndex, kind: 'pp' | '21+3') => {
+      session.dispatch({ type: 'PLACE_SIDE_BET', seat, kind, chipValue: selectedChipCents });
       playSfx('chipStack', 0.5);
       refresh();
     },
@@ -222,12 +291,9 @@ export default function GameClient() {
 
   const roundResult: RoundResult | null = (() => {
     if (snap.phase !== GamePhase.RoundComplete) return null;
-    let total = 0;
-    for (const s of snap.seats) {
-      if (s.settlement) total += s.settlement.payout;
-    }
-    const label = total > 0 ? 'YOU WON' : total < 0 ? 'YOU LOST' : 'PUSH';
-    return { label, payout: total };
+    const delta = snap.balance - snap.balanceBeforeDeal;
+    const label = delta > 0 ? 'YOU WON' : delta < 0 ? 'YOU LOST' : 'PUSH';
+    return { label, payout: delta };
   })();
 
   const canDouble = (() => {
@@ -247,7 +313,7 @@ export default function GameClient() {
     return true;
   })();
 
-  const totalBet = snap.seats.reduce((sum, s) => sum + s.bet, 0);
+  const totalBet = snap.seats.reduce((sum, s) => sum + s.bet + s.ppBet + s.twentyOneBet, 0);
 
   return (
     <div
@@ -257,7 +323,7 @@ export default function GameClient() {
         <div
           className={cn(
             headerGlassPill,
-            'flex size-10 shrink-0 items-center justify-center hover:bg-white/10',
+            'flex size-10 shrink-0 items-center justify-center hover:bg-white/10 lg:hidden',
             headerMenuOpen && 'bg-white/10',
           )}
         >
@@ -285,7 +351,7 @@ export default function GameClient() {
             type="button"
             className={cn(headerGlassPill, 'flex size-10 items-center justify-center text-white/70 hover:bg-white/10 hover:text-white active:scale-[0.94]')}
             aria-label="Settings"
-            onClick={() => alert('Settings will open here.')}
+            onClick={() => setSettingsOpen(true)}
           >
             <Settings className="size-[17px]" strokeWidth={1.8} />
           </button>
@@ -306,7 +372,7 @@ export default function GameClient() {
         <div
           className={cn(
             headerGlassPill,
-            'ml-auto flex h-10 shrink-0 items-center gap-2.5 px-3.5 hover:bg-white/10 sm:gap-3 sm:px-4',
+            'ml-auto flex h-10 min-w-0 items-center gap-2.5 overflow-visible px-3.5 hover:bg-white/10 sm:gap-3 sm:px-4',
           )}
         >
           <span className="shrink-0 text-[8px] font-semibold uppercase leading-none tracking-[0.18em] text-white/45 sm:text-[9px]">
@@ -341,6 +407,7 @@ export default function GameClient() {
           selectedChipCents={selectedChipCents}
           onSelectChip={onSelectChip}
           onMainBet={onMainBet}
+          onSideBet={onSideBet}
           className="min-h-0 min-w-0 flex-1 overflow-hidden"
         />
 
@@ -597,6 +664,19 @@ export default function GameClient() {
         MIN: {formatMoney(session.operator.tableLimits.minBet)} / MAX:{' '}
         {formatMoney(session.operator.tableLimits.maxBet)}
       </footer>
+
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        soundOn={soundOn}
+        onToggleSound={() => setSoundOn((v) => !v)}
+        musicOn={musicOn}
+        onToggleMusic={() => setMusicOn((v) => !v)}
+        fastAnimations={fastAnimations}
+        onToggleFastAnimations={() => setFastAnimations((v) => !v)}
+        rules={session.operator.rules}
+        history={handHistory}
+      />
     </div>
   );
 }

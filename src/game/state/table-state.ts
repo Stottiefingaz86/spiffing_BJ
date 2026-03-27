@@ -15,6 +15,12 @@ export type PlayerHandStatus =
   | 'bust'
   | 'settled';
 
+export interface SideBetResult {
+  name: string;
+  payout: MoneyCents;
+  won: boolean;
+}
+
 export interface PlayerSeatState {
   index: HandIndex;
   /** Included in current round (has a bet). */
@@ -22,9 +28,15 @@ export interface PlayerSeatState {
   bet: MoneyCents;
   /** Insurance wager (half of main bet); 0 if not insured. */
   insuranceBet: MoneyCents;
+  /** Perfect Pairs side bet wager. */
+  ppBet: MoneyCents;
+  /** 21+3 side bet wager. */
+  twentyOneBet: MoneyCents;
   hand: Hand;
   status: PlayerHandStatus;
   settlement?: HandSettlement;
+  ppResult?: SideBetResult;
+  twentyOneResult?: SideBetResult;
 }
 
 export interface DealerState {
@@ -38,6 +50,8 @@ export interface DealerState {
 export interface TableSnapshot {
   phase: GamePhase;
   balance: MoneyCents;
+  /** Balance captured just before the deal deducted wagers — used for round summary delta. */
+  balanceBeforeDeal: MoneyCents;
   dealer: DealerState;
   seats: PlayerSeatState[];
   /** Index of seat receiving player actions; null during betting / dealer / settlement. */

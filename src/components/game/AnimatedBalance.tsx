@@ -108,10 +108,10 @@ export function AnimatedBalance({
   const isLoss = visibleResult && visibleResult.payout < 0;
 
   return (
-    <span className="relative inline-flex items-center">
+    <span className="inline-flex items-center gap-2">
       <span
         className={cn(
-          'inline-block tabular-nums tracking-tight transition-colors duration-500',
+          'inline-block min-w-0 truncate tabular-nums tracking-tight transition-colors duration-500',
           flash === 'win' && 'text-emerald-400',
           flash === 'lose' && 'text-rose-400',
           className,
@@ -119,41 +119,20 @@ export function AnimatedBalance({
         aria-live="polite"
         aria-atomic="true"
       >
-        {formatMoney(display)}
+        {formatMoney(Math.max(0, display))}
       </span>
-
-      {popups.map((p) => (
-        <span
-          key={p.id}
-          className={cn(
-            'pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-bold tabular-nums',
-            'animate-delta-popup',
-            p.amount >= 0 ? 'text-emerald-400' : 'text-rose-400',
-          )}
-        >
-          {p.amount >= 0 ? '+' : '−'}
-          {formatMoney(Math.abs(p.amount))}
-        </span>
-      ))}
 
       {visibleResult && (
         <span
           className={cn(
-            'pointer-events-none absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 whitespace-nowrap rounded-xl px-4 py-2 shadow-lg backdrop-blur-md',
-            'bottom-full mb-2 sm:bottom-auto sm:top-full sm:mb-0 sm:mt-2',
-            'animate-result-slide-in',
-            isWin && 'border border-emerald-400/60 bg-emerald-950/80 text-emerald-300',
-            isLoss && 'border border-rose-400/60 bg-rose-950/80 text-rose-300',
-            !isWin && !isLoss && 'border border-white/30 bg-black/70 text-white/80',
+            'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-extrabold tabular-nums tracking-wide animate-result-slide-in',
+            isWin && 'bg-emerald-500/20 text-emerald-400',
+            isLoss && 'bg-rose-500/20 text-rose-400',
+            !isWin && !isLoss && 'bg-white/10 text-white/70',
           )}
         >
-          <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] opacity-80">
-            {visibleResult.label}
-          </span>
-          <span className="text-base font-black tabular-nums sm:text-lg">
-            {visibleResult.payout > 0 ? '+' : visibleResult.payout < 0 ? '−' : ''}
-            {formatMoney(Math.abs(visibleResult.payout))}
-          </span>
+          {visibleResult.payout > 0 ? '+' : visibleResult.payout < 0 ? '−' : ''}
+          {formatMoney(Math.abs(visibleResult.payout))}
         </span>
       )}
     </span>
