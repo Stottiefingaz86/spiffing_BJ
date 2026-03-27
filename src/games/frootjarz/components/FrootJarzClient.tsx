@@ -262,7 +262,7 @@ export default function FrootJarzClient() {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Logo — absolutely positioned so it doesn't shrink the grid */}
-        <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[75px] max-lg:-top-[50px]">
+        <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[75px] max-lg:-top-[45px]">
           <img src="/frootshoot/LOGO.png" alt="Froot Jarz" className="h-64 lg:h-64 w-auto" style={{ willChange: 'transform' }} />
         </div>
 
