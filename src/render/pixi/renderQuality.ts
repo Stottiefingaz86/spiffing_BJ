@@ -4,7 +4,6 @@
 export function tablePixelRatio(): number {
   if (typeof window === 'undefined') return 2;
   const dpr = window.devicePixelRatio || 1;
-  /** Cap at 2 — higher DPR inflates Text/Graphics and looks chunky on table UI. */
   return Math.min(2, Math.max(1.5, dpr));
 }
 

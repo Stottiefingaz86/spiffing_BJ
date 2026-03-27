@@ -27,12 +27,24 @@ let muted = false;
 
 function getContext(): AudioContext {
   if (!ctx) {
-    ctx = new AudioContext();
+    ctx = new (window.AudioContext || (window as unknown as Record<string, unknown>).webkitAudioContext as typeof AudioContext)();
   }
   return ctx;
 }
 
+/**
+ * Must be called inside a user-gesture handler (tap/click) so Safari
+ * allows the AudioContext to start. Safe to call repeatedly.
+ */
+export function unlockAudio(): void {
+  const ac = getContext();
+  if (ac.state === 'suspended') {
+    ac.resume().catch(() => {});
+  }
+}
+
 export async function preloadSfx(): Promise<void> {
+  unlockAudio();
   if (loaded || loading) return;
   loading = true;
   const ac = getContext();
@@ -110,20 +122,23 @@ const BGM_URL = `${BASE}sounds/cozy-jazz-piano-2025-01-15-22-25-52-utc/Cozy Jazz
 const BGM_VOLUME = 0.12;
 
 let bgmAudio: HTMLAudioElement | null = null;
-let bgmStarted = false;
+let bgmPlaying = false;
 
 export function startBgm(): void {
-  if (bgmStarted) return;
-  bgmStarted = true;
+  if (bgmPlaying) return;
 
-  const el = new Audio(BGM_URL);
-  el.loop = true;
-  el.volume = muted ? 0 : BGM_VOLUME;
-  el.play().catch(() => {
-    // Autoplay blocked — will retry on next user gesture
-    bgmStarted = false;
+  if (!bgmAudio) {
+    const el = new Audio(BGM_URL);
+    el.loop = true;
+    el.volume = muted ? 0 : BGM_VOLUME;
+    bgmAudio = el;
+  }
+
+  bgmAudio.play().then(() => {
+    bgmPlaying = true;
+  }).catch(() => {
+    // Autoplay blocked — caller should retry on next user gesture
   });
-  bgmAudio = el;
 }
 
 export function setBgmMuted(value: boolean): void {

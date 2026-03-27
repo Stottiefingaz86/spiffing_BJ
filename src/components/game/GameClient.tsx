@@ -11,7 +11,7 @@ import type { HandIndex } from '@/game/state/table-state';
 import { AnimatedBalance, type RoundResult } from '@/components/game/AnimatedBalance';
 import { formatMoney } from '@/lib/formatMoney';
 import { PixiTableCanvas } from '@/render/pixi/PixiTableCanvas';
-import { playSfx, playSfxPitched, preloadSfx, setSfxMuted, startBgm, setBgmMuted } from '@/audio/sfx';
+import { playSfx, playSfxPitched, preloadSfx, setSfxMuted, startBgm, setBgmMuted, unlockAudio } from '@/audio/sfx';
 
 const headerGlassPill =
   'rounded-[14px] bg-white/[0.06] backdrop-blur-xl border border-white/[0.07] shadow-[0_0_20px_rgba(168,85,247,0.06)] transition-[box-shadow,background-color] duration-300 ease-out';
@@ -85,6 +85,16 @@ export default function GameClient() {
     setBgmMuted(!soundOn);
   }, [soundOn]);
 
+  useEffect(() => {
+    const handler = () => { unlockAudio(); preloadSfx(); startBgm(); };
+    document.addEventListener('touchstart', handler, { once: true });
+    document.addEventListener('click', handler, { once: true });
+    return () => {
+      document.removeEventListener('touchstart', handler);
+      document.removeEventListener('click', handler);
+    };
+  }, []);
+
   const refresh = useCallback(() => {
     setSnap(session.getSnapshot());
   }, [session]);
@@ -99,7 +109,7 @@ export default function GameClient() {
   }, [headerMenuOpen]);
 
   useEffect(() => {
-    const handler = () => { preloadSfx(); startBgm(); };
+    const handler = () => { unlockAudio(); preloadSfx(); startBgm(); };
     window.addEventListener('pointerdown', handler, { once: true });
     return () => window.removeEventListener('pointerdown', handler);
   }, []);
@@ -312,7 +322,7 @@ export default function GameClient() {
 
       <section className="shrink-0 px-3 pb-1 pt-3 text-center sm:pt-4 lg:px-4 lg:pb-2.5 lg:pt-5">
         <h1 className="font-black tracking-[-0.02em]">
-          <span className="animate-gradient-text block bg-clip-text text-[1.35rem] leading-none text-transparent sm:text-2xl lg:text-4xl" style={{ backgroundImage: 'linear-gradient(90deg, #ec4899, #d946ef, #a855f7, #7c3aed, #c084fc, #f472b6, #fb923c, #f59e0b, #ec4899, #d946ef, #a855f7)' }}>
+          <span className="block text-[1.35rem] leading-none text-[#c084fc] sm:text-2xl lg:text-4xl">
             MULTI-HAND
           </span>
           <span className="mt-0.5 block text-[1.65rem] leading-none text-white sm:text-3xl lg:mt-1 lg:text-5xl">

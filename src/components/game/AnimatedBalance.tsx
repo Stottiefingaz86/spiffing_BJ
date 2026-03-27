@@ -139,7 +139,8 @@ export function AnimatedBalance({
       {visibleResult && (
         <span
           className={cn(
-            'pointer-events-none absolute left-1/2 top-full mt-2 flex -translate-x-1/2 flex-col items-center gap-0.5 whitespace-nowrap rounded-xl px-4 py-2 shadow-lg backdrop-blur-md',
+            'pointer-events-none absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 whitespace-nowrap rounded-xl px-4 py-2 shadow-lg backdrop-blur-md',
+            'bottom-full mb-2 sm:bottom-auto sm:top-full sm:mb-0 sm:mt-2',
             'animate-result-slide-in',
             isWin && 'border border-emerald-400/60 bg-emerald-950/80 text-emerald-300',
             isLoss && 'border border-rose-400/60 bg-rose-950/80 text-rose-300',

@@ -88,7 +88,7 @@ function computeLayout(snapshot: TableSnapshot, width: number, height: number) {
   const dealerZoneH = playH * (n ? 0.22 : 0.26);
   const dealerZoneTop = topPad;
 
-  const railZoneH = playH * (n ? 0.32 : 0.26);
+  const railZoneH = playH * (n ? 0.26 : 0.26);
   const railZoneTop = height - railZoneH;
 
   // Hero zone: the space between dealer and rail
@@ -137,19 +137,19 @@ function computeLayout(snapshot: TableSnapshot, width: number, height: number) {
   // ---- Positions ----
   // NOTE: card (x,y) is the card CENTER, not top-left.
 
-  // Dealer: during showdown, centre in the available space above the rail.
+  // Dealer: during showdown, dead centre in the available space above the rail.
   const showdownAvail = railZoneTop - topPad;
   const dealerY = dealerShowdown
-    ? topPad + showdownAvail * 0.48
+    ? topPad + showdownAvail * 0.50
     : dealerZoneTop + dealerCh / 2 + 6;
-  const dealerCx = dealerShowdown ? cx : (n ? width * 0.66 : width * 0.72);
+  const dealerCx = dealerShowdown ? cx : (n ? width * 0.72 : width * 0.75);
 
-  // Hero: card center in the middle of its zone
-  const heroTopY = heroZoneTop + heroZoneH / 2;
+  // Hero: card center pushed up from zone midpoint
+  const heroTopY = heroZoneTop + heroZoneH * 0.36;
 
-  // Rail: card center in rail zone, biased slightly above center for bet pill room
+  // Rail: centre cards in the rail zone vertically
   const railCardY = n
-    ? railZoneTop + 22 + railCh / 2
+    ? railZoneTop + railZoneH * 0.45
     : railZoneTop + railZoneH / 2 - 4;
 
   // Rail horizontal distribution — FIXED slots based on seat index (0–4).

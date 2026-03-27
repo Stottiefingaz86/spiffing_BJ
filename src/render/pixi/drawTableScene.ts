@@ -253,18 +253,20 @@ function addDealerBadge(
   anchorX: number,
   anchorY: number,
   dealerIcon: Texture | null,
+  narrow = false,
 ): void {
   const cluster = new Container();
   cluster.x = anchorX;
   cluster.y = anchorY;
 
+  const iconSize = narrow ? 16 : 22;
   if (dealerIcon) {
     const sprite = new Sprite(dealerIcon);
     sprite.anchor.set(0.5, 0.5);
-    const sc = 22 / Math.max(dealerIcon.width, dealerIcon.height);
+    const sc = iconSize / Math.max(dealerIcon.width, dealerIcon.height);
     sprite.scale.set(sc);
     sprite.alpha = 0.85;
-    sprite.y = -8;
+    sprite.y = narrow ? -5 : -8;
     cluster.addChild(sprite);
   }
 
@@ -274,15 +276,15 @@ function addDealerBadge(
     roundPixels: false,
     style: {
       fontFamily: 'system-ui, sans-serif',
-      fontSize: 6.5,
+      fontSize: narrow ? 5 : 6.5,
       fontWeight: '800',
-      letterSpacing: 1.2,
+      letterSpacing: narrow ? 0.8 : 1.2,
       fill: 0xffffff,
     },
   });
   lbl.anchor.set(0.5, 0);
   lbl.alpha = 0.45;
-  lbl.y = 6;
+  lbl.y = narrow ? 4 : 6;
   cluster.addChild(lbl);
 
   root.addChild(cluster);
@@ -697,11 +699,15 @@ export function drawGameLayer(
   const dealerBounds = dealerHandBounds(layout, dealerCards);
   const dealerIcon = extras?.dealerIcon ?? null;
   if (dealerBounds) {
+    const badgeX = narrow
+      ? dealerBounds.left - 20
+      : dealerBounds.left - 26;
     addDealerBadge(
       root,
-      dealerBounds.left - 26,
+      badgeX,
       (dealerBounds.top + dealerBounds.bottom) / 2,
       dealerIcon,
+      narrow,
     );
   }
 
@@ -728,35 +734,30 @@ export function drawGameLayer(
     const scoreText = animatedDealerScoreLabel(snapshot);
     const scoreFill = vis.bust ? 0x7f1d1d : 0x1e1b2e;
     const dealerBorderCol = vis.bust ? 0xef4444 : 0xa855f7;
-    const pill = borderedPill(scoreText, scoreFill, 0xffffff, dealerBorderCol, narrow ? 12 : 12);
-    pill.x = dealerBounds.right + 12;
+    const dScoreFs = narrow ? 10 : 12;
+    const pill = borderedPill(scoreText, scoreFill, 0xffffff, dealerBorderCol, dScoreFs);
+    pill.x = dealerBounds.right + (narrow ? 8 : 12);
     pill.y = dealerBounds.top;
     root.addChild(pill);
 
     if (resolved && holeOpen) {
       const line = vis.bust ? 'DEALER BUSTS' : `DEALER ${vis.total}`;
+      const callFs = narrow ? Math.min(13, w * 0.035) : Math.min(18, w * 0.04);
       const call = new Text({
         text: line,
         resolution: tablePixelRatio(),
         roundPixels: true,
         style: {
           fontFamily: 'system-ui, -apple-system, sans-serif',
-          fontSize: Math.min(18, w * 0.04),
+          fontSize: callFs,
           fontWeight: '800',
           fill: vis.bust ? 0xfecaca : 0xffffff,
-          letterSpacing: 1.8,
-          dropShadow: {
-            color: '#000000',
-            alpha: 0.45,
-            blur: 6,
-            distance: 0,
-            angle: Math.PI / 2,
-          },
+          letterSpacing: narrow ? 1.2 : 1.8,
         },
       });
       call.anchor.set(0.5, 1);
       call.x = dealerBounds.cx;
-      call.y = dealerBounds.top - 8;
+      call.y = dealerBounds.top - (narrow ? 5 : 8);
       root.addChild(call);
     }
   }
