@@ -15,6 +15,8 @@ import {
   queueDropInAnimations,
   queueHighlightAnimations,
   queuePopAnimations,
+  queueSuckAnimations,
+  queueJarMoveAnimations,
   queueFallAnimations,
   spawnParticles,
   spawnFloatingWin,
@@ -257,7 +259,7 @@ export function FrootJarzCanvas({
         }
       }
 
-      // Chain: for each cluster → highlight → pop, then after all → fall
+      // Chain: for each cluster → highlight → suck/pop, then jar hop → fall
       let clusterDelay = 0;
 
       for (let ci = 0; ci < step.clusters.length; ci++) {
@@ -265,10 +267,23 @@ export function FrootJarzCanvas({
         const cWin = clusterWins[ci];
 
         const cellIds = new Set<number>();
+        const fruitCellData: { cellId: number; row: number; col: number }[] = [];
+        let jarRow = -1, jarCol = -1;
+
         for (const { row, col } of cluster.cells) {
           const cell = step.gridBefore[row]?.[col];
-          if (cell) cellIds.add(cell.id);
+          if (cell) {
+            cellIds.add(cell.id);
+            if (cell.symbol === JAR_WILD) {
+              jarRow = row;
+              jarCol = col;
+            } else {
+              fruitCellData.push({ cellId: cell.id, row, col });
+            }
+          }
         }
+
+        const hasJar = jarRow >= 0;
 
         // Highlight this cluster
         const highlightDelay = clusterDelay;
@@ -288,31 +303,52 @@ export function FrootJarzCanvas({
           draw(gl, app.renderer, step.gridBefore, step.jarStatesBefore, layout, cellIds, previewWin > 0 ? previewWin : undefined, snap.bet);
         }, highlightDelay);
 
-        // Pop this cluster
-        const popDelay = highlightDelay + 420;
+        // Suck or Pop this cluster
+        const suckPopDelay = highlightDelay + 420;
         scheduleTimer(() => {
           clearAllAnimations();
-          queuePopAnimations([...cellIds], 320);
+
+          if (hasJar) {
+            // Fruit cells suck towards the jar; jar cell stays (just pop non-fruit)
+            const fruitIds = fruitCellData.map((f) => f.cellId);
+            queueSuckAnimations(fruitCellData, jarRow, jarCol, 300);
+            // Also pop any non-jar, non-fruit (shouldn't happen, but safe)
+            const jarCellIds = [...cellIds].filter((id) => !fruitIds.includes(id));
+            // Don't pop the jar itself — it stays
+          } else {
+            queuePopAnimations([...cellIds], 320);
+          }
+
           const wc = winCountRef.current;
           winCountRef.current = wc + 1;
           playFJPitched('explode', 0.7 + wc * 0.25, 0.1);
 
           const color = SYMBOL_COLORS[cluster.fruit] ?? 0xffffff;
           for (const { row, col } of cluster.cells) {
+            if (hasJar && step.gridBefore[row]?.[col]?.symbol === JAR_WILD) continue;
             const cx = layout.gridX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
             const cy = layout.gridY + row * (layout.cellSize + layout.gap) + layout.cellSize / 2;
             spawnParticles(cx, cy, color, 8, 4, 700);
           }
 
           if (cWin > 0) {
-            let avgX = 0, avgY = 0;
-            for (const { row, col } of cluster.cells) {
-              avgX += layout.gridX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
-              avgY += layout.gridY + row * (layout.cellSize + layout.gap) + layout.cellSize / 2;
+            if (hasJar) {
+              const jx = layout.gridX + jarCol * (layout.cellSize + layout.gap) + layout.cellSize / 2;
+              const jy = layout.gridY + jarRow * (layout.cellSize + layout.gap) + layout.cellSize / 2;
+              const jar = step.jarStatesBefore.find((j) => j.row === jarRow && j.col === jarCol);
+              const mult = jar?.multiplier ?? 1;
+              const baseWin = mult > 1 ? Math.round(cWin / mult) : cWin;
+              spawnFloatingWin(jx, jy, cWin, 4000, undefined, baseWin, mult);
+            } else {
+              let avgX = 0, avgY = 0;
+              for (const { row, col } of cluster.cells) {
+                avgX += layout.gridX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
+                avgY += layout.gridY + row * (layout.cellSize + layout.gap) + layout.cellSize / 2;
+              }
+              avgX /= cluster.cells.length;
+              avgY /= cluster.cells.length;
+              spawnFloatingWin(avgX, avgY, cWin);
             }
-            avgX /= cluster.cells.length;
-            avgY /= cluster.cells.length;
-            spawnFloatingWin(avgX, avgY, cWin);
           }
 
           runningWinRef.current += cWin;
@@ -328,12 +364,42 @@ export function FrootJarzCanvas({
             bet: snap.bet,
           };
           draw(gl, app.renderer, step.gridBefore, step.jarStatesBefore, layout, cellIds, runningWinRef.current, snap.bet);
-        }, popDelay);
+        }, suckPopDelay);
 
-        clusterDelay = popDelay + 380;
+        clusterDelay = suckPopDelay + (hasJar ? 340 : 380);
       }
 
-      // Fall — after all clusters have been shown
+      // Jar hop — after all clusters, animate jars moving to new positions
+      const jarHopDelay = clusterDelay + 50;
+      const hasJarMoves = step.jarMoves.length > 0;
+
+      if (hasJarMoves) {
+        scheduleTimer(() => {
+          clearAllAnimations();
+          const moveCellData = step.jarMoves.map((m) => {
+            const cell = step.gridAfterRemoval[m.toRow]?.[m.toCol];
+            return {
+              cellId: cell?.id ?? 0,
+              fromRow: m.fromRow,
+              fromCol: m.fromCol,
+              toRow: m.toRow,
+              toCol: m.toCol,
+            };
+          });
+          const hopDur = queueJarMoveAnimations(moveCellData, 220);
+
+          displayRef.current = {
+            grid: step.gridAfterRemoval,
+            jars: step.jarStates,
+            totalWin: runningWinRef.current,
+            bet: snap.bet,
+          };
+          draw(gl, app.renderer, step.gridAfterRemoval, step.jarStates, layout, undefined, runningWinRef.current, snap.bet);
+        }, jarHopDelay);
+      }
+
+      // Fall — after jar hop (or directly after clusters if no jar moves)
+      const fallDelay = hasJarMoves ? jarHopDelay + 260 : clusterDelay + 50;
       scheduleTimer(() => {
         clearAllAnimations();
 

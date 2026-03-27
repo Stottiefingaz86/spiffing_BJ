@@ -72,15 +72,25 @@ export function processJarWins(grid: Grid, clusters: Cluster[], jarStates: JarSt
   }
 }
 
-/** Move jars to random adjacent empty tiles after a cascade step. */
-export function moveJars(grid: Grid, jarStates: JarState[]): void {
+export interface JarMove {
+  jarId: number;
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+}
+
+/** Move jars to random adjacent empty tiles after a cascade step. Returns move data for animation. */
+export function moveJars(grid: Grid, jarStates: JarState[]): JarMove[] {
+  const moves: JarMove[] = [];
+
   for (const jar of jarStates) {
     const candidates: { r: number; c: number }[] = [];
     for (const [dr, dc] of MOVE_DIRS) {
       const nr = jar.row + dr;
       const nc = jar.col + dc;
       if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS) {
-        if (grid[nr][nc] === null || (grid[nr][nc]?.symbol !== JAR_WILD)) {
+        if (grid[nr][nc] === null || grid[nr][nc]?.symbol !== JAR_WILD) {
           const occupiedByOtherJar = jarStates.some(
             (j) => j !== jar && j.row === nr && j.col === nc,
           );
@@ -93,11 +103,16 @@ export function moveJars(grid: Grid, jarStates: JarState[]): void {
 
     if (candidates.length > 0) {
       const target = candidates[Math.floor(Math.random() * candidates.length)];
-      // Move the jar in the grid
+      const fromRow = jar.row;
+      const fromCol = jar.col;
+      const jarCell = grid[jar.row][jar.col];
       (grid[jar.row] as any)[jar.col] = null;
-      grid[target.r][target.c] = { symbol: JAR_WILD, id: grid[jar.row]?.[jar.col]?.id ?? jar.id } as any;
+      grid[target.r][target.c] = jarCell;
       jar.row = target.r;
       jar.col = target.c;
+      moves.push({ jarId: jar.id, fromRow, fromCol, toRow: target.r, toCol: target.c });
     }
   }
+
+  return moves;
 }

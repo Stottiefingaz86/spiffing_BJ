@@ -166,7 +166,8 @@ export function initGridScene(root: Container, renderer: Renderer): void {
     fontSize: BASE_FLOAT_SIZE,
     fontWeight: '900',
     fill: 0x6ee7b7,
-    dropShadow: { color: 0x000000, alpha: 0.6, blur: 4, distance: 2, angle: Math.PI / 2 },
+    dropShadow: { color: 0x000000, alpha: 0.85, blur: 6, distance: 3, angle: Math.PI / 2 },
+    stroke: { color: 0x000000, width: 3 },
     align: 'center',
   });
   for (let i = 0; i < FLOAT_POOL; i++) {
@@ -315,8 +316,8 @@ export function updateGridScene(
 
       // Animation state — O(1) map lookups
       const anim = getCellAnimState(cell.id);
-      let yOff = 0, sX = 1, sY = 1, a = 1;
-      if (anim) { yOff = anim.yOffset; sX = anim.scaleX; sY = anim.scaleY; a = anim.alpha; }
+      let xOff = 0, yOff = 0, sX = 1, sY = 1, a = 1;
+      if (anim) { xOff = anim.xOffset; yOff = anim.yOffset; sX = anim.scaleX; sY = anim.scaleY; a = anim.alpha; }
 
       if (a <= 0.01 || (sX <= 0.01 && sY <= 0.01)) {
         sp.visible = false;
@@ -326,7 +327,7 @@ export function updateGridScene(
         continue;
       }
 
-      const bx = gridX + c * step + cellSize / 2;
+      const bx = gridX + c * step + cellSize / 2 + xOff * step;
       const by = gridY + r * step + cellSize / 2 + yOff * step;
 
       // Jar animated glow — blurred pulsating aura (drawn on jarGlowGfx with BlurFilter)
@@ -485,40 +486,35 @@ export function updateGridScene(
     if (fi < fws.length) {
       const fw = fws[fi];
       const t = fw.elapsedMs / fw.durationMs;
-      const fa = t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
-      const nt = `+$${(fw.amount / 100).toFixed(2)}`;
+      const fa = t < 0.9 ? 1 : 1 - (t - 0.9) / 0.1;
+
+      let nt: string;
+      if (fw.label) {
+        nt = fw.label;
+      } else if (fw.multiplier && fw.multiplier > 1) {
+        if (t < 0.2) {
+          nt = `+$${(fw.baseAmount! / 100).toFixed(2)}`;
+        } else if (t < 0.35) {
+          nt = `+$${(fw.baseAmount! / 100).toFixed(2)} x${fw.multiplier}`;
+        } else {
+          nt = `+$${(fw.amount / 100).toFixed(2)}`;
+        }
+      } else {
+        nt = `+$${(fw.amount / 100).toFixed(2)}`;
+      }
+
       if (ft.text !== nt) ft.text = nt;
       ft.x = fw.x;
-      ft.y = fw.y - t * cellSize * 1.6;
+      ft.y = fw.y - t * cellSize * 2.5;
       ft.alpha = Math.max(0, fa);
-      ft.scale.set(Math.min(cellSize * 0.4, 30) / BASE_FLOAT_SIZE);
+      ft.scale.set(Math.min(cellSize * 0.45, 32) / BASE_FLOAT_SIZE);
       ft.visible = true;
     } else {
       ft.visible = false;
     }
   }
 
-  // Win pill — shown for ANY win during cascades
-  if (totalWinAmount && totalWinAmount > 0) {
-    const cx = gridX + (GRID_COLS * step - gap) / 2;
-    const cy = gridY + (GRID_ROWS * step - gap) / 2;
-    const pw = Math.min(cellSize * 4.5, GRID_COLS * step * 0.55);
-    const ph = cellSize * 1.5;
-
-    pillBg.clear();
-    pillBg.roundRect(cx - pw / 2, cy - ph / 2, pw, ph, ph / 2);
-    pillBg.fill({ color: 0x000000, alpha: 0.7 });
-    pillBg.stroke({ color: 0xfdd835, width: 3, alpha: 0.85 });
-
-    const wt = `$${(totalWinAmount / 100).toFixed(2)}`;
-    if (pillText.text !== wt) pillText.text = wt;
-    pillText.x = cx;
-    pillText.y = cy;
-    pillText.scale.set(Math.min(cellSize * 0.9, 56) / BASE_PILL_SIZE);
-    pillContainer.visible = true;
-  } else {
-    pillContainer.visible = false;
-  }
+  pillContainer.visible = false;
 }
 
 export function destroyGridScene(): void {

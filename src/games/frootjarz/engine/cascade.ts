@@ -1,6 +1,6 @@
 import { GRID_COLS, GRID_ROWS, JAR_WILD, randomFruit } from './symbols';
 import { detectClusters, makeCell, type Cluster, type Grid } from './grid';
-import { processJarWins, type JarState } from './jarWild';
+import { processJarWins, moveJars, type JarState, type JarMove } from './jarWild';
 import { getPayoutMultiplier } from './symbols';
 
 export interface CascadeStep {
@@ -15,6 +15,8 @@ export interface CascadeStep {
   jarStatesBefore: JarState[];
   /** Jar states after removal + gravity — surviving jars. */
   jarStates: JarState[];
+  /** Jar movements that occurred this step (for animation). */
+  jarMoves: JarMove[];
 }
 
 /** Remove all cluster cells from the grid, including jars that participated. */
@@ -63,7 +65,7 @@ const MAX_CASCADE_DEPTH = 12;
  * Run the full cascade loop on a grid. Returns all cascade steps.
  * The grid is mutated in place.
  */
-export function runCascadeLoop(grid: Grid, jarStates: JarState[], stickyJars = false): CascadeStep[] {
+export function runCascadeLoop(grid: Grid, jarStates: JarState[]): CascadeStep[] {
   const steps: CascadeStep[] = [];
 
   while (steps.length < MAX_CASCADE_DEPTH) {
@@ -85,23 +87,15 @@ export function runCascadeLoop(grid: Grid, jarStates: JarState[], stickyJars = f
 
     removeClusterCells(grid, clusters);
 
-    if (stickyJars) {
-      // Re-place destroyed jars back onto the grid — they stick
-      for (const jar of jarStates) {
-        if (!grid[jar.row]?.[jar.col]) {
-          grid[jar.row][jar.col] = makeCell(JAR_WILD);
-        }
-      }
-    } else {
-      // Remove jar states whose cells were destroyed
-      for (let i = jarStates.length - 1; i >= 0; i--) {
-        const jar = jarStates[i];
-        const cell = grid[jar.row]?.[jar.col];
-        if (!cell || cell.symbol !== JAR_WILD) {
-          jarStates.splice(i, 1);
-        }
+    // Re-place destroyed jars — they always stick through cascades
+    for (const jar of jarStates) {
+      if (!grid[jar.row]?.[jar.col]) {
+        grid[jar.row][jar.col] = makeCell(JAR_WILD);
       }
     }
+
+    // Move jars to random adjacent positions after each win
+    const jarMoveData = moveJars(grid, jarStates);
 
     const gridAfterRemoval = cloneGrid(grid);
 
@@ -142,6 +136,7 @@ export function runCascadeLoop(grid: Grid, jarStates: JarState[], stickyJars = f
       gridAfterFill,
       jarStatesBefore,
       jarStates: jarStates.map((j) => ({ ...j })),
+      jarMoves: jarMoveData,
     });
   }
 

@@ -69,6 +69,7 @@ export function queueDropOutAnimations(
 }
 
 export interface CellRenderState {
+  xOffset?: number; // in col units (multiplied by step in drawGrid)
   yOffset: number;  // in row units (multiplied by step in drawGrid)
   scale: number;
   scaleX?: number;  // horizontal stretch (defaults to scale if absent)
@@ -287,8 +288,9 @@ export function getCellFallState(cellId: number): CellRenderState | null {
   return cellStateFromFall(f);
 }
 
-function cellRenderStateToCombined(s: CellRenderState): { yOffset: number; scaleX: number; scaleY: number; alpha: number } {
+function cellRenderStateToCombined(s: CellRenderState): { xOffset: number; yOffset: number; scaleX: number; scaleY: number; alpha: number } {
   return {
+    xOffset: s.xOffset ?? 0,
     yOffset: s.yOffset,
     scaleX: s.scaleX ?? s.scale,
     scaleY: s.scaleY ?? s.scale,
@@ -298,20 +300,140 @@ function cellRenderStateToCombined(s: CellRenderState): { yOffset: number; scale
 
 /**
  * Single lookup for the draw loop: first matching animation by priority
- * (dropOut > dropIn > pop > highlight > fall). O(1) map lookups.
+ * (dropOut > dropIn > suck > pop > highlight > jarMove > fall). O(1) map lookups.
  */
-export function getCellAnimState(cellId: number): { yOffset: number; scaleX: number; scaleY: number; alpha: number } | null {
+export function getCellAnimState(cellId: number): { xOffset: number; yOffset: number; scaleX: number; scaleY: number; alpha: number } | null {
   const dropOut = dropOutMap.get(cellId);
   if (dropOut) return cellRenderStateToCombined(cellStateFromDropOut(dropOut));
   const dropIn = dropInMap.get(cellId);
   if (dropIn) return cellRenderStateToCombined(cellStateFromDropIn(dropIn));
+  const suck = suckMap.get(cellId);
+  if (suck) return cellRenderStateToCombined(cellStateFromSuck(suck));
   const pop = popMap.get(cellId);
   if (pop) return cellRenderStateToCombined(cellStateFromPop(pop));
   const highlight = highlightMap.get(cellId);
   if (highlight) return cellRenderStateToCombined(cellStateFromHighlight(highlight));
+  const jm = jarMoveMap.get(cellId);
+  if (jm) return cellRenderStateToCombined(cellStateFromJarMove(jm));
   const fall = fallMap.get(cellId);
   if (fall) return cellRenderStateToCombined(cellStateFromFall(fall));
   return null;
+}
+
+// ===================== Suck-to-jar animation =====================
+
+interface SuckAnim {
+  cellId: number;
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+
+const suckMap = new Map<number, SuckAnim>();
+
+function cellStateFromSuck(s: SuckAnim): CellRenderState {
+  const t = Math.min(1, s.elapsedMs / s.durationMs);
+  const ease = t * t * t; // ease-in cubic — accelerates towards jar
+  const dx = (s.toCol - s.fromCol) * ease;
+  const dy = (s.toRow - s.fromRow) * ease;
+  const baseScale = Math.max(0, 1 - ease);
+  const alpha = Math.max(0, 1 - t * t);
+
+  // Motion blur: stretch along direction of travel as speed increases
+  const velocity = 3 * t * t; // derivative of ease-in cubic
+  const stretch = Math.min(velocity * 0.6, 1.2);
+  const colDist = Math.abs(s.toCol - s.fromCol);
+  const rowDist = Math.abs(s.toRow - s.fromRow);
+  const total = colDist + rowDist || 1;
+  const hRatio = colDist / total;
+  const vRatio = rowDist / total;
+  const scaleX = baseScale * (1 - stretch * vRatio + stretch * hRatio * 0.5);
+  const scaleY = baseScale * (1 - stretch * hRatio + stretch * vRatio * 0.5);
+
+  return { xOffset: dx, yOffset: dy, scale: 1, scaleX, scaleY, alpha };
+}
+
+/**
+ * Queue suck animations for fruit cells being absorbed into a jar.
+ * `fruitCells` = cells that will fly towards jarRow/jarCol.
+ */
+export function queueSuckAnimations(
+  fruitCells: { cellId: number; row: number; col: number }[],
+  jarRow: number,
+  jarCol: number,
+  durationMs = 300,
+): void {
+  for (const fc of fruitCells) {
+    suckMap.set(fc.cellId, {
+      cellId: fc.cellId,
+      fromRow: fc.row,
+      fromCol: fc.col,
+      toRow: jarRow,
+      toCol: jarCol,
+      elapsedMs: 0,
+      durationMs,
+    });
+  }
+}
+
+export function getCellSuckState(cellId: number): CellRenderState | null {
+  const s = suckMap.get(cellId);
+  if (!s) return null;
+  return cellStateFromSuck(s);
+}
+
+// ===================== Jar-move animation =====================
+
+interface JarMoveAnim {
+  cellId: number;
+  fromRow: number;
+  fromCol: number;
+  toRow: number;
+  toCol: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+
+const jarMoveMap = new Map<number, JarMoveAnim>();
+
+function cellStateFromJarMove(j: JarMoveAnim): CellRenderState {
+  const t = Math.min(1, j.elapsedMs / j.durationMs);
+  const ease = easeOutCubic(t);
+  const dx = (j.fromCol - j.toCol) * (1 - ease);
+  const dy = (j.fromRow - j.toRow) * (1 - ease);
+  const bounce = Math.sin(t * Math.PI) * 0.1;
+  return { xOffset: dx, yOffset: dy, scale: 1 + bounce, alpha: 1 };
+}
+
+/**
+ * Queue jar movement animations (jar slides from old position to new).
+ * The grid already has jars at their NEW positions; we offset them back visually.
+ */
+export function queueJarMoveAnimations(
+  moves: { cellId: number; fromRow: number; fromCol: number; toRow: number; toCol: number }[],
+  durationMs = 220,
+): number {
+  for (const m of moves) {
+    jarMoveMap.set(m.cellId, {
+      cellId: m.cellId,
+      fromRow: m.fromRow,
+      fromCol: m.fromCol,
+      toRow: m.toRow,
+      toCol: m.toCol,
+      elapsedMs: 0,
+      durationMs,
+    });
+  }
+  return durationMs;
+}
+
+export function getCellJarMoveState(cellId: number): CellRenderState | null {
+  const j = jarMoveMap.get(cellId);
+  if (!j) return null;
+  return cellStateFromJarMove(j);
 }
 
 // ===================== Particles =====================
@@ -431,14 +553,20 @@ export interface FloatingWinText {
   x: number;
   y: number;
   amount: number;
+  baseAmount?: number;
+  multiplier?: number;
   elapsedMs: number;
   durationMs: number;
+  label?: string;
 }
 
 const activeFloatingWins: FloatingWinText[] = [];
 
-export function spawnFloatingWin(x: number, y: number, amount: number, durationMs = 1600): void {
-  activeFloatingWins.push({ x, y, amount, elapsedMs: 0, durationMs });
+export function spawnFloatingWin(
+  x: number, y: number, amount: number, durationMs = 4000,
+  label?: string, baseAmount?: number, multiplier?: number,
+): void {
+  activeFloatingWins.push({ x, y, amount, baseAmount, multiplier, elapsedMs: 0, durationMs, label });
 }
 
 export function getFloatingWins(): readonly FloatingWinText[] {
@@ -489,6 +617,12 @@ export function tickAnimations(dtMs: number): void {
   }
   for (const p of popMap.values()) {
     p.elapsedMs += dtMs;
+  }
+  for (const s of suckMap.values()) {
+    s.elapsedMs += dtMs;
+  }
+  for (const j of jarMoveMap.values()) {
+    j.elapsedMs += dtMs;
   }
   for (const f of fallMap.values()) {
     if (f.delayMs > 0) { f.delayMs -= dtMs; continue; }
@@ -559,6 +693,12 @@ export function hasActiveAnimations(): boolean {
   for (const p of popMap.values()) {
     if (p.elapsedMs < p.durationMs) return true;
   }
+  for (const s of suckMap.values()) {
+    if (s.elapsedMs < s.durationMs) return true;
+  }
+  for (const j of jarMoveMap.values()) {
+    if (j.elapsedMs < j.durationMs) return true;
+  }
   for (const f of fallMap.values()) {
     if (f.delayMs > 0 || f.elapsedMs < f.durationMs) return true;
   }
@@ -574,6 +714,8 @@ export function clearAllAnimations(): void {
   dropInMap.clear();
   highlightMap.clear();
   popMap.clear();
+  suckMap.clear();
+  jarMoveMap.clear();
   fallMap.clear();
   activeParticles.length = 0;
   activeFloatingWins.length = 0;
