@@ -269,7 +269,7 @@ export default function FrootJarzClient() {
 
       {/* ══════ Game canvas ══════ */}
       <div
-        className="relative min-h-0 flex-1 max-lg:-mt-[90px]"
+        className="relative min-h-0 flex-1 max-lg:-mt-[100px]"
         onClick={(e) => e.stopPropagation()}
       >
         <FrootJarzCanvas

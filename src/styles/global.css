@@ -186,10 +186,13 @@
 
 .game-bg {
   background: linear-gradient(
-    to bottom,
-    #0f0b1e 0%,
-    #261232 50%,
-    #0f0b1e 100%
+    135deg,
+    #1a1334 0%,
+    #261a40 20%,
+    #2e1c42 40%,
+    #221636 60%,
+    #1e1230 80%,
+    #1a1334 100%
   );
   position: relative;
   overflow: hidden;
