@@ -191,7 +191,7 @@ export default function FrootJarzClient() {
         'relative flex h-dvh max-h-dvh flex-col overflow-hidden text-white transition-colors duration-700',
         isFreeSpinActive
           ? 'bg-gradient-to-b from-[#1a0e0a] via-[#3d1f0a] to-[#1a0e0a]'
-          : 'bg-gradient-to-b from-[#0f0b1e] via-[#261232] to-[#0f0b1e]',
+          : 'game-bg',
       )}
       onClick={() => {
         if (isFreeSpinOutro) {
@@ -263,7 +263,7 @@ export default function FrootJarzClient() {
       </header>
 
       {/* ══════ Game logo above grid ══════ */}
-      <div className="shrink-0 flex justify-center pb-0 pt-1 lg:py-1 relative z-10">
+      <div className="shrink-0 flex justify-center pb-0 pt-1 lg:py-1 relative" style={{ zIndex: 10 }}>
         <img src="/frootshoot/LOGO.svg" alt="Froot Jarz" className="h-24 lg:h-24 w-auto mt-8 -mb-8 lg:mt-0 lg:-mb-6" style={{ willChange: 'transform' }} />
       </div>
 

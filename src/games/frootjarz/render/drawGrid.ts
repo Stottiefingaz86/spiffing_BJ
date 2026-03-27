@@ -242,8 +242,7 @@ export function updateGridScene(
     prevLayoutKey = lk;
     bgGfx.clear();
     bgGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, 12);
-    bgGfx.fill({ color: 0x1a1230, alpha: 0.85 });
-    bgGfx.stroke({ color: 0xffffff, alpha: 0.06, width: 2 });
+    bgGfx.fill({ color: 0x1a1230, alpha: 0.45 });
 
     maskGfx.clear();
     maskGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, 12);
@@ -265,15 +264,15 @@ export function updateGridScene(
         if (isWin) {
           const color = SYMBOL_COLORS[cell.symbol] ?? 0xffffff;
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
-          cellBgGfx.fill({ color, alpha: 0.25 });
+          cellBgGfx.fill({ color, alpha: 0.45 });
           cellBgGfx.roundRect(cx + 1, cy + 1, cellSize - 2, cellSize - 2, 7);
-          cellBgGfx.stroke({ color, width: 2, alpha: 0.5 });
+          cellBgGfx.stroke({ color, width: 3, alpha: 0.8 });
         } else if (hasWinners) {
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
           cellBgGfx.fill({ color: 0x0a0818, alpha: 0.7 });
         } else {
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
-          cellBgGfx.fill({ color: 0x2a1f45, alpha: 0.5 });
+          cellBgGfx.fill({ color: 0x2a1f45, alpha: 0.3 });
         }
       }
     }
@@ -360,18 +359,18 @@ export function updateGridScene(
       if (winningCellIds?.has(cell.id) && !getCellPopState(cell.id)) {
         const as = (sX + sY) / 2;
         const col = SYMBOL_COLORS[cell.symbol] ?? 0xffffff;
-        glowGfx.circle(bx, by, cellSize * 0.85 * as);
-        glowGfx.fill({ color: col, alpha: 0.18 });
-        glowGfx.circle(bx, by, cellSize * 0.7 * as);
-        glowGfx.fill({ color: col, alpha: 0.35 });
-        glowGfx.circle(bx, by, cellSize * 0.55 * as);
-        glowGfx.fill({ color: col, alpha: 0.5 });
+        glowGfx.circle(bx, by, cellSize * 0.95 * as);
+        glowGfx.fill({ color: col, alpha: 0.25 });
+        glowGfx.circle(bx, by, cellSize * 0.78 * as);
+        glowGfx.fill({ color: col, alpha: 0.45 });
+        glowGfx.circle(bx, by, cellSize * 0.6 * as);
+        glowGfx.fill({ color: col, alpha: 0.6 });
         glowGfx.circle(bx, by, cellSize * 0.42 * as);
-        glowGfx.fill({ color: 0xffffff, alpha: 0.35 });
+        glowGfx.fill({ color: 0xffffff, alpha: 0.45 });
       }
 
       const isWinCell = winningCellIds?.has(cell.id);
-      const dimFactor = hasWinners && !isWinCell ? 0.35 : 1;
+      const dimFactor = hasWinners && !isWinCell ? 0.25 : 1;
 
       // Sprite — jar renders larger to compensate for image padding
       const spriteScale = cell.symbol === JAR_WILD ? 1.25 : 0.92;
