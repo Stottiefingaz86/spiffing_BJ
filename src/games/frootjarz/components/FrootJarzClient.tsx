@@ -269,7 +269,7 @@ export default function FrootJarzClient() {
 
       {/* ══════ Game canvas ══════ */}
       <div
-        className="relative min-h-0 flex-1 max-lg:-mt-[60px]"
+        className="relative min-h-0 flex-1 max-lg:-mt-[80px]"
         onClick={(e) => e.stopPropagation()}
       >
         <FrootJarzCanvas
@@ -326,7 +326,7 @@ export default function FrootJarzClient() {
       {/* ══════ MOBILE: Big centered spin button (overlaps canvas bottom) ══════ */}
       {!isFreeSpinActive && (
         <div
-          className="pointer-events-none absolute bottom-[5.5rem] left-0 right-0 z-30 flex justify-center lg:hidden"
+          className="pointer-events-none absolute bottom-[4.875rem] left-0 right-0 z-30 flex justify-center lg:hidden"
         >
           <button
             type="button"
