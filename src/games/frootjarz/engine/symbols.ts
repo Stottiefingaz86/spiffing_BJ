@@ -24,12 +24,12 @@ export const ALL_FRUITS: FruitSymbol[] = [
 ];
 
 export const SYMBOL_COLORS: Record<CellSymbol, number> = {
-  [FruitSymbol.Pomegranate]: 0xe53935,
-  [FruitSymbol.Pineapple]: 0xff9800,
-  [FruitSymbol.Watermelon]: 0x66bb6a,
-  [FruitSymbol.Peach]: 0xf48fb1,
-  [FruitSymbol.Grape]: 0xab47bc,
-  [FruitSymbol.Blueberry]: 0x42a5f5,
+  [FruitSymbol.Pomegranate]: 0xe84040,  // strawberry red
+  [FruitSymbol.Pineapple]: 0xf5d63d,    // banana yellow
+  [FruitSymbol.Watermelon]: 0x8db850,   // avocado green
+  [FruitSymbol.Peach]: 0xd4567a,        // raspberry pink
+  [FruitSymbol.Grape]: 0x8b6baf,        // grape purple
+  [FruitSymbol.Blueberry]: 0x3a6bb5,    // blueberry dark blue
   [JAR_WILD]: 0xfdd835,
   [SCATTER]: 0xffc107,
 };

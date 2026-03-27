@@ -357,6 +357,74 @@ export function getParticles(): readonly Particle[] {
   return activeParticles;
 }
 
+// ===================== Jar swarm sparkles =====================
+
+export interface JarSparkle {
+  angle: number;
+  radius: number;
+  speed: number;
+  size: number;
+  phase: number;
+  color: number;
+}
+
+interface JarSwarm {
+  cx: number;
+  cy: number;
+  sparkles: JarSparkle[];
+  elapsed: number;
+}
+
+const jarSwarms = new Map<string, JarSwarm>();
+
+const JAR_SPARKLE_COLORS = [0xffd700, 0xffaa00, 0xffffff, 0xff66ff, 0x66ffff, 0xaaff44];
+
+export function syncJarSwarms(
+  jarPositions: { cx: number; cy: number; key: string }[],
+): void {
+  const activeKeys = new Set(jarPositions.map((p) => p.key));
+
+  // Remove swarms for jars that no longer exist
+  for (const key of jarSwarms.keys()) {
+    if (!activeKeys.has(key)) jarSwarms.delete(key);
+  }
+
+  // Create swarms for new jars
+  for (const pos of jarPositions) {
+    if (!jarSwarms.has(pos.key)) {
+      const sparkles: JarSparkle[] = [];
+      for (let i = 0; i < 6; i++) {
+        sparkles.push({
+          angle: (Math.PI * 2 * i) / 6 + Math.random() * 0.5,
+          radius: 0.25 + Math.random() * 0.45,
+          speed: 1.5 + Math.random() * 2.0,
+          size: 1.0 + Math.random() * 1.5,
+          phase: Math.random() * Math.PI * 2,
+          color: JAR_SPARKLE_COLORS[Math.floor(Math.random() * JAR_SPARKLE_COLORS.length)],
+        });
+      }
+      jarSwarms.set(pos.key, { cx: pos.cx, cy: pos.cy, sparkles, elapsed: 0 });
+    } else {
+      const sw = jarSwarms.get(pos.key)!;
+      sw.cx = pos.cx;
+      sw.cy = pos.cy;
+    }
+  }
+}
+
+export function tickJarSwarms(dtMs: number): void {
+  for (const sw of jarSwarms.values()) {
+    sw.elapsed += dtMs;
+    for (const s of sw.sparkles) {
+      s.angle += s.speed * (dtMs / 1000);
+    }
+  }
+}
+
+export function getJarSwarms(): ReadonlyMap<string, JarSwarm> {
+  return jarSwarms;
+}
+
 // ===================== Floating win text =====================
 
 export interface FloatingWinText {
@@ -443,6 +511,7 @@ export function tickAnimations(dtMs: number): void {
     p.life += dtMs;
     if (p.life >= p.maxLife) activeParticles.splice(i, 1);
   }
+  tickJarSwarms(dtMs);
   if (winFlashActive) {
     winFlashElapsed += dtMs;
     if (winFlashElapsed >= winFlashDuration) winFlashActive = false;

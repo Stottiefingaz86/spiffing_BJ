@@ -106,12 +106,13 @@ export function FrootJarzCanvas({
         resolution: Math.min(window.devicePixelRatio, 2),
         autoDensity: true,
       })
-      .then(() => {
+      .then(async () => {
         if (destroyed) { app.destroy(true); return; }
 
         host.appendChild(app.canvas as HTMLCanvasElement);
         appRef.current = app;
-        preloadAllTextures(app.renderer);
+        await preloadAllTextures(app.renderer);
+        if (destroyed) return;
 
         const gameLayer = new Container();
         app.stage.addChild(gameLayer);
@@ -129,17 +130,15 @@ export function FrootJarzCanvas({
           const shake = getCameraShakeOffset();
           gl.x = shake.x;
           gl.y = shake.y;
-          if (hasActiveAnimations()) {
-            const d = displayRef.current;
-            const s = snapRef.current;
-            const l = getLayout(app.renderer.width, app.renderer.height);
-            draw(
-              gl, app.renderer,
-              d?.grid ?? s.grid,
-              d?.jars ?? s.jarStates,
-              l, d?.winCells, d?.totalWin, d?.bet,
-            );
-          }
+          const d = displayRef.current;
+          const s = snapRef.current;
+          const l = getLayout(app.renderer.width, app.renderer.height);
+          draw(
+            gl, app.renderer,
+            d?.grid ?? s.grid,
+            d?.jars ?? s.jarStates,
+            l, d?.winCells, d?.totalWin, d?.bet,
+          );
         });
       });
 
@@ -280,12 +279,12 @@ export function FrootJarzCanvas({
           const previewWin = runningWinRef.current + cWin;
           displayRef.current = {
             grid: step.gridBefore,
-            jars: snap.jarStates,
+            jars: step.jarStatesBefore,
             winCells: cellIds,
             totalWin: previewWin > 0 ? previewWin : undefined,
             bet: snap.bet,
           };
-          draw(gl, app.renderer, step.gridBefore, snap.jarStates, layout, cellIds, previewWin > 0 ? previewWin : undefined, snap.bet);
+          draw(gl, app.renderer, step.gridBefore, step.jarStatesBefore, layout, cellIds, previewWin > 0 ? previewWin : undefined, snap.bet);
         }, highlightDelay);
 
         // Pop this cluster
@@ -301,7 +300,7 @@ export function FrootJarzCanvas({
           for (const { row, col } of cluster.cells) {
             const cx = layout.gridX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
             const cy = layout.gridY + row * (layout.cellSize + layout.gap) + layout.cellSize / 2;
-            spawnParticles(cx, cy, color, 4, 3, 500);
+            spawnParticles(cx, cy, color, 8, 4, 700);
           }
 
           if (cWin > 0) {
@@ -322,12 +321,12 @@ export function FrootJarzCanvas({
 
           displayRef.current = {
             grid: step.gridBefore,
-            jars: snap.jarStates,
+            jars: step.jarStatesBefore,
             winCells: cellIds,
             totalWin: runningWinRef.current,
             bet: snap.bet,
           };
-          draw(gl, app.renderer, step.gridBefore, snap.jarStates, layout, cellIds, runningWinRef.current, snap.bet);
+          draw(gl, app.renderer, step.gridBefore, step.jarStatesBefore, layout, cellIds, runningWinRef.current, snap.bet);
         }, popDelay);
 
         clusterDelay = popDelay + 380;

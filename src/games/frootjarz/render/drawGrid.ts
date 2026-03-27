@@ -4,12 +4,22 @@
  * transform updates in updateGridScene(). Eliminates per-frame allocation.
  */
 
-import { Container, Graphics, Sprite, Text, TextStyle, type Renderer } from 'pixi.js';
+import { BlurFilter, Container, Graphics, Sprite, Text, TextStyle, type Renderer } from 'pixi.js';
 import { GRID_COLS, GRID_ROWS, JAR_WILD, SYMBOL_COLORS, SYMBOL_LABELS } from '../engine/symbols';
 import type { Grid } from '../engine/grid';
 import type { JarState } from '../engine/jarWild';
 import { getSymbolTexture } from './symbolTextures';
-import { getCellAnimState, getCellPopState, getParticles, getFloatingWins } from './gridAnimations';
+import { getCellAnimState, getCellPopState, getParticles, getFloatingWins, syncJarSwarms, getJarSwarms } from './gridAnimations';
+
+function hslToHex(h: number, s: number, l: number): number {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * Math.max(0, Math.min(1, color)));
+  };
+  return (f(0) << 16) | (f(8) << 8) | f(4);
+}
 
 export interface GridLayout {
   gridX: number;
@@ -53,6 +63,7 @@ let bgGfx: Graphics;
 let cellBgGfx: Graphics;
 let maskGfx: Graphics;
 let symContainer: Container;
+let jarGlowGfx: Graphics;
 let glowGfx: Graphics;
 
 const cellSprites: Sprite[] = [];
@@ -60,12 +71,17 @@ const cellLabels: Text[] = [];
 const badgeBgs: Graphics[] = [];
 const badgeTexts: Text[] = [];
 
+let jarSparkleGfx: Graphics;
 let particleGfx: Graphics;
 const floatTexts: Text[] = [];
 
 let pillContainer: Container;
 let pillBg: Graphics;
 let pillText: Text;
+
+// Animation time (ms, driven by real clock)
+let animTime = 0;
+let lastFrameTime = 0;
 
 // Change tracking
 let prevLayoutKey = '';
@@ -91,6 +107,10 @@ export function initGridScene(root: Container, renderer: Renderer): void {
   symContainer = new Container();
   symContainer.mask = maskGfx;
   root.addChild(symContainer);
+
+  jarGlowGfx = new Graphics();
+  jarGlowGfx.filters = [new BlurFilter({ strength: 8, quality: 3 })];
+  symContainer.addChild(jarGlowGfx);
 
   glowGfx = new Graphics();
   symContainer.addChild(glowGfx);
@@ -133,6 +153,9 @@ export function initGridScene(root: Container, renderer: Renderer): void {
     symContainer.addChild(bt);
     badgeTexts.push(bt);
   }
+
+  jarSparkleGfx = new Graphics();
+  root.addChild(jarSparkleGfx);
 
   particleGfx = new Graphics();
   root.addChild(particleGfx);
@@ -189,12 +212,18 @@ export function updateGridScene(
   betAmount?: number,
 ): void {
   if (!_root) return;
+  const now = performance.now();
+  if (lastFrameTime === 0) lastFrameTime = now;
+  animTime += Math.min(now - lastFrameTime, 50);
+  lastFrameTime = now;
 
   const { gridX, gridY, cellSize, gap } = layout;
   const step = cellSize + gap;
   const bgPad = gap * 2;
   const gridW = GRID_COLS * step - gap + bgPad * 2;
   const gridH = GRID_ROWS * step - gap + bgPad * 2;
+
+  const jarPositions: { cx: number; cy: number; key: string }[] = [];
 
   const lk = `${gridX | 0}:${gridY | 0}:${cellSize | 0}`;
   const layoutChanged = lk !== prevLayoutKey;
@@ -250,7 +279,8 @@ export function updateGridScene(
     }
   }
 
-  // Glow (cleared each frame, only drawn for active winning cells)
+  // Glow layers (cleared each frame)
+  jarGlowGfx.clear();
   glowGfx.clear();
 
   const baseLabelScale = (cellSize * 0.32) / BASE_LABEL_SIZE;
@@ -298,42 +328,78 @@ export function updateGridScene(
       const bx = gridX + c * step + cellSize / 2;
       const by = gridY + r * step + cellSize / 2 + yOff * step;
 
+      // Jar animated glow — blurred pulsating aura (drawn on jarGlowGfx with BlurFilter)
+      if (cell.symbol === JAR_WILD && !getCellPopState(cell.id)) {
+        const t = animTime * 0.001;
+        const p1 = 0.45 + 0.55 * Math.sin(t * 3.5);
+        const p2 = 0.45 + 0.55 * Math.sin(t * 4.2 + 1.2);
+        const p3 = 0.45 + 0.55 * Math.sin(t * 5.0 + 2.5);
+        const hue = (animTime * 0.12) % 360;
+        const c1 = hslToHex(hue, 0.8, 0.55);
+        const c2 = hslToHex((hue + 60) % 360, 0.9, 0.6);
+        const c3 = hslToHex((hue + 140) % 360, 0.85, 0.55);
+        const as = (sX + sY) / 2;
+        // Outermost diffuse bloom
+        jarGlowGfx.circle(bx, by, cellSize * 1.15 * as * p1);
+        jarGlowGfx.fill({ color: c1, alpha: 0.12 * p1 });
+        jarGlowGfx.circle(bx, by, cellSize * 1.0 * as * p2);
+        jarGlowGfx.fill({ color: c2, alpha: 0.16 * p2 });
+        // Mid layers
+        jarGlowGfx.circle(bx, by, cellSize * 0.85 * as * p1);
+        jarGlowGfx.fill({ color: c1, alpha: 0.22 * p1 });
+        jarGlowGfx.circle(bx, by, cellSize * 0.7 * as * p3);
+        jarGlowGfx.fill({ color: c3, alpha: 0.25 * p3 });
+        jarGlowGfx.circle(bx, by, cellSize * 0.55 * as * p2);
+        jarGlowGfx.fill({ color: c2, alpha: 0.28 * p2 });
+        // Inner bright core
+        jarGlowGfx.circle(bx, by, cellSize * 0.4 * as * p3);
+        jarGlowGfx.fill({ color: 0xffffff, alpha: 0.22 * p3 });
+      }
+
       // Winning cell glow (skip during pop explosion)
       if (winningCellIds?.has(cell.id) && !getCellPopState(cell.id)) {
         const as = (sX + sY) / 2;
         const col = SYMBOL_COLORS[cell.symbol] ?? 0xffffff;
-        glowGfx.circle(bx, by, cellSize * 0.72 * as);
-        glowGfx.fill({ color: col, alpha: 0.12 });
-        glowGfx.circle(bx, by, cellSize * 0.6 * as);
-        glowGfx.fill({ color: col, alpha: 0.25 });
-        glowGfx.circle(bx, by, cellSize * 0.5 * as);
-        glowGfx.fill({ color: col, alpha: 0.4 });
+        glowGfx.circle(bx, by, cellSize * 0.85 * as);
+        glowGfx.fill({ color: col, alpha: 0.18 });
+        glowGfx.circle(bx, by, cellSize * 0.7 * as);
+        glowGfx.fill({ color: col, alpha: 0.35 });
+        glowGfx.circle(bx, by, cellSize * 0.55 * as);
+        glowGfx.fill({ color: col, alpha: 0.5 });
         glowGfx.circle(bx, by, cellSize * 0.42 * as);
-        glowGfx.fill({ color: 0xffffff, alpha: 0.18 });
+        glowGfx.fill({ color: 0xffffff, alpha: 0.35 });
       }
 
       const isWinCell = winningCellIds?.has(cell.id);
       const dimFactor = hasWinners && !isWinCell ? 0.35 : 1;
 
-      // Sprite
+      // Sprite — jar renders larger to compensate for image padding
+      const spriteScale = cell.symbol === JAR_WILD ? 1.25 : 0.92;
       sp.visible = true;
       sp.x = bx;
       sp.y = by;
-      sp.width = cellSize * 0.88 * sX;
-      sp.height = cellSize * 0.88 * sY;
+      sp.width = cellSize * spriteScale * sX;
+      sp.height = cellSize * spriteScale * sY;
       sp.alpha = a * dimFactor;
 
-      // Label (scale instead of re-creating TextStyle each frame)
-      lb.visible = true;
-      lb.x = bx;
-      lb.y = by;
-      lb.scale.set(sX * baseLabelScale, sY * baseLabelScale);
-      lb.alpha = a * 0.9 * dimFactor;
+      if (cell.symbol === JAR_WILD) {
+        jarPositions.push({ cx: bx, cy: by, key: `${r},${c}` });
+      }
 
-      // Jar multiplier badge
+      // Label — only show for scatter (all others have PNG textures)
+      const showLabel = cell.symbol === 'scatter';
+      lb.visible = showLabel;
+      if (showLabel) {
+        lb.x = bx;
+        lb.y = by;
+        lb.scale.set(sX * baseLabelScale, sY * baseLabelScale);
+        lb.alpha = a * 0.9 * dimFactor;
+      }
+
+      // Jar multiplier badge — always show so players know it's a multiplier
       if (cell.symbol === JAR_WILD) {
         const jar = jarStates.find((j) => j.row === r && j.col === c);
-        if (jar && jar.multiplier > 1) {
+        if (jar && jar.multiplier >= 1) {
           const bs = cellSize * 0.32;
           const bpx = bx + cellSize * 0.32;
           const bpy = by - cellSize * 0.32;
@@ -363,13 +429,52 @@ export function updateGridScene(
     }
   }
 
-  // Particles (single Graphics, cleared + redrawn per frame)
+  // Jar swarm sparkles (blurred layer)
+  syncJarSwarms(jarPositions);
+  const swarms = getJarSwarms();
+
+  jarSparkleGfx.clear();
+  for (const sw of swarms.values()) {
+    const t = sw.elapsed / 1000;
+    for (const s of sw.sparkles) {
+      const orbitR = cellSize * s.radius;
+      const wobble = Math.sin(t * 4.0 + s.phase) * cellSize * 0.14;
+      const px = sw.cx + Math.cos(s.angle) * (orbitR + wobble);
+      const py = sw.cy + Math.sin(s.angle) * (orbitR + wobble);
+      const twinkle = 0.3 + 0.7 * Math.sin(t * 8 + s.phase);
+      const breathe = 0.7 + 0.4 * Math.sin(t * 5.5 + s.phase * 1.7);
+      const sz = s.size * breathe;
+      const sa = 0.75 * twinkle;
+
+      jarSparkleGfx.circle(px, py, sz * 3.0);
+      jarSparkleGfx.fill({ color: s.color, alpha: sa * 0.08 });
+      jarSparkleGfx.circle(px, py, sz * 2.0);
+      jarSparkleGfx.fill({ color: s.color, alpha: sa * 0.18 });
+      jarSparkleGfx.circle(px, py, sz * 1.2);
+      jarSparkleGfx.fill({ color: s.color, alpha: sa * 0.4 });
+      jarSparkleGfx.circle(px, py, sz * 0.5);
+      jarSparkleGfx.fill({ color: 0xffffff, alpha: sa * 0.5 });
+    }
+  }
+
+  // Explosion particles (unblurred)
   particleGfx.clear();
   const particles = getParticles();
   for (const p of particles) {
     const pa = 1 - p.life / p.maxLife;
-    particleGfx.circle(p.x, p.y, p.size * (0.4 + 0.6 * pa));
-    particleGfx.fill({ color: p.color, alpha: pa * 0.9 });
+    const sz = p.size * (0.6 + 0.8 * pa);
+    // Outer bloom glow
+    particleGfx.circle(p.x, p.y, sz * 2.5);
+    particleGfx.fill({ color: p.color, alpha: pa * 0.15 });
+    // Mid glow
+    particleGfx.circle(p.x, p.y, sz * 1.6);
+    particleGfx.fill({ color: p.color, alpha: pa * 0.35 });
+    // White hot core
+    particleGfx.circle(p.x, p.y, sz);
+    particleGfx.fill({ color: 0xffffff, alpha: pa * 0.8 });
+    // Colored core
+    particleGfx.circle(p.x, p.y, sz * 0.7);
+    particleGfx.fill({ color: p.color, alpha: pa * 1.0 });
   }
 
   // Floating win texts (pooled)

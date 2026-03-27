@@ -11,6 +11,9 @@ export interface CascadeStep {
   gridAfterRemoval: Grid;
   /** Grid state after gravity + new symbols (fully settled). */
   gridAfterFill: Grid;
+  /** Jar states after multiplier bump but BEFORE removal — for display during highlight. */
+  jarStatesBefore: JarState[];
+  /** Jar states after removal + gravity — surviving jars. */
   jarStates: JarState[];
 }
 
@@ -68,6 +71,8 @@ export function runCascadeLoop(grid: Grid, jarStates: JarState[], stickyJars = f
     if (clusters.length === 0) break;
 
     processJarWins(grid, clusters, jarStates);
+
+    const jarStatesBefore = jarStates.map((j) => ({ ...j }));
 
     let stepPayout = 0;
     for (const cluster of clusters) {
@@ -135,6 +140,7 @@ export function runCascadeLoop(grid: Grid, jarStates: JarState[], stickyJars = f
       gridBefore,
       gridAfterRemoval,
       gridAfterFill,
+      jarStatesBefore,
       jarStates: jarStates.map((j) => ({ ...j })),
     });
   }
