@@ -29,8 +29,9 @@ export interface GridLayout {
 }
 
 export function computeGridLayout(canvasW: number, canvasH: number): GridLayout {
-  const hPad = canvasW * 0.02;
-  const vPad = canvasH * 0.01;
+  const isMobile = canvasW < 768;
+  const hPad = isMobile ? canvasW * 0.02 : canvasW * 0.07;
+  const vPad = isMobile ? canvasH * 0.01 : canvasH * 0.06;
   const availW = canvasW - hPad * 2;
   const availH = canvasH - vPad * 2;
   const totalGapRatio = 0.06;
@@ -42,7 +43,7 @@ export function computeGridLayout(canvasW: number, canvasH: number): GridLayout 
   const totalW = GRID_COLS * (cellSize + gap) - gap;
   const totalH = GRID_ROWS * (cellSize + gap) - gap;
   const gridX = (canvasW - totalW) / 2;
-  const gridY = (canvasH - totalH) / 2;
+  const gridY = (canvasH - totalH) / 2 + 20;
   return { gridX, gridY, cellSize, gap };
 }
 

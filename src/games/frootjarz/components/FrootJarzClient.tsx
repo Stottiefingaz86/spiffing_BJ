@@ -256,16 +256,16 @@ export default function FrootJarzClient() {
         </div>
       </header>
 
-      {/* ══════ Game logo above grid ══════ */}
-      <div className="shrink-0 flex justify-center pb-0 pt-1 lg:py-1 relative" style={{ zIndex: 10 }}>
-        <img src="/frootshoot/LOGO.png" alt="Froot Jarz" className="h-24 lg:h-24 w-auto mt-8 -mb-8 max-lg:mt-[20px] lg:mt-0 lg:-mb-6" style={{ willChange: 'transform' }} />
-      </div>
-
       {/* ══════ Game canvas ══════ */}
       <div
         className="relative min-h-0 flex-1 max-lg:-mt-[10px]"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Logo — absolutely positioned so it doesn't shrink the grid */}
+        <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[75px] max-lg:-top-[65px]">
+          <img src="/frootshoot/LOGO.png" alt="Froot Jarz" className="h-64 lg:h-64 w-auto" style={{ willChange: 'transform' }} />
+        </div>
+
         <FrootJarzCanvas
           snapshot={snap}
           onDropComplete={onDropComplete}
