@@ -115,25 +115,38 @@ let bgmGain: GainNode | null = null;
 let bgmPlaying = false;
 let bgmMuted = false;
 
-async function loadBgm(): Promise<void> {
-  if (bgmBuffer) return;
-  const ac = getContext();
-  try {
-    const res = await fetch(BGM_URL);
-    const arrayBuf = await res.arrayBuffer();
-    bgmBuffer = await ac.decodeAudioData(arrayBuf);
-  } catch {
-    // Non-critical
-  }
+let bgmLoadingPromise: Promise<void> | null = null;
+
+function loadBgm(): Promise<void> {
+  if (bgmBuffer) return Promise.resolve();
+  if (bgmLoadingPromise) return bgmLoadingPromise;
+  bgmLoadingPromise = (async () => {
+    const ac = getContext();
+    try {
+      const res = await fetch(BGM_URL);
+      const arrayBuf = await res.arrayBuffer();
+      bgmBuffer = await ac.decodeAudioData(arrayBuf);
+    } catch {
+      // Non-critical
+    }
+  })();
+  return bgmLoadingPromise;
+}
+
+export function preloadBgm(): void {
+  loadBgm();
 }
 
 export async function startFJBgm(volume = 0.25): Promise<void> {
   if (bgmPlaying) return;
-  await loadBgm();
-  if (!bgmBuffer) return;
 
   const ac = getContext();
-  if (ac.state === 'suspended') await ac.resume();
+  if (ac.state === 'suspended') {
+    try { await ac.resume(); } catch { /* ignore */ }
+  }
+
+  await loadBgm();
+  if (!bgmBuffer || bgmPlaying) return;
 
   bgmSource = ac.createBufferSource();
   bgmSource.buffer = bgmBuffer;

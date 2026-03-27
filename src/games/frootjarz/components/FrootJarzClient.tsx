@@ -6,7 +6,7 @@ import { formatMoney } from '@/lib/formatMoney';
 import { FrootJarzSession, GamePhase, BUY_BONUS_COST } from '../engine/session';
 import { FrootJarzCanvas } from '../render/FrootJarzCanvas';
 import { FrootJarzSettingsModal } from './FrootJarzSettingsModal';
-import { preloadFJSfx, playFJ, setFJSfxMuted, setFJBgmMuted, startFJBgm, stopFJBgm, unlockFJAudio } from '../audio/frootjarzSfx';
+import { preloadFJSfx, playFJ, setFJSfxMuted, setFJBgmMuted, startFJBgm, stopFJBgm, unlockFJAudio, preloadBgm } from '../audio/frootjarzSfx';
 
 const glassPill =
   'rounded-[14px] bg-white/[0.08] border border-white/[0.07]';
@@ -34,14 +34,17 @@ export default function FrootJarzClient() {
   }, [session]);
 
   useEffect(() => {
+    preloadBgm();
     const handler = () => {
       unlockFJAudio();
       preloadFJSfx();
       startFJBgm(0.08);
     };
     window.addEventListener('pointerdown', handler, { once: true });
+    window.addEventListener('touchstart', handler, { once: true });
     return () => {
       window.removeEventListener('pointerdown', handler);
+      window.removeEventListener('touchstart', handler);
       stopFJBgm();
     };
   }, []);
@@ -55,6 +58,7 @@ export default function FrootJarzClient() {
     if (snap.phase !== GamePhase.Idle || snap.balance < snap.bet) return;
     unlockFJAudio();
     preloadFJSfx();
+    startFJBgm(0.08);
     playFJ('spin', 0.25);
     setDisplayedWin(0);
     targetWinRef.current = 0;
@@ -260,7 +264,7 @@ export default function FrootJarzClient() {
 
       {/* ══════ Game canvas ══════ */}
       <div
-        className="relative min-h-0 flex-1 max-lg:-mt-6"
+        className="relative min-h-0 flex-1 max-lg:-mt-10"
         onClick={(e) => e.stopPropagation()}
       >
         <FrootJarzCanvas
@@ -317,7 +321,7 @@ export default function FrootJarzClient() {
       {/* ══════ MOBILE: Big centered spin button (overlaps canvas bottom) ══════ */}
       {!isFreeSpinActive && (
         <div
-          className="pointer-events-none absolute bottom-24 left-0 right-0 z-30 flex justify-center lg:hidden"
+          className="pointer-events-none absolute bottom-[5.5rem] left-0 right-0 z-30 flex justify-center lg:hidden"
         >
           <button
             type="button"
