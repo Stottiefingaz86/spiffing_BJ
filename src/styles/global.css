@@ -221,3 +221,48 @@
   position: relative;
   z-index: 1;
 }
+
+/* ── Froot Jarz background effects ── */
+
+.fj-bg-pattern {
+  background-image:
+    repeating-linear-gradient(
+      120deg,
+      transparent,
+      transparent 40px,
+      rgba(180, 120, 255, 0.5) 40px,
+      rgba(180, 120, 255, 0.5) 41px,
+      transparent 41px,
+      transparent 80px
+    ),
+    repeating-linear-gradient(
+      60deg,
+      transparent,
+      transparent 55px,
+      rgba(255, 100, 180, 0.4) 55px,
+      rgba(255, 100, 180, 0.4) 56px,
+      transparent 56px,
+      transparent 110px
+    ),
+    radial-gradient(circle 2px at 30px 30px, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+    radial-gradient(circle 2px at 70px 80px, rgba(255, 255, 255, 0.25) 0%, transparent 100%);
+  background-size: 80px 80px, 110px 110px, 100px 100px, 120px 120px;
+}
+
+.fj-bg-shimmer {
+  background: linear-gradient(
+    170deg,
+    transparent 0%,
+    rgba(200, 130, 255, 0.3) 25%,
+    transparent 50%,
+    rgba(255, 120, 200, 0.25) 75%,
+    transparent 100%
+  );
+  background-size: 200% 200%;
+  animation: fj-shimmer 12s ease-in-out infinite;
+}
+
+@keyframes fj-shimmer {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+}

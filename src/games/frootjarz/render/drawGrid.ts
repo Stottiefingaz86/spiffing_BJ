@@ -155,7 +155,7 @@ export function initGridScene(root: Container, renderer: Renderer): void {
   }
 
   jarSparkleGfx = new Graphics();
-  root.addChild(jarSparkleGfx);
+  symContainer.addChild(jarSparkleGfx);
 
   particleGfx = new Graphics();
   root.addChild(particleGfx);

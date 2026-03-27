@@ -191,7 +191,7 @@ export default function FrootJarzClient() {
         'relative flex h-dvh max-h-dvh flex-col overflow-hidden text-white transition-colors duration-700',
         isFreeSpinActive
           ? 'bg-gradient-to-b from-[#1a0e0a] via-[#3d1f0a] to-[#1a0e0a]'
-          : 'bg-gradient-to-b from-[#0f0b1e] via-[#1a1230] to-[#0f0b1e]',
+          : 'bg-gradient-to-b from-[#0f0b1e] via-[#261232] to-[#0f0b1e]',
       )}
       onClick={() => {
         if (isFreeSpinOutro) {
@@ -200,6 +200,12 @@ export default function FrootJarzClient() {
         }
       }}
     >
+      {/* ══════ Subtle background pattern ══════ */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <div className="fj-bg-pattern absolute inset-0 opacity-[0.07]" />
+        <div className="fj-bg-shimmer absolute inset-0 opacity-[0.04]" />
+      </div>
+
       {/* ══════ Header: buttons only ══════ */}
       <header
         className="flex shrink-0 items-center gap-2 px-3 pt-[max(0.5rem,calc(env(safe-area-inset-top)+0.15rem))] pb-0 lg:px-8 lg:pt-6 lg:pb-1"
@@ -256,11 +262,10 @@ export default function FrootJarzClient() {
         </button>
       </header>
 
-      {/* ══════ Game title above grid ══════ */}
-      <h1 className="shrink-0 text-center text-2xl font-black tracking-tight pb-1 pt-1 lg:text-xl lg:py-2">
-        <span className="text-[#c084fc]">FROOT</span>{' '}
-        <span className="text-white/90">JARZ</span>
-      </h1>
+      {/* ══════ Game logo above grid ══════ */}
+      <div className="shrink-0 flex justify-center pb-0 pt-1 lg:py-1 relative z-10">
+        <img src="/frootshoot/LOGO.svg" alt="Froot Jarz" className="h-24 lg:h-24 w-auto mt-8 -mb-8 lg:mt-0 lg:-mb-6" />
+      </div>
 
       {/* ══════ Game canvas ══════ */}
       <div
