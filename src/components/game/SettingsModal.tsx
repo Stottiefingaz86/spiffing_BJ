@@ -433,6 +433,7 @@ export function SettingsModal({
             </button>
             <button
               type="button"
+              onClick={() => { window.location.href = '/'; }}
               className="rounded-xl border border-white/10 bg-white/5 py-3.5 text-xs font-bold uppercase tracking-[0.14em] text-white/80 transition hover:bg-white/10 active:scale-[0.98]"
             >
               Back to Casino

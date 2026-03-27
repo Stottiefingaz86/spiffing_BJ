@@ -1,0 +1,8 @@
+---
+import GameClient from '@/components/game/GameClient';
+import Layout from '@/layouts/Layout.astro';
+---
+
+<Layout title="Multi-Hand Blackjack">
+	<GameClient client:only="react" />
+</Layout>

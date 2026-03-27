@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Hand, Menu, RefreshCw, RotateCcw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
+import { Home, Hand, Menu, RefreshCw, RotateCcw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -320,32 +320,20 @@ export default function GameClient() {
       className="game-bg box-border flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden text-white"
     >
       <header className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1 motion-safe:duration-500 motion-safe:fill-mode-both flex shrink-0 items-center gap-2.5 px-3 pb-1.5 pt-[max(1rem,calc(env(safe-area-inset-top)+0.25rem))] sm:gap-3 lg:px-12 lg:pb-3 lg:pt-8">
-        <div
+        <a
+          href="/"
           className={cn(
             headerGlassPill,
-            'flex size-10 shrink-0 items-center justify-center hover:bg-white/10 lg:hidden',
-            headerMenuOpen && 'bg-white/10',
+            'flex size-10 shrink-0 items-center justify-center text-white/70 hover:bg-white/10 hover:text-white active:scale-[0.94]',
           )}
+          aria-label="Back to lobby"
         >
-          <button
-            type="button"
-            className="flex size-full items-center justify-center text-white/80 active:scale-[0.92]"
-            aria-expanded={headerMenuOpen}
-            aria-controls="header-nav-tools"
-            aria-label={headerMenuOpen ? 'Close menu' : 'Open menu'}
-            onClick={() => setHeaderMenuOpen((o) => !o)}
-          >
-            <svg width="18" height="12" viewBox="0 0 18 12" fill="none" className="text-white/80">
-              <rect y="0" width="18" height="2" rx="1" fill="currentColor" />
-              <rect y="5" width="14" height="2" rx="1" fill="currentColor" />
-              <rect y="10" width="10" height="2" rx="1" fill="currentColor" />
-            </svg>
-          </button>
-        </div>
+          <Home className="size-[17px]" strokeWidth={1.8} />
+        </a>
 
         <div
           id="header-nav-tools"
-          className={cn('flex items-center gap-1', !headerMenuOpen && 'hidden lg:flex')}
+          className="flex items-center gap-1"
         >
           <button
             type="button"

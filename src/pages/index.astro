@@ -1,8 +1,116 @@
 ---
-import GameClient from '@/components/game/GameClient';
 import Layout from '@/layouts/Layout.astro';
+
+interface GameTile {
+  title: string;
+  subtitle: string;
+  href: string;
+  accent: string;
+  icon: string;
+  available: boolean;
+}
+
+const games: GameTile[] = [
+  {
+    title: 'Blackjack',
+    subtitle: 'Multi-Hand with 21+3 & Perfect Pairs',
+    href: '/blackjack',
+    accent: 'from-purple-500 to-fuchsia-500',
+    icon: '🃏',
+    available: true,
+  },
+  {
+    title: 'Froot Jarz',
+    subtitle: 'Cluster Pays Cascading Slot',
+    href: '/frootjarz',
+    accent: 'from-amber-400 to-orange-500',
+    icon: '🍓',
+    available: true,
+  },
+  {
+    title: 'Baccarat',
+    subtitle: 'Punto Banco',
+    href: '/baccarat',
+    accent: 'from-amber-500 to-orange-500',
+    icon: '🎴',
+    available: false,
+  },
+  {
+    title: 'Hi-Lo',
+    subtitle: 'Higher or Lower Card Game',
+    href: '/hilo',
+    accent: 'from-rose-500 to-pink-500',
+    icon: '🔮',
+    available: false,
+  },
+];
 ---
 
-<Layout title="Multi-Hand Blackjack">
-	<GameClient client:only="react" />
+<Layout title="Spiffing Casino">
+  <div class="flex h-dvh flex-col overflow-y-auto bg-gradient-to-b from-[#1a1230] via-[#2c1f4a] to-[#1a1230]">
+    <header class="shrink-0 px-6 pb-2 pt-[max(2.5rem,calc(env(safe-area-inset-top)+1.5rem))] text-center sm:pt-14">
+      <img
+        src="/logo-spiffing-white.svg"
+        alt="Spiffing Studios"
+        class="mx-auto mb-4 h-8 opacity-70 sm:h-10"
+        onerror="this.style.display='none'"
+      />
+      <h1 class="text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
+        Choose Your Game
+      </h1>
+      <p class="mt-2 text-sm font-medium tracking-wide text-white/40 sm:text-base">
+        Select a table to start playing
+      </p>
+    </header>
+
+    <main class="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-8 sm:py-12">
+      <div class="grid grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
+        {games.map((game) => (
+          <a
+            href={game.available ? game.href : undefined}
+            class:list={[
+              'group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-300',
+              game.available
+                ? 'cursor-pointer border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07] hover:shadow-lg hover:shadow-purple-500/10 active:scale-[0.98]'
+                : 'cursor-default border-white/[0.05] bg-white/[0.02] opacity-50',
+            ]}
+          >
+            <div class={`h-1.5 w-full bg-gradient-to-r ${game.accent}`} />
+
+            <div class="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center sm:px-6 sm:py-10 lg:py-14">
+              <span class="mb-4 text-4xl sm:text-5xl lg:text-6xl" aria-hidden="true">
+                {game.icon}
+              </span>
+              <h2 class="text-base font-bold tracking-tight text-white sm:text-lg lg:text-xl">
+                {game.title}
+              </h2>
+              <p class="mt-1 text-[11px] font-medium leading-snug text-white/40 sm:text-xs">
+                {game.subtitle}
+              </p>
+            </div>
+
+            {!game.available && (
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/50">
+                  Coming Soon
+                </span>
+              </div>
+            )}
+
+            {game.available && (
+              <div class="border-t border-white/[0.06] px-4 py-3 text-center">
+                <span class="text-[11px] font-bold uppercase tracking-[0.14em] text-white/50 transition-colors group-hover:text-white/80">
+                  Play Now
+                </span>
+              </div>
+            )}
+          </a>
+        ))}
+      </div>
+    </main>
+
+    <footer class="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 text-center text-[10px] font-medium tracking-wide text-white/25 sm:text-[11px]">
+      Spiffing Studios &mdash; Play Responsibly
+    </footer>
+  </div>
 </Layout>

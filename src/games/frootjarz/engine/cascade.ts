@@ -1,0 +1,155 @@
+import { GRID_COLS, GRID_ROWS, JAR_WILD, randomFruit } from './symbols';
+import { detectClusters, makeCell, type Cluster, type Grid } from './grid';
+import { processJarWins, type JarState } from './jarWild';
+import { getPayoutMultiplier } from './symbols';
+
+export interface CascadeStep {
+  clusters: Cluster[];
+  payoutMultiplier: number;
+  /** Grid state before any removal — the grid with winning clusters still visible. */
+  gridBefore: Grid;
+  gridAfterRemoval: Grid;
+  /** Grid state after gravity + new symbols (fully settled). */
+  gridAfterFill: Grid;
+  jarStates: JarState[];
+}
+
+/** Remove all cluster cells from the grid, including jars that participated. */
+function removeClusterCells(grid: Grid, clusters: Cluster[]): void {
+  for (const cluster of clusters) {
+    for (const { row, col } of cluster.cells) {
+      (grid[row] as any)[col] = null;
+    }
+  }
+}
+
+/** Apply gravity: symbols fall down to fill nulls. Returns count of cells that moved. */
+function applyGravity(grid: Grid): void {
+  for (let c = 0; c < GRID_COLS; c++) {
+    let writeRow = GRID_ROWS - 1;
+    for (let r = GRID_ROWS - 1; r >= 0; r--) {
+      if (grid[r][c] !== null) {
+        if (r !== writeRow) {
+          grid[writeRow][c] = grid[r][c];
+          (grid[r] as any)[c] = null;
+        }
+        writeRow--;
+      }
+    }
+  }
+}
+
+/** Fill null cells at the top with new random symbols. */
+function fillEmpty(grid: Grid): void {
+  for (let r = 0; r < GRID_ROWS; r++) {
+    for (let c = 0; c < GRID_COLS; c++) {
+      if (grid[r][c] === null) {
+        grid[r][c] = makeCell(randomFruit());
+      }
+    }
+  }
+}
+
+function cloneGrid(grid: Grid): Grid {
+  return grid.map((row) => row.map((cell) => (cell ? { ...cell } : cell)));
+}
+
+const MAX_CASCADE_DEPTH = 12;
+
+/**
+ * Run the full cascade loop on a grid. Returns all cascade steps.
+ * The grid is mutated in place.
+ */
+export function runCascadeLoop(grid: Grid, jarStates: JarState[], stickyJars = false): CascadeStep[] {
+  const steps: CascadeStep[] = [];
+
+  while (steps.length < MAX_CASCADE_DEPTH) {
+    const clusters = detectClusters(grid);
+    if (clusters.length === 0) break;
+
+    processJarWins(grid, clusters, jarStates);
+
+    let stepPayout = 0;
+    for (const cluster of clusters) {
+      const baseMult = getPayoutMultiplier(cluster.fruit, cluster.cells.length);
+      const jarMult = getJarMultiplier(grid, cluster, jarStates);
+      stepPayout += baseMult * jarMult;
+    }
+
+    const gridBefore = cloneGrid(grid);
+
+    removeClusterCells(grid, clusters);
+
+    if (stickyJars) {
+      // Re-place destroyed jars back onto the grid — they stick
+      for (const jar of jarStates) {
+        if (!grid[jar.row]?.[jar.col]) {
+          grid[jar.row][jar.col] = makeCell(JAR_WILD);
+        }
+      }
+    } else {
+      // Remove jar states whose cells were destroyed
+      for (let i = jarStates.length - 1; i >= 0; i--) {
+        const jar = jarStates[i];
+        const cell = grid[jar.row]?.[jar.col];
+        if (!cell || cell.symbol !== JAR_WILD) {
+          jarStates.splice(i, 1);
+        }
+      }
+    }
+
+    const gridAfterRemoval = cloneGrid(grid);
+
+    // Map cell IDs to jar states before gravity shifts positions
+    const cellIdToJar = new Map<number, JarState>();
+    for (const jar of jarStates) {
+      const cell = grid[jar.row]?.[jar.col];
+      if (cell && cell.symbol === JAR_WILD) {
+        cellIdToJar.set(cell.id, jar);
+      }
+    }
+
+    applyGravity(grid);
+
+    // Re-sync jar positions after gravity
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        const cell = grid[r]?.[c];
+        if (cell && cell.symbol === JAR_WILD) {
+          const jar = cellIdToJar.get(cell.id);
+          if (jar) {
+            jar.row = r;
+            jar.col = c;
+          }
+        }
+      }
+    }
+
+    fillEmpty(grid);
+
+    const gridAfterFill = cloneGrid(grid);
+
+    steps.push({
+      clusters,
+      payoutMultiplier: stepPayout,
+      gridBefore,
+      gridAfterRemoval,
+      gridAfterFill,
+      jarStates: jarStates.map((j) => ({ ...j })),
+    });
+  }
+
+  return steps;
+}
+
+/** Get the combined jar multiplier for a cluster. */
+function getJarMultiplier(grid: Grid, cluster: Cluster, jarStates: JarState[]): number {
+  let mult = 1;
+  for (const { row, col } of cluster.cells) {
+    if (grid[row][col]?.symbol === 'jar') {
+      const jar = jarStates.find((j) => j.row === row && j.col === col);
+      if (jar) mult *= jar.multiplier;
+    }
+  }
+  return mult;
+}
