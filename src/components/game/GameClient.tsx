@@ -193,7 +193,7 @@ export default function GameClient() {
     prevSettlementIdxRef.current = snap.settlementRevealIndex;
 
     const isFirst = snap.settlementRevealIndex === null;
-    const delayMs = isFirst ? 600 : 1100;
+    const delayMs = isFirst ? 350 : 550;
     const id = window.setTimeout(() => {
       session.dispatch({ type: 'SETTLE_NEXT_HAND' });
       refresh();
