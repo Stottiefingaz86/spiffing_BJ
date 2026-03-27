@@ -31,7 +31,8 @@ export function initWinParticleLayer(stage: Container): Container {
 }
 
 export function emitWinParticles(cx: number, cy: number, isBlackjack: boolean): void {
-  const count = isBlackjack ? 55 : 32;
+  const mobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const count = mobile ? (isBlackjack ? 20 : 12) : (isBlackjack ? 55 : 32);
   const colors = isBlackjack ? BJ_COLORS : WIN_COLORS;
   const spread = isBlackjack ? 7 : 5;
 

@@ -114,35 +114,6 @@ export function playSfxPitched(name: SfxName, rate = 0.7, volume = 0.5): void {
   source.start(0);
 }
 
-// ---------------------------------------------------------------------------
-// Background music
-// ---------------------------------------------------------------------------
-
-const BGM_URL = `${BASE}sounds/cozy-jazz-piano-2025-01-15-22-25-52-utc/Cozy Jazz Piano.mp3`;
-const BGM_VOLUME = 0.12;
-
-let bgmAudio: HTMLAudioElement | null = null;
-let bgmPlaying = false;
-
-export function startBgm(): void {
-  if (bgmPlaying) return;
-
-  if (!bgmAudio) {
-    const el = new Audio(BGM_URL);
-    el.loop = true;
-    el.volume = muted ? 0 : BGM_VOLUME;
-    bgmAudio = el;
-  }
-
-  bgmAudio.play().then(() => {
-    bgmPlaying = true;
-  }).catch(() => {
-    // Autoplay blocked — caller should retry on next user gesture
-  });
-}
-
-export function setBgmMuted(value: boolean): void {
-  if (bgmAudio) {
-    bgmAudio.volume = value ? 0 : BGM_VOLUME;
-  }
-}
+// Background music disabled for now
+export function startBgm(): void {}
+export function setBgmMuted(_value: boolean): void {}

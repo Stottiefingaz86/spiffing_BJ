@@ -39,7 +39,7 @@ interface Flip {
 
 const flips = new Map<string, Flip>();
 
-const FLIP_DURATION_MS = 400;
+const FLIP_DURATION_MS = 280;
 
 function allCardIds(s: TableSnapshot): Set<string> {
   const set = new Set<string>();
@@ -76,6 +76,14 @@ function orderedCardIds(snapshot: TableSnapshot): string[] {
 function easeOutCubic(t: number): number {
   const u = 1 - t;
   return 1 - u * u * u;
+}
+
+function easeInOutBack(t: number): number {
+  const c1 = 1.70158;
+  const c2 = c1 * 1.525;
+  return t < 0.5
+    ? (Math.pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2
+    : (Math.pow(2 * t - 2, 2) * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2;
 }
 
 function queueLayoutTransitionFlights(
@@ -215,7 +223,7 @@ export function syncCardFlights(
   // Dealing → PlayerTurn: cards are already in position from deal-in animation.
   // Only the hero hand needs to fly to center — handled by the hero promotion below.
   if (prev && prev.phase === GamePhase.Dealing && next.phase === GamePhase.PlayerTurn) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 400, 5);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 280, 5);
   }
 
   if (prev && prev.phase === GamePhase.Dealing && next.phase === GamePhase.InsuranceOffer) {
@@ -223,11 +231,11 @@ export function syncCardFlights(
   }
 
   if (prev && prev.phase === GamePhase.InsuranceOffer && next.phase === GamePhase.PlayerTurn) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 400, 5);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 280, 5);
   }
 
   if (prev && prev.phase === GamePhase.InsuranceOffer && next.phase === GamePhase.RoundComplete) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 400, 5);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 280, 5);
   }
 
   // Stand on a hand — if there's a next hand the hero stays in centre
@@ -235,23 +243,23 @@ export function syncCardFlights(
   // HandTransition pause (no movement needed — the retreat happens on
   // the HandTransition → DealerTurn transition).
   if (prev && prev.phase === GamePhase.PlayerTurn && next.phase === GamePhase.HandTransition) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 450, 3);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 280, 3);
   }
 
   // Direct PlayerTurn → DealerTurn (rare; fallback).
   if (prev && prev.phase === GamePhase.PlayerTurn && next.phase === GamePhase.DealerTurn) {
-    queueSplitTransitionFlights(prev, next, width, height, layout, 600, 350, 650, 1);
+    queueSplitTransitionFlights(prev, next, width, height, layout, 350, 200, 380, 1);
   }
 
   // Next hand becomes the hero — previous hero to rail, new hero to centre.
   if (prev && prev.phase === GamePhase.HandTransition && next.phase === GamePhase.PlayerTurn) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 550, 3);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 320, 3);
   }
 
   // HandTransition → DealerTurn: hero cards retreat to the rail first,
   // then the dealer glides to centre for the showdown after a short delay.
   if (prev && prev.phase === GamePhase.HandTransition && next.phase === GamePhase.DealerTurn) {
-    queueSplitTransitionFlights(prev, next, width, height, layout, 600, 350, 650, 1);
+    queueSplitTransitionFlights(prev, next, width, height, layout, 350, 200, 380, 1);
   }
 
   // Active seat changes within PlayerTurn.
@@ -261,7 +269,7 @@ export function syncCardFlights(
     next.phase === GamePhase.PlayerTurn &&
     prev.activeSeatIndex !== next.activeSeatIndex
   ) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 600, 3);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 320, 3);
   }
 
   // Hero gets a new card (hit) — existing cards re-centre smoothly.
@@ -271,7 +279,7 @@ export function syncCardFlights(
     next.phase === GamePhase.PlayerTurn &&
     prev.activeSeatIndex === next.activeSeatIndex
   ) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 250, 2);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 180, 2);
   }
 
   // Dealer draws a card — existing dealer cards re-spread smoothly.
@@ -280,27 +288,27 @@ export function syncCardFlights(
     prev.phase === GamePhase.DealerTurn &&
     next.phase === GamePhase.DealerTurn
   ) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 280, 2);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 200, 2);
   }
 
-  // Dealer done → settlement begins. Layout is similar, smooth transition.
+  // Dealer done → settlement begins.
   if (prev && prev.phase === GamePhase.DealerTurn && next.phase === GamePhase.Settlement) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 400, 3);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 250, 3);
   }
 
   // Settlement advances hand by hand.
   if (prev && prev.phase === GamePhase.Settlement && next.phase === GamePhase.Settlement) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 300, 3);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 200, 3);
   }
 
   // Settlement → RoundComplete.
   if (prev && prev.phase === GamePhase.Settlement && next.phase === GamePhase.RoundComplete) {
-    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 400, 3);
+    queueLayoutTransitionFlights(prev, next, width, height, layout, 0, 250, 3);
   }
 
   const isDealerTurn = next.phase === GamePhase.DealerTurn;
-  const dealFlightMs = isDealerTurn ? 420 : 280;
-  const dealStaggerMs = isDealerTurn ? 50 : 35;
+  const dealFlightMs = isDealerTurn ? 300 : 220;
+  const dealStaggerMs = isDealerTurn ? 35 : 25;
 
   const ordered = orderedCardIds(next);
   const newIds = ordered.filter((id) => !prevSet.has(id));
@@ -391,7 +399,7 @@ export function applyCardFlight(
         x = f.sx; y = f.sy; cw = f.scw; ch = f.sch;
       } else {
         const t = Math.min(1, f.elapsedMs / f.durationMs);
-        const e = easeOutCubic(t);
+        const e = easeInOutBack(t);
         x = f.sx + (f.ex - f.sx) * e;
         y = f.sy + (f.ey - f.sy) * e;
         cw = f.scw + (f.ecw - f.scw) * e;

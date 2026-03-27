@@ -14,7 +14,7 @@ import { PixiTableCanvas } from '@/render/pixi/PixiTableCanvas';
 import { playSfx, playSfxPitched, preloadSfx, setSfxMuted, startBgm, setBgmMuted, unlockAudio } from '@/audio/sfx';
 
 const headerGlassPill =
-  'rounded-[14px] bg-white/[0.06] backdrop-blur-xl border border-white/[0.07] shadow-[0_0_20px_rgba(168,85,247,0.06)] transition-[box-shadow,background-color] duration-300 ease-out';
+  'rounded-[14px] bg-white/[0.10] sm:bg-white/[0.06] sm:backdrop-blur-xl border border-white/[0.07] shadow-[0_0_20px_rgba(168,85,247,0.06)]';
 
 function DealActionButton({
   children,
@@ -59,7 +59,7 @@ function PlayActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 rounded-[10px] border-2 bg-black/20 text-[11px] font-bold tracking-[0.06em] shadow-none backdrop-blur-md hover:bg-white/[0.08] active:scale-[0.97] disabled:opacity-40 lg:min-h-[5.25rem] lg:flex-1 lg:rounded-[14px] lg:text-xs',
+        'flex min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 rounded-[10px] border-2 bg-black/30 sm:bg-black/20 sm:backdrop-blur-md text-[11px] font-bold tracking-[0.06em] shadow-none hover:bg-white/[0.08] active:scale-[0.97] disabled:opacity-40 lg:min-h-[5.25rem] lg:flex-1 lg:rounded-[14px] lg:text-xs',
         className,
       )}
     >
@@ -218,7 +218,7 @@ export default function GameClient() {
   const betting = snap.phase === GamePhase.Betting;
   const insuranceOffering = snap.phase === GamePhase.InsuranceOffer;
   const playing = snap.phase === GamePhase.PlayerTurn;
-  const roundDone = snap.phase === GamePhase.RoundComplete || snap.phase === GamePhase.Settlement || snap.phase === GamePhase.DealerTurn;
+  const roundDone = snap.phase === GamePhase.RoundComplete;
 
   const roundResult: RoundResult | null = (() => {
     if (snap.phase !== GamePhase.RoundComplete) return null;
@@ -506,7 +506,7 @@ export default function GameClient() {
             type="button"
             disabled={!playing}
             onClick={() => { session.dispatch({ type: 'STAND' }); playSfx('stand', 0.5); refresh(); }}
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-pink-400/70 bg-pink-500/12 backdrop-blur-md active:scale-[0.97] disabled:opacity-40"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-pink-400/70 bg-pink-500/20 active:scale-[0.97] disabled:opacity-40"
           >
             <Hand className="size-7 text-pink-400" strokeWidth={2.2} />
             <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.stand}</span>
@@ -515,7 +515,7 @@ export default function GameClient() {
             type="button"
             disabled={!playing}
             onClick={() => { session.dispatch({ type: 'HIT' }); playSfx('cardFlip', 0.5); refresh(); }}
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/70 bg-emerald-500/15 backdrop-blur-md active:scale-[0.97] disabled:opacity-40"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/70 bg-emerald-500/25 active:scale-[0.97] disabled:opacity-40"
           >
             <Zap className="size-7 text-emerald-400" strokeWidth={2.5} fill="currentColor" />
             <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.hit}</span>
@@ -524,7 +524,7 @@ export default function GameClient() {
             <button
               type="button"
               onClick={() => { session.dispatch({ type: 'DOUBLE' }); playSfx('chipStack', 0.5); refresh(); }}
-              className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/25 bg-black/20 backdrop-blur-md active:scale-[0.97]"
+              className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/25 bg-black/30 active:scale-[0.97]"
             >
               <span className="text-xl font-black leading-none text-white">×2</span>
               <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.double}</span>
@@ -538,7 +538,7 @@ export default function GameClient() {
           <button
             type="button"
             onClick={() => { session.dispatch({ type: 'UNDO_LAST_BET' }); playSfxPitched('chipStack', 0.65, 0.5); refresh(); }}
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/20 backdrop-blur-md active:scale-[0.97]"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
           >
             <RotateCcw className="size-7 text-white/70" strokeWidth={2} />
             <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.undo}</span>
@@ -546,7 +546,7 @@ export default function GameClient() {
           <button
             type="button"
             onClick={() => { preloadSfx(); session.dispatch({ type: 'DEAL' }); refresh(); }}
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/70 bg-emerald-500/15 backdrop-blur-md active:scale-[0.97]"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/70 bg-emerald-500/25 active:scale-[0.97]"
           >
             <Zap className="size-7 text-emerald-400" strokeWidth={2.5} fill="currentColor" />
             <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.deal}</span>
@@ -557,7 +557,7 @@ export default function GameClient() {
           <button
             type="button"
             onClick={() => { session.dispatch({ type: 'CLEAR_ALL_BETS' }); playSfxPitched('chipStack', 0.65, 0.5); refresh(); }}
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/20 backdrop-blur-md active:scale-[0.97]"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
           >
             <X className="size-7 text-white/70" strokeWidth={2} />
             <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.clear}</span>
@@ -565,11 +565,11 @@ export default function GameClient() {
         </section>
       ) : null}
 
-      {(snap.phase === GamePhase.RoundComplete || snap.phase === GamePhase.Settlement || snap.phase === GamePhase.DealerTurn) && (
+      {snap.phase === GamePhase.RoundComplete && (
         <section className="mx-auto flex w-full max-w-md shrink-0 justify-center gap-2.5 px-4 pb-3 lg:hidden">
           <button
             type="button"
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/50 bg-emerald-500/12 backdrop-blur-md active:scale-[0.97] disabled:opacity-40"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/50 bg-emerald-500/20 active:scale-[0.97] disabled:opacity-40"
             disabled={!snap.seats.some((s) => s.inRound && s.bet > 0)}
             onClick={() => { session.dispatch({ type: 'REBET_LAST' }); playSfx('chipStack', 0.5); refresh(); }}
           >
@@ -578,7 +578,7 @@ export default function GameClient() {
           </button>
           <button
             type="button"
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/20 backdrop-blur-md active:scale-[0.97]"
+            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
             onClick={() => { session.dispatch({ type: 'ACK_ROUND_COMPLETE' }); refresh(); }}
           >
             <RefreshCw className="size-7 text-pink-400" strokeWidth={2.5} />
