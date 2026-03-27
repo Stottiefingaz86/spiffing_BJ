@@ -137,7 +137,7 @@ export function preloadBgm(): void {
   loadBgm();
 }
 
-export async function startFJBgm(volume = 0.25): Promise<void> {
+export async function startFJBgm(volume = 0.04): Promise<void> {
   if (bgmPlaying) return;
 
   const ac = getContext();
@@ -172,6 +172,6 @@ export function stopFJBgm(): void {
 export function setFJBgmMuted(value: boolean): void {
   bgmMuted = value;
   if (bgmGain) {
-    bgmGain.gain.value = value ? 0 : 0.08;
+    bgmGain.gain.value = value ? 0 : 0.04;
   }
 }
