@@ -19,6 +19,7 @@ export type GameAction =
   | { type: 'SETTLE_NEXT_HAND' }
   | { type: 'ACK_ROUND_COMPLETE' }
   | { type: 'REBET_LAST' }
+  | { type: 'REBET_DOUBLE' }
   | { type: 'PLACE_SIDE_BET'; seat: HandIndex; kind: 'pp' | '21+3'; chipValue: number }
   | { type: 'CLEAR_SIDE_BET'; seat: HandIndex; kind: 'pp' | '21+3' }
   | { type: 'UNDO_LAST_SIDE_BET' };

@@ -19,7 +19,21 @@ interface DropOutAnim {
   durationMs: number;
 }
 
-const activeDropOuts: DropOutAnim[] = [];
+const dropOutMap = new Map<number, DropOutAnim>();
+
+function cellStateFromDropOut(d: DropOutAnim): CellRenderState {
+  if (d.delayMs > 0) return { yOffset: 0, scale: 1, scaleX: 1, scaleY: 1, alpha: 1 };
+  const t = Math.min(1, d.elapsedMs / d.durationMs);
+  const e = easeInQuad(t);
+  const fallDist = GRID_ROWS - d.row + 1;
+  const yOffset = fallDist * e;
+  // Velocity increases as it falls out — stretch taller + narrower
+  const velocity = 2 * t; // derivative of easeInQuad
+  const stretch = velocity * 0.06;
+  const scaleX = 1 - stretch;
+  const scaleY = 1 + stretch;
+  return { yOffset, scale: 1, scaleX, scaleY, alpha: 1 };
+}
 
 /**
  * Queue drop-out animations. Left to right, bottom rows exit first
@@ -32,7 +46,7 @@ export function queueDropOutAnimations(
   colStaggerMs = 60,
   rowStaggerMs = 18,
 ): number {
-  activeDropOuts.length = 0;
+  dropOutMap.clear();
   let maxEnd = 0;
   for (let c = 0; c < GRID_COLS; c++) {
     for (let r = 0; r < GRID_ROWS; r++) {
@@ -40,7 +54,7 @@ export function queueDropOutAnimations(
       if (!cell) continue;
       // Column left→right + bottom row first within column
       const delay = c * colStaggerMs + (GRID_ROWS - 1 - r) * rowStaggerMs;
-      activeDropOuts.push({
+      dropOutMap.set(cell.id, {
         cellId: cell.id,
         row: r,
         col: c,
@@ -63,19 +77,9 @@ export interface CellRenderState {
 }
 
 export function getCellDropOutState(cellId: number): CellRenderState | null {
-  const d = activeDropOuts.find((a) => a.cellId === cellId);
+  const d = dropOutMap.get(cellId);
   if (!d) return null;
-  if (d.delayMs > 0) return { yOffset: 0, scale: 1, scaleX: 1, scaleY: 1, alpha: 1 };
-  const t = Math.min(1, d.elapsedMs / d.durationMs);
-  const e = easeInQuad(t);
-  const fallDist = GRID_ROWS - d.row + 1;
-  const yOffset = fallDist * e;
-  // Velocity increases as it falls out — stretch taller + narrower
-  const velocity = 2 * t; // derivative of easeInQuad
-  const stretch = velocity * 0.06;
-  const scaleX = 1 - stretch;
-  const scaleY = 1 + stretch;
-  return { yOffset, scale: 1, scaleX, scaleY, alpha: 1 };
+  return cellStateFromDropOut(d);
 }
 
 // ===================== Drop-IN animation (new grid enters) =====================
@@ -89,48 +93,9 @@ interface DropInAnim {
   durationMs: number;
 }
 
-const activeDropIns: DropInAnim[] = [];
+const dropInMap = new Map<number, DropInAnim>();
 
-/**
- * Queue drop-in animations. Column-primary, left to right.
- * Within each column, bottom row drops first (longest fall) so
- * no symbol ever passes through another — like balls dropping into tubes.
- * Returns total animation duration in ms.
- */
-export function queueDropInAnimations(
-  grid: { id: number }[][],
-  baseDurationMs = 150,
-  colStaggerMs = 60,
-  rowStaggerMs = 18,
-): number {
-  activeDropIns.length = 0;
-  let maxEnd = 0;
-  for (let c = 0; c < GRID_COLS; c++) {
-    for (let r = 0; r < GRID_ROWS; r++) {
-      const cell = grid[r]?.[c];
-      if (!cell) continue;
-      // Column stagger (left to right) + within column bottom row first
-      const delay = c * colStaggerMs + (GRID_ROWS - 1 - r) * rowStaggerMs;
-      // Duration scales with fall distance (bottom rows travel farther)
-      const dist = r + 1;
-      const dur = baseDurationMs + dist * 16;
-      activeDropIns.push({
-        cellId: cell.id,
-        row: r,
-        col: c,
-        delayMs: delay,
-        elapsedMs: 0,
-        durationMs: dur,
-      });
-      maxEnd = Math.max(maxEnd, delay + dur);
-    }
-  }
-  return maxEnd;
-}
-
-export function getCellDropInState(cellId: number): CellRenderState | null {
-  const d = activeDropIns.find((a) => a.cellId === cellId);
-  if (!d) return null;
+function cellStateFromDropIn(d: DropInAnim): CellRenderState {
   if (d.delayMs > 0) return { yOffset: -(d.row + 1.5), scale: 1, scaleX: 0.95, scaleY: 1.05, alpha: 1 };
   const t = Math.min(1, d.elapsedMs / d.durationMs);
   const fallDist = d.row + 1.5;
@@ -153,6 +118,49 @@ export function getCellDropInState(cellId: number): CellRenderState | null {
   return { yOffset, scale: 1, scaleX, scaleY, alpha: 1 };
 }
 
+/**
+ * Queue drop-in animations. Column-primary, left to right.
+ * Within each column, bottom row drops first (longest fall) so
+ * no symbol ever passes through another — like balls dropping into tubes.
+ * Returns total animation duration in ms.
+ */
+export function queueDropInAnimations(
+  grid: { id: number }[][],
+  baseDurationMs = 150,
+  colStaggerMs = 60,
+  rowStaggerMs = 18,
+): number {
+  dropInMap.clear();
+  let maxEnd = 0;
+  for (let c = 0; c < GRID_COLS; c++) {
+    for (let r = 0; r < GRID_ROWS; r++) {
+      const cell = grid[r]?.[c];
+      if (!cell) continue;
+      // Column stagger (left to right) + within column bottom row first
+      const delay = c * colStaggerMs + (GRID_ROWS - 1 - r) * rowStaggerMs;
+      // Duration scales with fall distance (bottom rows travel farther)
+      const dist = r + 1;
+      const dur = baseDurationMs + dist * 16;
+      dropInMap.set(cell.id, {
+        cellId: cell.id,
+        row: r,
+        col: c,
+        delayMs: delay,
+        elapsedMs: 0,
+        durationMs: dur,
+      });
+      maxEnd = Math.max(maxEnd, delay + dur);
+    }
+  }
+  return maxEnd;
+}
+
+export function getCellDropInState(cellId: number): CellRenderState | null {
+  const d = dropInMap.get(cellId);
+  if (!d) return null;
+  return cellStateFromDropIn(d);
+}
+
 // ===================== Cluster highlight (pulse before pop) =====================
 
 interface HighlightAnim {
@@ -161,22 +169,26 @@ interface HighlightAnim {
   durationMs: number;
 }
 
-const activeHighlights: HighlightAnim[] = [];
+const highlightMap = new Map<number, HighlightAnim>();
 
-export function queueHighlightAnimations(cellIds: number[], durationMs = 450): void {
-  activeHighlights.length = 0;
-  for (const id of cellIds) {
-    activeHighlights.push({ cellId: id, elapsedMs: 0, durationMs });
-  }
-}
-
-export function getCellHighlightState(cellId: number): CellRenderState | null {
-  const h = activeHighlights.find((a) => a.cellId === cellId);
-  if (!h) return null;
+function cellStateFromHighlight(h: HighlightAnim): CellRenderState {
   const t = Math.min(1, h.elapsedMs / h.durationMs);
   // Pulse: scale up then back
   const pulse = Math.sin(t * Math.PI) * 0.18;
   return { yOffset: 0, scale: 1 + pulse, alpha: 1 };
+}
+
+export function queueHighlightAnimations(cellIds: number[], durationMs = 450): void {
+  highlightMap.clear();
+  for (const id of cellIds) {
+    highlightMap.set(id, { cellId: id, elapsedMs: 0, durationMs });
+  }
+}
+
+export function getCellHighlightState(cellId: number): CellRenderState | null {
+  const h = highlightMap.get(cellId);
+  if (!h) return null;
+  return cellStateFromHighlight(h);
 }
 
 // ===================== Cluster pop (shrink + vanish) =====================
@@ -187,18 +199,9 @@ interface PopAnim {
   durationMs: number;
 }
 
-const activePops: PopAnim[] = [];
+const popMap = new Map<number, PopAnim>();
 
-export function queuePopAnimations(cellIds: number[], durationMs = 350): void {
-  activePops.length = 0;
-  for (const id of cellIds) {
-    activePops.push({ cellId: id, elapsedMs: 0, durationMs });
-  }
-}
-
-export function getCellPopState(cellId: number): CellRenderState | null {
-  const p = activePops.find((a) => a.cellId === cellId);
-  if (!p) return null;
+function cellStateFromPop(p: PopAnim): CellRenderState {
   const t = Math.min(1, p.elapsedMs / p.durationMs);
   if (t < 0.2) {
     // Quick punch up
@@ -209,6 +212,19 @@ export function getCellPopState(cellId: number): CellRenderState | null {
   const pt = (t - 0.2) / 0.8;
   const ease = easeInQuad(pt);
   return { yOffset: 0, scale: Math.max(0, 1.25 * (1 - ease)), alpha: 1 - ease };
+}
+
+export function queuePopAnimations(cellIds: number[], durationMs = 350): void {
+  popMap.clear();
+  for (const id of cellIds) {
+    popMap.set(id, { cellId: id, elapsedMs: 0, durationMs });
+  }
+}
+
+export function getCellPopState(cellId: number): CellRenderState | null {
+  const p = popMap.get(cellId);
+  if (!p) return null;
+  return cellStateFromPop(p);
 }
 
 // ===================== Cascade fall (gravity refill) =====================
@@ -223,32 +239,9 @@ interface FallAnim {
   durationMs: number;
 }
 
-const activeFalls: FallAnim[] = [];
+const fallMap = new Map<number, FallAnim>();
 
-/**
- * Queue fall animations. Returns total animation duration in ms.
- */
-export function queueFallAnimations(
-  moves: { cellId: number; fromRow: number; toRow: number; col: number }[],
-  durationMs = 180,
-  staggerMs = 5,
-): number {
-  activeFalls.length = 0;
-  let maxEnd = 0;
-  for (let i = 0; i < moves.length; i++) {
-    const m = moves[i];
-    const dist = Math.abs(m.toRow - m.fromRow);
-    const dur = durationMs + dist * 20;
-    const delay = i * staggerMs;
-    activeFalls.push({ ...m, delayMs: delay, elapsedMs: 0, durationMs: dur });
-    maxEnd = Math.max(maxEnd, delay + dur);
-  }
-  return maxEnd;
-}
-
-export function getCellFallState(cellId: number): CellRenderState | null {
-  const f = activeFalls.find((a) => a.cellId === cellId);
-  if (!f) return null;
+function cellStateFromFall(f: FallAnim): CellRenderState {
   if (f.delayMs > 0) return { yOffset: f.fromRow - f.toRow, scale: 1, scaleX: 0.96, scaleY: 1.04, alpha: 1 };
   const t = Math.min(1, f.elapsedMs / f.durationMs);
   const rowDelta = f.fromRow - f.toRow;
@@ -265,6 +258,60 @@ export function getCellFallState(cellId: number): CellRenderState | null {
     scaleY = 1 - squash;
   }
   return { yOffset, scale: 1, scaleX, scaleY, alpha: 1 };
+}
+
+/**
+ * Queue fall animations. Returns total animation duration in ms.
+ */
+export function queueFallAnimations(
+  moves: { cellId: number; fromRow: number; toRow: number; col: number }[],
+  durationMs = 180,
+  staggerMs = 5,
+): number {
+  fallMap.clear();
+  let maxEnd = 0;
+  for (let i = 0; i < moves.length; i++) {
+    const m = moves[i];
+    const dist = Math.abs(m.toRow - m.fromRow);
+    const dur = durationMs + dist * 20;
+    const delay = i * staggerMs;
+    fallMap.set(m.cellId, { ...m, delayMs: delay, elapsedMs: 0, durationMs: dur });
+    maxEnd = Math.max(maxEnd, delay + dur);
+  }
+  return maxEnd;
+}
+
+export function getCellFallState(cellId: number): CellRenderState | null {
+  const f = fallMap.get(cellId);
+  if (!f) return null;
+  return cellStateFromFall(f);
+}
+
+function cellRenderStateToCombined(s: CellRenderState): { yOffset: number; scaleX: number; scaleY: number; alpha: number } {
+  return {
+    yOffset: s.yOffset,
+    scaleX: s.scaleX ?? s.scale,
+    scaleY: s.scaleY ?? s.scale,
+    alpha: s.alpha,
+  };
+}
+
+/**
+ * Single lookup for the draw loop: first matching animation by priority
+ * (dropOut > dropIn > pop > highlight > fall). O(1) map lookups.
+ */
+export function getCellAnimState(cellId: number): { yOffset: number; scaleX: number; scaleY: number; alpha: number } | null {
+  const dropOut = dropOutMap.get(cellId);
+  if (dropOut) return cellRenderStateToCombined(cellStateFromDropOut(dropOut));
+  const dropIn = dropInMap.get(cellId);
+  if (dropIn) return cellRenderStateToCombined(cellStateFromDropIn(dropIn));
+  const pop = popMap.get(cellId);
+  if (pop) return cellRenderStateToCombined(cellStateFromPop(pop));
+  const highlight = highlightMap.get(cellId);
+  if (highlight) return cellRenderStateToCombined(cellStateFromHighlight(highlight));
+  const fall = fallMap.get(cellId);
+  if (fall) return cellRenderStateToCombined(cellStateFromFall(fall));
+  return null;
 }
 
 // ===================== Particles =====================
@@ -361,21 +408,21 @@ function easeOutCubic(t: number): number {
 // ===================== Tick =====================
 
 export function tickAnimations(dtMs: number): void {
-  for (const d of activeDropOuts) {
+  for (const d of dropOutMap.values()) {
     if (d.delayMs > 0) { d.delayMs -= dtMs; continue; }
     d.elapsedMs += dtMs;
   }
-  for (const d of activeDropIns) {
+  for (const d of dropInMap.values()) {
     if (d.delayMs > 0) { d.delayMs -= dtMs; continue; }
     d.elapsedMs += dtMs;
   }
-  for (const h of activeHighlights) {
+  for (const h of highlightMap.values()) {
     h.elapsedMs += dtMs;
   }
-  for (const p of activePops) {
+  for (const p of popMap.values()) {
     p.elapsedMs += dtMs;
   }
-  for (const f of activeFalls) {
+  for (const f of fallMap.values()) {
     if (f.delayMs > 0) { f.delayMs -= dtMs; continue; }
     f.elapsedMs += dtMs;
   }
@@ -431,11 +478,21 @@ export function getCameraShakeOffset(): { x: number; y: number } {
 }
 
 export function hasActiveAnimations(): boolean {
-  if (activeDropOuts.some((d) => d.delayMs > 0 || d.elapsedMs < d.durationMs)) return true;
-  if (activeDropIns.some((d) => d.delayMs > 0 || d.elapsedMs < d.durationMs)) return true;
-  if (activeHighlights.some((h) => h.elapsedMs < h.durationMs)) return true;
-  if (activePops.some((p) => p.elapsedMs < p.durationMs)) return true;
-  if (activeFalls.some((f) => f.delayMs > 0 || f.elapsedMs < f.durationMs)) return true;
+  for (const d of dropOutMap.values()) {
+    if (d.delayMs > 0 || d.elapsedMs < d.durationMs) return true;
+  }
+  for (const d of dropInMap.values()) {
+    if (d.delayMs > 0 || d.elapsedMs < d.durationMs) return true;
+  }
+  for (const h of highlightMap.values()) {
+    if (h.elapsedMs < h.durationMs) return true;
+  }
+  for (const p of popMap.values()) {
+    if (p.elapsedMs < p.durationMs) return true;
+  }
+  for (const f of fallMap.values()) {
+    if (f.delayMs > 0 || f.elapsedMs < f.durationMs) return true;
+  }
   if (activeParticles.length > 0) return true;
   if (activeFloatingWins.length > 0) return true;
   if (winFlashActive) return true;
@@ -444,11 +501,11 @@ export function hasActiveAnimations(): boolean {
 }
 
 export function clearAllAnimations(): void {
-  activeDropOuts.length = 0;
-  activeDropIns.length = 0;
-  activeHighlights.length = 0;
-  activePops.length = 0;
-  activeFalls.length = 0;
+  dropOutMap.clear();
+  dropInMap.clear();
+  highlightMap.clear();
+  popMap.clear();
+  fallMap.clear();
   activeParticles.length = 0;
   activeFloatingWins.length = 0;
   winFlashActive = false;

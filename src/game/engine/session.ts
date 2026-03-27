@@ -154,6 +154,9 @@ export class GameSession {
       case 'REBET_LAST':
         this.rebetLastRound();
         break;
+      case 'REBET_DOUBLE':
+        this.rebetDoubleLastRound();
+        break;
       case 'PLACE_SIDE_BET':
         this.placeSideBet(action.seat, action.kind, action.chipValue);
         break;
@@ -674,6 +677,66 @@ export class GameSession {
       }
       if (amt > maxBet) {
         this.lastError = 'Previous bet exceeds table maximum';
+        this.bump();
+        return;
+      }
+    }
+
+    this.resetRound();
+    this.phase = GamePhase.Betting;
+
+    for (let i = 0; i < HAND_COUNT; i++) {
+      const amt = stakes[i]!;
+      if (amt === money(0)) continue;
+      const seat = i as HandIndex;
+      const s = this.seats[seat];
+      s.bet = amt;
+      s.inRound = true;
+      s.status = 'betting';
+      this.betHistory.push({ seat, amount: amt });
+    }
+
+    this.deal();
+  }
+
+  private rebetDoubleLastRound(): void {
+    if (this.phase === GamePhase.DealerTurn) {
+      this.fastForwardDealer();
+    }
+    if (this.phase === GamePhase.Settlement) {
+      while (this.phase === GamePhase.Settlement) {
+        this.settleNextHand();
+      }
+    }
+    if (this.phase !== GamePhase.RoundComplete) return;
+
+    const stakes: MoneyCents[] = this.seats.map((s) =>
+      s.inRound && s.bet > 0 ? money(s.bet * 2) : money(0),
+    );
+
+    const total = stakes.reduce((acc, x) => addMoney(acc, x), money(0));
+    if (total === money(0)) {
+      this.lastError = 'No previous bet to repeat';
+      this.bump();
+      return;
+    }
+    if (total > this.balance) {
+      this.lastError = 'Insufficient balance to rebet x2';
+      this.bump();
+      return;
+    }
+
+    const { minBet, maxBet } = this.operator.tableLimits;
+    for (let i = 0; i < HAND_COUNT; i++) {
+      const amt = stakes[i]!;
+      if (amt === money(0)) continue;
+      if (amt < minBet) {
+        this.lastError = 'Doubled bet is below table minimum';
+        this.bump();
+        return;
+      }
+      if (amt > maxBet) {
+        this.lastError = 'Doubled bet exceeds table maximum';
         this.bump();
         return;
       }

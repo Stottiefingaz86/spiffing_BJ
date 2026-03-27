@@ -5,9 +5,9 @@ import type { FrootJarzSnapshot } from '../engine/session';
 import { GamePhase } from '../engine/session';
 import type { Grid } from '../engine/grid';
 import type { JarState } from '../engine/jarWild';
-import { GRID_COLS, GRID_ROWS, SYMBOL_COLORS } from '../engine/symbols';
+import { GRID_COLS, GRID_ROWS, SYMBOL_COLORS, JAR_WILD } from '../engine/symbols';
 import { preloadAllTextures } from './symbolTextures';
-import { computeGridLayout, drawGridScene } from './drawGrid';
+import { computeGridLayout, drawGridScene, destroyGridScene, type GridLayout } from './drawGrid';
 import {
   clearAllAnimations,
   hasActiveAnimations,
@@ -22,6 +22,7 @@ import {
   triggerCameraShake,
   getCameraShakeOffset,
 } from './gridAnimations';
+import { playFJ, playFJPitched } from '../audio/frootjarzSfx';
 
 export interface FrootJarzCanvasProps {
   snapshot: FrootJarzSnapshot;
@@ -58,8 +59,18 @@ export function FrootJarzCanvas({
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const lastRevRef = useRef(-1);
   const prevGridRef = useRef<Grid | null>(null);
-  // Track running win total across cascade steps for the big pill
   const runningWinRef = useRef(0);
+  const winCountRef = useRef(0);
+
+  // Cached layout — only recompute on canvas resize
+  const layoutCache = useRef<{ w: number; h: number; layout: GridLayout } | null>(null);
+  function getLayout(w: number, h: number): GridLayout {
+    const c = layoutCache.current;
+    if (c && c.w === w && c.h === h) return c.layout;
+    const layout = computeGridLayout(w, h);
+    layoutCache.current = { w, h, layout };
+    return layout;
+  }
 
   const scheduleTimer = useCallback((fn: () => void, ms: number) => {
     const t = setTimeout(fn, ms);
@@ -67,13 +78,12 @@ export function FrootJarzCanvas({
     return t;
   }, []);
 
-  // Helper to call drawGridScene with current display state
   function draw(
     gl: Container,
     renderer: any,
     grid: Grid,
     jars: JarState[],
-    layout: ReturnType<typeof computeGridLayout>,
+    layout: GridLayout,
     winCells?: Set<number>,
     totalWin?: number,
     bet?: number,
@@ -109,7 +119,7 @@ export function FrootJarzCanvas({
 
         const snap = snapRef.current;
         prevGridRef.current = snap.grid.map((row) => row.map((c) => (c ? { ...c } : c)));
-        const layout = computeGridLayout(app.renderer.width, app.renderer.height);
+        const layout = getLayout(app.renderer.width, app.renderer.height);
         draw(gameLayer, app.renderer, snap.grid, snap.jarStates, layout);
 
         app.ticker.add(() => {
@@ -122,7 +132,7 @@ export function FrootJarzCanvas({
           if (hasActiveAnimations()) {
             const d = displayRef.current;
             const s = snapRef.current;
-            const l = computeGridLayout(app.renderer.width, app.renderer.height);
+            const l = getLayout(app.renderer.width, app.renderer.height);
             draw(
               gl, app.renderer,
               d?.grid ?? s.grid,
@@ -137,6 +147,7 @@ export function FrootJarzCanvas({
       destroyed = true;
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
+      destroyGridScene();
       if (appRef.current) {
         const canvas = appRef.current.canvas as HTMLCanvasElement;
         canvas.parentNode?.removeChild(canvas);
@@ -154,7 +165,7 @@ export function FrootJarzCanvas({
     lastRevRef.current = snapshot.revision;
 
     const snap = snapshot;
-    const layout = computeGridLayout(app.renderer.width, app.renderer.height);
+    const layout = getLayout(app.renderer.width, app.renderer.height);
 
     // ── Dropping phase: drop-out old → drop-in new ──
     if (snap.phase === GamePhase.Dropping || snap.phase === GamePhase.FreeSpinDropping) {
@@ -162,9 +173,28 @@ export function FrootJarzCanvas({
       timersRef.current = [];
       clearAllAnimations();
       runningWinRef.current = 0;
+      winCountRef.current = 0;
 
       const oldGrid = prevGridRef.current;
       const newGrid = snap.grid;
+
+      // Schedule row-click sounds and jar sounds during drop-in
+      const scheduleDropInSounds = () => {
+        const colStagger = 60;
+        let hasJar = false;
+        for (let c = 0; c < GRID_COLS; c++) {
+          scheduleTimer(() => {
+            playFJPitched('rowClick', 0.8 + c * 0.08, 0.7);
+          }, c * colStagger);
+          for (let r = 0; r < GRID_ROWS; r++) {
+            const cell = newGrid[r]?.[c];
+            if (cell?.symbol === JAR_WILD && !hasJar) {
+              hasJar = true;
+              scheduleTimer(() => playFJ('jar', 0.08), c * colStagger + 60);
+            }
+          }
+        }
+      };
 
       if (oldGrid) {
         displayRef.current = { grid: oldGrid, jars: [] };
@@ -176,6 +206,7 @@ export function FrootJarzCanvas({
           displayRef.current = { grid: newGrid, jars: snap.jarStates };
           const dropInDur = queueDropInAnimations(newGrid);
           draw(gl, app.renderer, newGrid, snap.jarStates, layout);
+          scheduleDropInSounds();
 
           scheduleTimer(() => {
             clearAllAnimations();
@@ -189,6 +220,7 @@ export function FrootJarzCanvas({
         displayRef.current = { grid: newGrid, jars: snap.jarStates };
         const dropInDur = queueDropInAnimations(newGrid);
         draw(gl, app.renderer, newGrid, snap.jarStates, layout);
+        scheduleDropInSounds();
 
         scheduleTimer(() => {
           clearAllAnimations();
@@ -201,7 +233,7 @@ export function FrootJarzCanvas({
       return;
     }
 
-    // ── Cascading phase: highlight → pop → fall ──
+    // ── Cascading phase: show one cluster at a time, then fall ──
     if ((snap.phase === GamePhase.Cascading || snap.phase === GamePhase.FreeSpinCascading) && snap.currentCascadeIndex >= 0) {
       const step = snap.cascadeSteps[snap.currentCascadeIndex];
       if (!step) return;
@@ -209,46 +241,70 @@ export function FrootJarzCanvas({
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
 
-      const winCells = new Set<number>();
-      for (const cluster of step.clusters) {
-        for (const { row, col } of cluster.cells) {
-          const cell = step.gridBefore[row]?.[col];
-          if (cell) winCells.add(cell.id);
+      const stepWin = Math.round(snap.bet * step.payoutMultiplier);
+
+      // Split win evenly across clusters, correct rounding on last one
+      const n = step.clusters.length;
+      const clusterWins: number[] = [];
+      let allocated = 0;
+      for (let ci = 0; ci < n; ci++) {
+        if (ci === n - 1) {
+          clusterWins.push(stepWin - allocated);
+        } else {
+          const w = Math.round(stepWin / n);
+          clusterWins.push(w);
+          allocated += w;
         }
       }
 
-      const stepWin = Math.round(snap.bet * step.payoutMultiplier);
+      // Chain: for each cluster → highlight → pop, then after all → fall
+      let clusterDelay = 0;
 
-      // ── Highlight ──
-      clearAllAnimations();
-      queueHighlightAnimations([...winCells], 450);
-      displayRef.current = {
-        grid: step.gridBefore,
-        jars: snap.jarStates,
-        winCells,
-        totalWin: runningWinRef.current > 0 ? runningWinRef.current : undefined,
-        bet: snap.bet,
-      };
-      draw(gl, app.renderer, step.gridBefore, snap.jarStates, layout, winCells, runningWinRef.current > 0 ? runningWinRef.current : undefined, snap.bet);
+      for (let ci = 0; ci < step.clusters.length; ci++) {
+        const cluster = step.clusters[ci];
+        const cWin = clusterWins[ci];
 
-      // ── Pop + particles + floating small win ──
-      scheduleTimer(() => {
-        clearAllAnimations();
-        queuePopAnimations([...winCells], 350);
+        const cellIds = new Set<number>();
+        for (const { row, col } of cluster.cells) {
+          const cell = step.gridBefore[row]?.[col];
+          if (cell) cellIds.add(cell.id);
+        }
 
-        // Particles
-        for (const cluster of step.clusters) {
+        // Highlight this cluster
+        const highlightDelay = clusterDelay;
+        scheduleTimer(() => {
+          clearAllAnimations();
+          queueHighlightAnimations([...cellIds], 400);
+          playFJPitched('rowClick', 1.0 + winCountRef.current * 0.12, 0.6);
+
+          const previewWin = runningWinRef.current + cWin;
+          displayRef.current = {
+            grid: step.gridBefore,
+            jars: snap.jarStates,
+            winCells: cellIds,
+            totalWin: previewWin > 0 ? previewWin : undefined,
+            bet: snap.bet,
+          };
+          draw(gl, app.renderer, step.gridBefore, snap.jarStates, layout, cellIds, previewWin > 0 ? previewWin : undefined, snap.bet);
+        }, highlightDelay);
+
+        // Pop this cluster
+        const popDelay = highlightDelay + 420;
+        scheduleTimer(() => {
+          clearAllAnimations();
+          queuePopAnimations([...cellIds], 320);
+          const wc = winCountRef.current;
+          winCountRef.current = wc + 1;
+          playFJPitched('explode', 0.7 + wc * 0.25, 0.1);
+
           const color = SYMBOL_COLORS[cluster.fruit] ?? 0xffffff;
           for (const { row, col } of cluster.cells) {
             const cx = layout.gridX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
             const cy = layout.gridY + row * (layout.cellSize + layout.gap) + layout.cellSize / 2;
-            spawnParticles(cx, cy, color, 10, 3.5, 650);
+            spawnParticles(cx, cy, color, 4, 3, 500);
           }
-        }
 
-        // Floating small win text — spawn at the center of each cluster
-        if (stepWin > 0) {
-          for (const cluster of step.clusters) {
+          if (cWin > 0) {
             let avgX = 0, avgY = 0;
             for (const { row, col } of cluster.cells) {
               avgX += layout.gridX + col * (layout.cellSize + layout.gap) + layout.cellSize / 2;
@@ -256,89 +312,84 @@ export function FrootJarzCanvas({
             }
             avgX /= cluster.cells.length;
             avgY /= cluster.cells.length;
-            const clusterWin = Math.round(snap.bet * (step.payoutMultiplier / step.clusters.length));
-            spawnFloatingWin(avgX, avgY, clusterWin > 0 ? clusterWin : stepWin);
-          }
-        }
-
-        // Update running total
-        runningWinRef.current += stepWin;
-
-        // Camera shake on every win — intensity scales with win size
-        const winRatio = runningWinRef.current / snap.bet;
-        const intensity = Math.min(12, 4 + winRatio * 0.5);
-        triggerCameraShake(intensity, 350);
-
-        displayRef.current = {
-          grid: step.gridBefore,
-          jars: snap.jarStates,
-          winCells,
-          totalWin: runningWinRef.current,
-          bet: snap.bet,
-        };
-        draw(gl, app.renderer, step.gridBefore, snap.jarStates, layout, winCells, runningWinRef.current, snap.bet);
-
-        // ── Fall ──
-        scheduleTimer(() => {
-          clearAllAnimations();
-
-          const gridAfterFill = step.gridAfterFill;
-          const gridAfterRemoval = step.gridAfterRemoval;
-
-          const moves: { cellId: number; fromRow: number; toRow: number; col: number }[] = [];
-          for (let c = 0; c < GRID_COLS; c++) {
-            // Count how many new cells enter this column from above
-            let newCellCount = 0;
-            for (let r = 0; r < GRID_ROWS; r++) {
-              const cell = gridAfterFill[r]?.[c];
-              if (!cell) continue;
-              let foundInOld = false;
-              for (let or = 0; or < GRID_ROWS; or++) {
-                if (gridAfterRemoval[or]?.[c]?.id === cell.id) { foundInOld = true; break; }
-              }
-              if (!foundInOld) newCellCount++;
-            }
-
-            let newIdx = 0;
-            for (let r = 0; r < GRID_ROWS; r++) {
-              const cell = gridAfterFill[r]?.[c];
-              if (!cell) continue;
-              const oldCell = gridAfterRemoval[r]?.[c];
-              if (oldCell && oldCell.id === cell.id) continue;
-
-              let fromRow = -1;
-              for (let or = 0; or < GRID_ROWS; or++) {
-                if (gridAfterRemoval[or]?.[c]?.id === cell.id) { fromRow = or; break; }
-              }
-              if (fromRow === -1) {
-                // New cell: enters from above, staggered
-                fromRow = -(newCellCount - newIdx);
-                newIdx++;
-              }
-              if (fromRow !== r) moves.push({ cellId: cell.id, fromRow, toRow: r, col: c });
-            }
+            spawnFloatingWin(avgX, avgY, cWin);
           }
 
-          const fallDur = queueFallAnimations(moves, 180, 5);
+          runningWinRef.current += cWin;
+
+          const winRatio = runningWinRef.current / snap.bet;
+          triggerCameraShake(Math.min(12, 4 + winRatio * 0.5), 300);
 
           displayRef.current = {
-            grid: gridAfterFill,
-            jars: step.jarStates,
+            grid: step.gridBefore,
+            jars: snap.jarStates,
+            winCells: cellIds,
             totalWin: runningWinRef.current,
             bet: snap.bet,
           };
-          draw(gl, app.renderer, gridAfterFill, step.jarStates, layout, undefined, runningWinRef.current, snap.bet);
+          draw(gl, app.renderer, step.gridBefore, snap.jarStates, layout, cellIds, runningWinRef.current, snap.bet);
+        }, popDelay);
 
-          // ── Pause then advance ──
-          scheduleTimer(() => {
-            clearAllAnimations();
-            displayRef.current = null;
-            prevGridRef.current = gridAfterFill.map((row) => row.map((c) => (c ? { ...c } : c)));
-            draw(gl, app.renderer, gridAfterFill, step.jarStates, layout, undefined, runningWinRef.current, snap.bet);
-            onCascadeRef.current();
-          }, fallDur + 200);
-        }, 400);
-      }, 480);
+        clusterDelay = popDelay + 380;
+      }
+
+      // Fall — after all clusters have been shown
+      scheduleTimer(() => {
+        clearAllAnimations();
+
+        const gridAfterFill = step.gridAfterFill;
+        const gridAfterRemoval = step.gridAfterRemoval;
+
+        const moves: { cellId: number; fromRow: number; toRow: number; col: number }[] = [];
+        for (let c = 0; c < GRID_COLS; c++) {
+          let newCellCount = 0;
+          for (let r = 0; r < GRID_ROWS; r++) {
+            const cell = gridAfterFill[r]?.[c];
+            if (!cell) continue;
+            let foundInOld = false;
+            for (let or = 0; or < GRID_ROWS; or++) {
+              if (gridAfterRemoval[or]?.[c]?.id === cell.id) { foundInOld = true; break; }
+            }
+            if (!foundInOld) newCellCount++;
+          }
+
+          let newIdx = 0;
+          for (let r = 0; r < GRID_ROWS; r++) {
+            const cell = gridAfterFill[r]?.[c];
+            if (!cell) continue;
+            const oldCell = gridAfterRemoval[r]?.[c];
+            if (oldCell && oldCell.id === cell.id) continue;
+
+            let fromRow = -1;
+            for (let or = 0; or < GRID_ROWS; or++) {
+              if (gridAfterRemoval[or]?.[c]?.id === cell.id) { fromRow = or; break; }
+            }
+            if (fromRow === -1) {
+              fromRow = -(newCellCount - newIdx);
+              newIdx++;
+            }
+            if (fromRow !== r) moves.push({ cellId: cell.id, fromRow, toRow: r, col: c });
+          }
+        }
+
+        const fallDur = queueFallAnimations(moves, 180, 5);
+
+        displayRef.current = {
+          grid: gridAfterFill,
+          jars: step.jarStates,
+          totalWin: runningWinRef.current,
+          bet: snap.bet,
+        };
+        draw(gl, app.renderer, gridAfterFill, step.jarStates, layout, undefined, runningWinRef.current, snap.bet);
+
+        scheduleTimer(() => {
+          clearAllAnimations();
+          displayRef.current = null;
+          prevGridRef.current = gridAfterFill.map((row) => row.map((c) => (c ? { ...c } : c)));
+          draw(gl, app.renderer, gridAfterFill, step.jarStates, layout, undefined, runningWinRef.current, snap.bet);
+          onCascadeRef.current();
+        }, fallDur + 200);
+      }, clusterDelay + 50);
 
       return;
     }

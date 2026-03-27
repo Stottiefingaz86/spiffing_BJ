@@ -101,7 +101,7 @@ export function randomFruit(): FruitSymbol {
 }
 
 const JAR_SPAWN_CHANCE = 0.02;
-const SCATTER_SPAWN_CHANCE = 0.03;
+const SCATTER_SPAWN_CHANCE = 0.007;
 
 export function randomSymbol(): CellSymbol {
   const roll = Math.random();

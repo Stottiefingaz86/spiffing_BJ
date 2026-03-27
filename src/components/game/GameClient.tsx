@@ -515,6 +515,18 @@ export default function GameClient() {
                 {session.operator.copy.rebet}
               </DealActionButton>
               <DealActionButton
+                disabled={!snap.seats.some((s) => s.inRound && s.bet > 0)}
+                onClick={() => {
+                  session.dispatch({ type: 'REBET_DOUBLE' });
+                  playSfx('chipStack', 0.5);
+                  refresh();
+                }}
+                className="border-0 bg-amber-500 text-white hover:bg-amber-400"
+              >
+                <span className="text-lg font-black leading-none tracking-tight">×2</span>
+                REBET x2
+              </DealActionButton>
+              <DealActionButton
                 onClick={() => {
                   session.dispatch({ type: 'ACK_ROUND_COMPLETE' });
                   refresh();
@@ -624,20 +636,29 @@ export default function GameClient() {
         <section className="mx-auto flex w-full max-w-md shrink-0 justify-center gap-2.5 px-4 pb-3 lg:hidden">
           <button
             type="button"
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/50 bg-emerald-500/20 active:scale-[0.97] disabled:opacity-40"
+            className="flex h-20 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-emerald-400/50 bg-emerald-500/20 active:scale-[0.97] disabled:opacity-40"
             disabled={!snap.seats.some((s) => s.inRound && s.bet > 0)}
             onClick={() => { session.dispatch({ type: 'REBET_LAST' }); playSfx('chipStack', 0.5); refresh(); }}
           >
-            <RefreshCw className="size-7 text-emerald-400" strokeWidth={2.5} />
-            <span className="text-xs font-extrabold tracking-wider text-white">{session.operator.copy.rebet}</span>
+            <RefreshCw className="size-6 text-emerald-400" strokeWidth={2.5} />
+            <span className="text-[10px] font-extrabold tracking-wider text-white">{session.operator.copy.rebet}</span>
           </button>
           <button
             type="button"
-            className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
+            className="flex h-20 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-amber-400/50 bg-amber-500/20 active:scale-[0.97] disabled:opacity-40"
+            disabled={!snap.seats.some((s) => s.inRound && s.bet > 0)}
+            onClick={() => { session.dispatch({ type: 'REBET_DOUBLE' }); playSfx('chipStack', 0.5); refresh(); }}
+          >
+            <span className="text-lg font-black leading-none text-amber-400">×2</span>
+            <span className="text-[10px] font-extrabold tracking-wider text-white">REBET x2</span>
+          </button>
+          <button
+            type="button"
+            className="flex h-20 flex-1 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-white/20 bg-black/30 active:scale-[0.97]"
             onClick={() => { session.dispatch({ type: 'ACK_ROUND_COMPLETE' }); refresh(); }}
           >
-            <RefreshCw className="size-7 text-pink-400" strokeWidth={2.5} />
-            <span className="text-xs font-extrabold tracking-wider text-white">NEW BET</span>
+            <RefreshCw className="size-6 text-pink-400" strokeWidth={2.5} />
+            <span className="text-[10px] font-extrabold tracking-wider text-white">NEW ROUND</span>
           </button>
         </section>
       )}
