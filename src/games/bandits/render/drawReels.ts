@@ -495,9 +495,18 @@ export function updateReelScene(
 
   const lk = layoutKey(layout, inFreeSpins);
   if (lk !== lastLayoutKey) {
+    const oldSymbols = reelStrips.map((s) => [...s.symbols]);
     const parent = sceneRoot.parent;
     if (parent) {
       initReelScene(parent, renderer, grid, layout, inFreeSpins);
+      for (let r = 0; r < reelStrips.length && r < oldSymbols.length; r++) {
+        reelStrips[r].symbols = oldSymbols[r] as BanditSymbol[];
+        reelStrips[r].finalized = true;
+        for (let i = 0; i < reelStrips[r].sprites.length; i++) {
+          const tex = getSymbolTexture(renderer, reelStrips[r].symbols[i]);
+          if (reelStrips[r].sprites[i].texture !== tex) reelStrips[r].sprites[i].texture = tex;
+        }
+      }
     }
     return;
   }
