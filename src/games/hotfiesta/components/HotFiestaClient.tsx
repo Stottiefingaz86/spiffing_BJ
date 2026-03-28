@@ -3,18 +3,11 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
-import { GamePreloader } from '@/components/GamePreloader';
 
 import { HotFiestaSession, GamePhase, BUY_BONUS_COST } from '../engine/session';
 import { HotFiestaCanvas } from '../render/HotFiestaCanvas';
 import { HotFiestaSettingsModal } from './HotFiestaSettingsModal';
 import { preloadHFSfx, playHF, setHFSfxMuted, setHFBgmMuted, startHFBgm, stopHFBgm, unlockHFAudio, preloadHFBgm } from '../audio/hotfiestaSfx';
-
-const PRELOAD_ASSETS = [
-  '/frootshoot/first spin.wav',
-  '/frootshoot/row_clcik.wav',
-  '/frootshoot/explode.wav',
-];
 
 const glassPill =
   'rounded-[14px] bg-white/[0.08] border border-white/[0.07]';
@@ -22,18 +15,8 @@ const glassPill =
 const infoPill =
   'rounded-full bg-white/[0.06] border border-white/[0.06]';
 
-function handleHFPreloaderPlay() {
-  unlockHFAudio();
-  preloadHFSfx();
-  startHFBgm(0.04);
-}
-
 export default function HotFiestaClient() {
-  return (
-    <GamePreloader assets={PRELOAD_ASSETS} onPlay={handleHFPreloaderPlay}>
-      <HotFiestaGame />
-    </GamePreloader>
-  );
+  return <HotFiestaGame />;
 }
 
 function HotFiestaGame() {
@@ -217,8 +200,8 @@ function HotFiestaGame() {
       className={cn(
         'relative flex h-dvh max-h-dvh flex-col overflow-hidden text-white transition-colors duration-700',
         isFreeSpinActive
-          ? 'bg-gradient-to-b from-[#1a0a0a] via-[#4a1a0a] to-[#1a0a0a]'
-          : 'bg-gradient-to-b from-[#1a1040] via-[#2e1858] to-[#1a1040]',
+          ? 'bg-[#1a0a0a]'
+          : 'bg-[#1a1040]',
       )}
       onClick={() => {
         if (isFreeSpinOutro) {
@@ -227,20 +210,23 @@ function HotFiestaGame() {
         }
       }}
     >
-      {/* Background pattern */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+      {/* Background image */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#2a1810]">
+        <img
+          src="/hotfiesta/bg.png"
+          alt=""
+          className="absolute inset-0 h-full w-full blur-[2px] scale-[1.05] brightness-[0.85] object-cover"
+        />
+        {/* Dark gradient at bottom for UI readability */}
         <div
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: `repeating-conic-gradient(rgba(255,180,0,0.15) 0% 25%, transparent 0% 50%)`,
-            backgroundSize: '48px 48px',
-          }}
+          className="absolute inset-x-0 bottom-0 h-[30%]"
+          style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.9) 100%)' }}
         />
       </div>
 
       {/* Header */}
       <header
-        className="flex shrink-0 items-center gap-2 px-3 pt-[max(0.5rem,calc(env(safe-area-inset-top)+0.15rem))] pb-0 lg:px-8 lg:pt-6 lg:pb-1"
+        className="relative z-10 flex shrink-0 items-center gap-2 px-3 pt-[max(0.5rem,calc(env(safe-area-inset-top)+0.15rem))] pb-0 lg:px-8 lg:pt-6 lg:pb-1"
         onClick={(e) => e.stopPropagation()}
       >
         <a
@@ -288,17 +274,12 @@ function HotFiestaGame() {
 
       {/* Game canvas */}
       <div
-        className="relative min-h-0 flex-1"
+        className="relative z-10 min-h-0 flex-1 max-lg:-mt-[10px]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Title */}
-        <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[30px] max-lg:-top-[20px]">
-          <h1
-            className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-orange-400 to-red-500 drop-shadow-lg lg:text-5xl"
-            style={{ textShadow: '0 2px 12px rgba(255,100,0,0.3)' }}
-          >
-            HOT FIESTA
-          </h1>
+        {/* Logo — absolutely positioned so it doesn't shrink the grid */}
+        <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[70px] max-lg:top-[35px]">
+          <img src="/hotfiesta/logo.png" alt="Hot Fiesta" className="h-36 lg:h-40 w-auto" style={{ willChange: 'transform' }} />
         </div>
 
         <HotFiestaCanvas
@@ -352,10 +333,10 @@ function HotFiestaGame() {
         )}
       </div>
 
-      {/* MOBILE: Spin button */}
+      {/* MOBILE: Big centered spin button (overlaps canvas bottom) */}
       {!isFreeSpinActive && (
         <div
-          className="pointer-events-none absolute bottom-[1.4375rem] left-0 right-0 z-30 flex justify-center lg:hidden"
+          className="pointer-events-none absolute bottom-[5.25rem] left-0 right-0 z-30 flex justify-center lg:hidden"
         >
           <button
             type="button"
@@ -382,7 +363,7 @@ function HotFiestaGame() {
 
       {/* MOBILE footer */}
       <footer
-        className="shrink-0 px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] lg:hidden"
+        className="relative z-10 shrink-0 px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] lg:hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-sm items-center gap-1.5">
@@ -449,7 +430,7 @@ function HotFiestaGame() {
 
       {/* DESKTOP footer */}
       <footer
-        className="hidden shrink-0 px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 lg:block"
+        className="relative z-10 hidden shrink-0 px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 lg:block"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-xl items-center gap-2">

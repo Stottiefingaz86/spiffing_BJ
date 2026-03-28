@@ -5,7 +5,7 @@ import type { HotFiestaSnapshot } from '../engine/session';
 import { GamePhase } from '../engine/session';
 import type { Grid } from '../engine/grid';
 import type { JarState } from '../engine/jarWild';
-import { GRID_COLS, GRID_ROWS, SYMBOL_COLORS, JAR_WILD } from '../engine/symbols';
+import { GRID_COLS, GRID_ROWS, SYMBOL_COLORS, JAR_WILD, SCATTER } from '../engine/symbols';
 import { preloadAllTextures } from './symbolTextures';
 import { computeGridLayout, drawGridScene, destroyGridScene, type GridLayout } from './drawGrid';
 import {
@@ -181,16 +181,20 @@ export function HotFiestaCanvas({
       const oldGrid = prevGridRef.current;
       const newGrid = snap.grid;
 
-      // Schedule row-click sounds and jar sounds during drop-in
       const scheduleDropInSounds = () => {
         const colStagger = 60;
         let hasJar = false;
+        let hasScatter = false;
         for (let c = 0; c < GRID_COLS; c++) {
           scheduleTimer(() => {
-            playHFPitched('rowClick', 0.8 + c * 0.08, 0.7);
+            playHF('rowClick', 0.15);
           }, c * colStagger);
           for (let r = 0; r < GRID_ROWS; r++) {
             const cell = newGrid[r]?.[c];
+            if (cell?.symbol === SCATTER && !hasScatter) {
+              hasScatter = true;
+              scheduleTimer(() => playHF('scatter', 0.3), c * colStagger + 60);
+            }
             if (cell?.symbol === JAR_WILD && !hasJar) {
               hasJar = true;
               scheduleTimer(() => playHF('jar', 0.08), c * colStagger + 60);
@@ -322,7 +326,7 @@ export function HotFiestaCanvas({
 
           const wc = winCountRef.current;
           winCountRef.current = wc + 1;
-          playHFPitched('explode', 0.7 + wc * 0.25, 0.1);
+          playHFPitched('explode', 0.7 + wc * 0.25, 0.1, 1.5);
 
           const color = SYMBOL_COLORS[cluster.fruit] ?? 0xffffff;
           for (const { row, col } of cluster.cells) {

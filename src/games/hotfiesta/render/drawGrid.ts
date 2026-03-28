@@ -41,7 +41,7 @@ export function computeGridLayout(canvasW: number, canvasH: number): GridLayout 
   const totalW = GRID_COLS * (cellSize + gap) - gap;
   const totalH = GRID_ROWS * (cellSize + gap) - gap;
   const gridX = (canvasW - totalW) / 2;
-  const gridY = (canvasH - totalH) / 2 + (isMobile ? 25 : 20);
+  const gridY = (canvasH - totalH) / 2 + (isMobile ? 15 : 10);
   return { gridX, gridY, cellSize, gap };
 }
 
@@ -242,11 +242,97 @@ export function updateGridScene(
   if (layoutChanged) {
     prevLayoutKey = lk;
     bgGfx.clear();
-    bgGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, 12);
-    bgGfx.fill({ color: inFreeSpins ? 0x1a0e0a : 0x1a1230, alpha: 0.45 });
+
+    const borderW = Math.max(18, cellSize * 0.24);
+    const outerPad = bgPad + borderW;
+    const outerW = gridW + borderW * 2;
+    const outerH = gridH + borderW * 2;
+    const outerR = 18;
+    const innerR = 12;
+
+    const frameOuter = inFreeSpins ? 0xff9933 : 0x4477ff;
+    const frameMid = inFreeSpins ? 0xcc6600 : 0x2255dd;
+    const frameInner = inFreeSpins ? 0x994d00 : 0x0e1a70;
+    const triColor = inFreeSpins ? 0xffdd88 : 0x6699ff;
+
+    // Outer glow
+    bgGfx.roundRect(gridX - outerPad - 3, gridY - outerPad - 3, outerW + 6, outerH + 6, outerR + 2);
+    bgGfx.fill({ color: frameMid, alpha: 0.35 });
+
+    // Build gradient border using concentric thick strokes (no cut())
+    const layers = 6;
+    for (let i = 0; i < layers; i++) {
+      const t = i / (layers - 1);
+      const inset = borderW * t;
+      const w = borderW / layers + 1;
+      const r = outerR - (outerR - innerR) * t;
+      const color = t < 0.33 ? frameOuter : t < 0.66 ? frameMid : frameInner;
+      bgGfx.roundRect(
+        gridX - outerPad + inset, gridY - outerPad + inset,
+        outerW - inset * 2, outerH - inset * 2, Math.max(r, 4),
+      );
+      bgGfx.stroke({ color, width: w });
+    }
+
+    // Outer bright edge
+    bgGfx.roundRect(gridX - outerPad, gridY - outerPad, outerW, outerH, outerR);
+    bgGfx.stroke({ color: 0xffffff, width: 1.5, alpha: 0.3 });
+
+    // Dark inner separation line
+    bgGfx.roundRect(gridX - bgPad - 1, gridY - bgPad - 1, gridW + 2, gridH + 2, innerR);
+    bgGfx.stroke({ color: 0x050a20, width: 3 });
+
+    // Small triangles pointing inward
+    const triSpacing = Math.max(20, cellSize * 0.42);
+    const triSize = Math.max(3, borderW * 0.16);
+    const triOff = borderW * 0.3;
+
+    const ox = gridX - outerPad;
+    const oy = gridY - outerPad;
+
+    // Top — pointing down
+    for (let x = ox + outerR + triSpacing * 0.5; x < ox + outerW - outerR; x += triSpacing) {
+      const ty = oy + triOff;
+      bgGfx.moveTo(x - triSize, ty);
+      bgGfx.lineTo(x + triSize, ty);
+      bgGfx.lineTo(x, ty + triSize * 1.2);
+      bgGfx.closePath();
+      bgGfx.fill({ color: triColor });
+    }
+    // Bottom — pointing up
+    for (let x = ox + outerR + triSpacing * 0.5; x < ox + outerW - outerR; x += triSpacing) {
+      const by = oy + outerH - triOff;
+      bgGfx.moveTo(x - triSize, by);
+      bgGfx.lineTo(x + triSize, by);
+      bgGfx.lineTo(x, by - triSize * 1.2);
+      bgGfx.closePath();
+      bgGfx.fill({ color: triColor });
+    }
+    // Left — pointing right
+    for (let y = oy + outerR + triSpacing * 0.5; y < oy + outerH - outerR; y += triSpacing) {
+      const lx = ox + triOff;
+      bgGfx.moveTo(lx, y - triSize);
+      bgGfx.lineTo(lx, y + triSize);
+      bgGfx.lineTo(lx + triSize * 1.2, y);
+      bgGfx.closePath();
+      bgGfx.fill({ color: triColor });
+    }
+    // Right — pointing left
+    for (let y = oy + outerR + triSpacing * 0.5; y < oy + outerH - outerR; y += triSpacing) {
+      const rx = ox + outerW - triOff;
+      bgGfx.moveTo(rx, y - triSize);
+      bgGfx.lineTo(rx, y + triSize);
+      bgGfx.lineTo(rx - triSize * 1.2, y);
+      bgGfx.closePath();
+      bgGfx.fill({ color: triColor });
+    }
+
+    // Inner background — mostly opaque dark blue with a hint of transparency
+    bgGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, innerR);
+    bgGfx.fill({ color: inFreeSpins ? 0x120a06 : 0x0c1028, alpha: 0.85 });
 
     maskGfx.clear();
-    maskGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, 12);
+    maskGfx.roundRect(gridX - bgPad, gridY - bgPad, gridW, gridH, innerR);
     maskGfx.fill({ color: 0xffffff });
   }
 
@@ -264,16 +350,20 @@ export function updateGridScene(
         const isWin = cell && winningCellIds?.has(cell.id);
         if (isWin) {
           const color = SYMBOL_COLORS[cell.symbol] ?? 0xffffff;
+          cellBgGfx.roundRect(cx - 2, cy - 2, cellSize + 4, cellSize + 4, 10);
+          cellBgGfx.fill({ color, alpha: 0.3 });
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
-          cellBgGfx.fill({ color, alpha: 0.45 });
+          cellBgGfx.fill({ color: 0x141a38, alpha: 0.65 });
           cellBgGfx.roundRect(cx + 1, cy + 1, cellSize - 2, cellSize - 2, 7);
-          cellBgGfx.stroke({ color, width: 3, alpha: 0.8 });
+          cellBgGfx.stroke({ color, width: 2.5, alpha: 0.9 });
         } else if (hasWinners) {
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
-          cellBgGfx.fill({ color: inFreeSpins ? 0x0a0808 : 0x0a0818, alpha: 0.7 });
+          cellBgGfx.fill({ color: 0x080c1a, alpha: 0.6 });
         } else {
           cellBgGfx.roundRect(cx, cy, cellSize, cellSize, 8);
-          cellBgGfx.fill({ color: inFreeSpins ? 0x2a1a10 : 0x2a1f45, alpha: 0.3 });
+          cellBgGfx.fill({ color: 0x141a38, alpha: 0.5 });
+          cellBgGfx.roundRect(cx + 0.5, cy + 0.5, cellSize - 1, cellSize - 1, 7.5);
+          cellBgGfx.stroke({ color: 0x1e2850, width: 1, alpha: 0.3 });
         }
       }
     }
@@ -328,6 +418,18 @@ export function updateGridScene(
       const bx = gridX + c * step + cellSize / 2 + xOff * step;
       const by = gridY + r * step + cellSize / 2 + yOff * step;
 
+      // Scatter orange glow — drawn per-frame so it syncs with the sprite
+      if (cell.symbol === SCATTER && a > 0.1) {
+        const cx0 = gridX + c * step + xOff * step;
+        const cy0 = gridY + r * step + yOff * step;
+        glowGfx.roundRect(cx0 - 2, cy0 - 2, cellSize + 4, cellSize + 4, 10);
+        glowGfx.fill({ color: 0xff8800, alpha: 0.35 * a });
+        glowGfx.roundRect(cx0, cy0, cellSize, cellSize, 8);
+        glowGfx.fill({ color: 0xff6600, alpha: 0.6 * a });
+        glowGfx.roundRect(cx0 + 1, cy0 + 1, cellSize - 2, cellSize - 2, 7);
+        glowGfx.stroke({ color: 0xffaa33, width: 2, alpha: 0.8 * a });
+      }
+
       // Jar animated glow — blurred pulsating aura (drawn on jarGlowGfx with BlurFilter)
       if (cell.symbol === JAR_WILD && !getCellPopState(cell.id)) {
         const t = animTime * 0.001;
@@ -373,13 +475,21 @@ export function updateGridScene(
       const isWinCell = winningCellIds?.has(cell.id);
       const dimFactor = hasWinners && !isWinCell ? 0.25 : 1;
 
-      // Sprite — jar renders larger to compensate for image padding
       const spriteScale = cell.symbol === JAR_WILD ? 1.25 : 0.92;
       sp.visible = true;
       sp.x = bx;
       sp.y = by;
-      sp.width = cellSize * spriteScale * sX;
-      sp.height = cellSize * spriteScale * sY;
+      const targetSize = cellSize * spriteScale;
+      const texW = sp.texture.width || 1;
+      const texH = sp.texture.height || 1;
+      const aspect = texW / texH;
+      if (aspect >= 1) {
+        sp.width = targetSize * sX;
+        sp.height = (targetSize / aspect) * sY;
+      } else {
+        sp.height = targetSize * sY;
+        sp.width = (targetSize * aspect) * sX;
+      }
       sp.alpha = a * dimFactor;
 
       if (cell.symbol === JAR_WILD) {
@@ -457,24 +567,30 @@ export function updateGridScene(
     }
   }
 
-  // Explosion particles (unblurred)
+  // Confetti particles
   particleGfx.clear();
   const particles = getParticles();
   for (const p of particles) {
     const pa = 1 - p.life / p.maxLife;
-    const sz = p.size * (0.6 + 0.8 * pa);
-    // Outer bloom glow
-    particleGfx.circle(p.x, p.y, sz * 2.5);
-    particleGfx.fill({ color: p.color, alpha: pa * 0.15 });
-    // Mid glow
-    particleGfx.circle(p.x, p.y, sz * 1.6);
-    particleGfx.fill({ color: p.color, alpha: pa * 0.35 });
-    // White hot core
-    particleGfx.circle(p.x, p.y, sz);
-    particleGfx.fill({ color: 0xffffff, alpha: pa * 0.8 });
-    // Colored core
-    particleGfx.circle(p.x, p.y, sz * 0.7);
-    particleGfx.fill({ color: p.color, alpha: pa * 1.0 });
+    const sz = p.size * (0.5 + 0.5 * pa);
+    const w = sz * 2;
+    const h = w * p.aspect;
+    const cos = Math.cos(p.rotation);
+    const sin = Math.sin(p.rotation);
+    const hw = w / 2;
+    const hh = h / 2;
+    const corners = [
+      { x: p.x + (-hw * cos - -hh * sin), y: p.y + (-hw * sin + -hh * cos) },
+      { x: p.x + (hw * cos - -hh * sin),  y: p.y + (hw * sin + -hh * cos) },
+      { x: p.x + (hw * cos - hh * sin),   y: p.y + (hw * sin + hh * cos) },
+      { x: p.x + (-hw * cos - hh * sin),  y: p.y + (-hw * sin + hh * cos) },
+    ];
+    particleGfx.moveTo(corners[0].x, corners[0].y);
+    particleGfx.lineTo(corners[1].x, corners[1].y);
+    particleGfx.lineTo(corners[2].x, corners[2].y);
+    particleGfx.lineTo(corners[3].x, corners[3].y);
+    particleGfx.closePath();
+    particleGfx.fill({ color: p.color, alpha: pa * 0.9 });
   }
 
   // Floating win texts (pooled)

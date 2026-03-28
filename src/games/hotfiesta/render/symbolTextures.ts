@@ -1,4 +1,4 @@
-import { Assets, Graphics, type Renderer, type Texture } from 'pixi.js';
+import { Assets, Graphics, Texture, type Renderer } from 'pixi.js';
 import {
   ALL_SYMBOLS,
   FiestaSymbol,
@@ -8,8 +8,94 @@ import {
   type CellSymbol,
 } from '../engine/symbols';
 
+const BASE =
+  typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
+    ? import.meta.env.BASE_URL.replace(/\/?$/, '/')
+    : '/';
+
+const SYMBOL_PNG_MAP: Partial<Record<CellSymbol, string>> = {
+  [FiestaSymbol.Cactus]:    `${BASE}hotfiesta/cactus.png`,
+  [FiestaSymbol.Chili]:     `${BASE}hotfiesta/chilli.png`,
+  [FiestaSymbol.Bottle]:    `${BASE}hotfiesta/tequila_bottle.png`,
+  [FiestaSymbol.Maracas]:   `${BASE}hotfiesta/maracas.png`,
+  [FiestaSymbol.Taco]:      `${BASE}hotfiesta/taco.png`,
+  [FiestaSymbol.Sombrero]:  `${BASE}hotfiesta/hat.png`,
+  [FiestaSymbol.Drum]:      `${BASE}hotfiesta/drum.png`,
+  [JAR_WILD]:               `${BASE}hotfiesta/x2.png`,
+  [SCATTER]:                `${BASE}hotfiesta/scatter.png`,
+};
+
 const TEXTURE_SIZE = 128;
 const cache = new Map<string, Texture>();
+let pngTexturesLoaded = false;
+
+async function loadTrimmedTexture(url: string): Promise<Texture | null> {
+  try {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error(`Failed to load ${url}`));
+      img.src = url;
+    });
+
+    const c = document.createElement('canvas');
+    c.width = img.width;
+    c.height = img.height;
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, c.width, c.height).data;
+
+    let minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        if (data[(y * c.width + x) * 4 + 3] > 10) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (maxX <= minX || maxY <= minY) {
+      const tex = Texture.from(c);
+      tex.source.scaleMode = 'linear';
+      return tex;
+    }
+
+    const tw = maxX - minX + 1;
+    const th = maxY - minY + 1;
+    const trimmed = document.createElement('canvas');
+    trimmed.width = tw;
+    trimmed.height = th;
+    const tctx = trimmed.getContext('2d');
+    if (!tctx) return null;
+    tctx.drawImage(c, minX, minY, tw, th, 0, 0, tw, th);
+
+    const tex = Texture.from(trimmed);
+    tex.source.scaleMode = 'linear';
+    return tex;
+  } catch (e) {
+    console.warn('loadTrimmedTexture failed:', url, e);
+    return null;
+  }
+}
+
+async function loadSymbolPNGs(): Promise<void> {
+  if (pngTexturesLoaded) return;
+  const entries = Object.entries(SYMBOL_PNG_MAP) as [CellSymbol, string][];
+  await Promise.all(
+    entries.map(async ([symbol, url]) => {
+      try {
+        const tex = await loadTrimmedTexture(url);
+        if (tex) cache.set(symbol, tex);
+      } catch { /* falls back to generated */ }
+    }),
+  );
+  pngTexturesLoaded = true;
+}
 
 function buildSombreroTexture(renderer: Renderer): Texture {
   const g = new Graphics();
@@ -299,6 +385,7 @@ export function getSymbolTexture(renderer: Renderer, symbol: CellSymbol): Textur
 }
 
 export async function preloadAllTextures(renderer: Renderer): Promise<void> {
+  await loadSymbolPNGs();
   for (const sym of ALL_SYMBOLS) {
     getSymbolTexture(renderer, sym);
   }

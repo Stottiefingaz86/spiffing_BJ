@@ -1,6 +1,5 @@
 /**
  * Hot Fiesta sound-effect manager.
- * Reuses Froot Jarz sounds for now — swap paths when custom assets arrive.
  */
 
 const BASE =
@@ -9,13 +8,13 @@ const BASE =
     : '/';
 
 const SFX_FILES = {
-  spin: `${BASE}frootshoot/first spin.wav`,
-  rowClick: `${BASE}frootshoot/row_clcik.wav`,
-  jar: `${BASE}frootshoot/jar.wav`,
-  explode: `${BASE}frootshoot/explode.wav`,
-  win: `${BASE}sounds/Win.wav`,
-  win2: `${BASE}sounds/win2.wav`,
-  chipStack: `${BASE}sounds/PokerChipStack_BW.48724.wav`,
+  spin: `${BASE}hotfiesta/sounds/spin.mp3`,
+  reelStop: `${BASE}hotfiesta/sounds/reel_stop.mp3`,
+  scatter: `${BASE}hotfiesta/sounds/scatter.mp3`,
+  win: `${BASE}hotfiesta/sounds/win.mp3`,
+  rowClick: `${BASE}hotfiesta/sounds/reel_stop.mp3`,
+  jar: `${BASE}hotfiesta/sounds/scatter.mp3`,
+  explode: `${BASE}hotfiesta/sounds/win.mp3`,
 } as const;
 
 export type HFSfxName = keyof typeof SFX_FILES;
@@ -67,7 +66,7 @@ export function setHFSfxMuted(value: boolean): void {
   muted = value;
 }
 
-export function playHF(name: HFSfxName, volume = 0.5): void {
+export function playHF(name: HFSfxName, volume = 0.5, maxDuration?: number): void {
   if (muted) return;
   const buf = buffers.get(name);
   if (!buf) return;
@@ -84,9 +83,17 @@ export function playHF(name: HFSfxName, volume = 0.5): void {
   source.connect(gain);
   gain.connect(ac.destination);
   source.start(0);
+
+  if (maxDuration && maxDuration > 0) {
+    const fadeStart = ac.currentTime + maxDuration - 0.3;
+    const fadeEnd = ac.currentTime + maxDuration;
+    gain.gain.setValueAtTime(volume, fadeStart);
+    gain.gain.linearRampToValueAtTime(0, fadeEnd);
+    source.stop(fadeEnd);
+  }
 }
 
-export function playHFPitched(name: HFSfxName, rate = 1, volume = 0.5): void {
+export function playHFPitched(name: HFSfxName, rate = 1, volume = 0.5, maxDuration?: number): void {
   if (muted) return;
   const buf = buffers.get(name);
   if (!buf) return;
@@ -104,11 +111,19 @@ export function playHFPitched(name: HFSfxName, rate = 1, volume = 0.5): void {
   source.connect(gain);
   gain.connect(ac.destination);
   source.start(0);
+
+  if (maxDuration && maxDuration > 0) {
+    const fadeStart = ac.currentTime + maxDuration - 0.3;
+    const fadeEnd = ac.currentTime + maxDuration;
+    gain.gain.setValueAtTime(volume, fadeStart);
+    gain.gain.linearRampToValueAtTime(0, fadeEnd);
+    source.stop(fadeEnd);
+  }
 }
 
 // ── Background music ──
 
-const BGM_URL = `${BASE}sounds/cozy-jazz-piano-2025-01-15-22-25-52-utc/Cozy Jazz Piano.mp3`;
+const BGM_URL = `${BASE}hotfiesta/sounds/ES_La Cucaracha (Instrumental Version) - Alcones Negros.mp3`;
 let bgmBuffer: AudioBuffer | null = null;
 let bgmSource: AudioBufferSourceNode | null = null;
 let bgmGain: GainNode | null = null;

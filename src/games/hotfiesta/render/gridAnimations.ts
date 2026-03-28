@@ -447,30 +447,42 @@ export interface Particle {
   life: number;
   maxLife: number;
   size: number;
+  rotation: number;
+  rotSpeed: number;
+  aspect: number;
 }
+
+const CONFETTI_COLORS = [
+  0xff2222, 0xff6600, 0xffd700, 0x33cc33, 0x4499ff,
+  0xff44ff, 0x00dddd, 0xffaa00, 0xff4488, 0x88ff44,
+];
 
 const activeParticles: Particle[] = [];
 
 export function spawnParticles(
   x: number,
   y: number,
-  color: number,
+  _color: number,
   count = 10,
   speed = 3.5,
   lifeMs = 650,
 ): void {
-  for (let i = 0; i < count; i++) {
-    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.8;
-    const v = speed * (0.5 + Math.random());
+  const n = Math.max(count, 14);
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 1.2;
+    const v = speed * (0.6 + Math.random() * 1.0);
     activeParticles.push({
-      x,
-      y,
+      x: x + (Math.random() - 0.5) * 8,
+      y: y + (Math.random() - 0.5) * 8,
       vx: Math.cos(angle) * v,
-      vy: Math.sin(angle) * v - 1.5, // slight upward bias
-      color,
+      vy: Math.sin(angle) * v - 3.5,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
       life: 0,
-      maxLife: lifeMs * (0.6 + Math.random() * 0.8),
-      size: 3 + Math.random() * 5,
+      maxLife: lifeMs * (0.7 + Math.random() * 0.8),
+      size: 3 + Math.random() * 4,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.3,
+      aspect: 0.4 + Math.random() * 0.6,
     });
   }
 }
@@ -641,7 +653,9 @@ export function tickAnimations(dtMs: number): void {
     const dt = dtMs / 16;
     p.x += p.vx * dt;
     p.y += p.vy * dt;
-    p.vy += 0.18 * dt; // gravity
+    p.vy += 0.12 * dt;
+    p.vx *= 0.995;
+    p.rotation += p.rotSpeed * dt;
     p.life += dtMs;
     if (p.life >= p.maxLife) activeParticles.splice(i, 1);
   }
