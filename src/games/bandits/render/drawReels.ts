@@ -585,11 +585,13 @@ export function updateReelScene(
       }
     } else {
       // ── Stopped or bouncing: lock symbols to grid values ──
-      strip.symbols[0] = randomBaseSymbol();
+      if (!strip.finalized) {
+        strip.symbols[0] = randomBaseSymbol();
+        strip.symbols[4] = randomBaseSymbol();
+      }
       strip.symbols[1] = g0;
       strip.symbols[2] = g1;
       strip.symbols[3] = g2;
-      strip.symbols[4] = randomBaseSymbol();
       strip.landed = true;
       strip.finalized = true;
 

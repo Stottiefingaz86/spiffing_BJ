@@ -100,6 +100,8 @@ function BanditGame() {
     const s = session.getSnapshot();
     if (s.phase !== GamePhase.Idle || s.balance < s.bet) return;
     unlockBanditAudio();
+    preloadBanditSfx();
+    startBanditBgm(0.15);
     playBandit('spin', 0.25);
     setDisplayedWin(0);
     targetWinRef.current = 0;
