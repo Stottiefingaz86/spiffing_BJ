@@ -187,7 +187,7 @@ export function FrootJarzCanvas({
         let hasJar = false;
         for (let c = 0; c < GRID_COLS; c++) {
           scheduleTimer(() => {
-            playFJPitched('rowClick', 0.8 + c * 0.08, 0.7);
+            playFJPitched('reelEnd', 0.88 + c * 0.06, 0.52);
           }, c * colStagger);
           for (let r = 0; r < GRID_ROWS; r++) {
             const cell = newGrid[r]?.[c];

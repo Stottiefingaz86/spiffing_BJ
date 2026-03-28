@@ -16,6 +16,7 @@ const { title = 'Multi-Hand Blackjack' } = Astro.props;
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="generator" content={Astro.generator} />
 		<title>{title}</title>
+		<slot name="head" />
 	</head>
 	<body class="h-dvh overflow-hidden bg-[#2c1f3f] text-white antialiased">
 		<slot />

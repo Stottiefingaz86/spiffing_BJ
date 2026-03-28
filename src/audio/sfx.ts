@@ -114,6 +114,96 @@ export function playSfxPitched(name: SfxName, rate = 0.7, volume = 0.5): void {
   source.start(0);
 }
 
-// Background music disabled for now
-export function startBgm(): void {}
-export function setBgmMuted(_value: boolean): void {}
+// ── Background music (`public/cards/bgmusic.mp3`) ──
+// Same AudioContext as SFX → browser sums both at the destination; keep BGM gain low.
+
+const BGM_URL = `${BASE}cards/bgmusic.mp3`;
+
+/** Bed level vs SFX (~0.4 deal/flip); tweak if the MP3 is loud/quiet in the mix */
+const DEFAULT_BGM_VOLUME = 0.085;
+
+let bgmBuffer: AudioBuffer | null = null;
+let bgmSource: AudioBufferSourceNode | null = null;
+let bgmGain: GainNode | null = null;
+let bgmPlaying = false;
+let bgmMuted = false;
+let bgmTargetVolume = DEFAULT_BGM_VOLUME;
+
+let bgmLoadingPromise: Promise<void> | null = null;
+
+function loadBgm(): Promise<void> {
+  if (bgmBuffer) return Promise.resolve();
+  if (bgmLoadingPromise) return bgmLoadingPromise;
+  bgmLoadingPromise = (async () => {
+    const ac = getContext();
+    try {
+      const res = await fetch(BGM_URL);
+      const arrayBuf = await res.arrayBuffer();
+      bgmBuffer = await ac.decodeAudioData(arrayBuf);
+    } catch {
+      // Non-critical
+    }
+  })();
+  return bgmLoadingPromise;
+}
+
+export function preloadBgm(): void {
+  void loadBgm();
+}
+
+async function startBgmAsync(volume = DEFAULT_BGM_VOLUME): Promise<void> {
+  bgmTargetVolume = volume;
+
+  const ac = getContext();
+  if (ac.state === 'suspended') {
+    try {
+      await ac.resume();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  await loadBgm();
+  if (!bgmBuffer) return;
+
+  if (bgmPlaying && bgmGain) {
+    bgmGain.gain.value = bgmMuted ? 0 : volume;
+    return;
+  }
+
+  bgmSource = ac.createBufferSource();
+  bgmSource.buffer = bgmBuffer;
+  bgmSource.loop = true;
+
+  bgmGain = ac.createGain();
+  bgmGain.gain.value = bgmMuted ? 0 : volume;
+
+  bgmSource.connect(bgmGain);
+  bgmGain.connect(ac.destination);
+  bgmSource.start(0);
+  bgmPlaying = true;
+}
+
+export function startBgm(volume = DEFAULT_BGM_VOLUME): void {
+  void startBgmAsync(volume);
+}
+
+export function stopBgm(): void {
+  if (bgmSource) {
+    try {
+      bgmSource.stop();
+    } catch {
+      /* already stopped */
+    }
+    bgmSource = null;
+  }
+  bgmGain = null;
+  bgmPlaying = false;
+}
+
+export function setBgmMuted(value: boolean): void {
+  bgmMuted = value;
+  if (bgmGain) {
+    bgmGain.gain.value = value ? 0 : bgmTargetVolume;
+  }
+}

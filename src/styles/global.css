@@ -317,3 +317,70 @@
     radial-gradient(circle 1.5px at 50px 50px, rgba(200, 150, 80, 0.2) 0%, transparent 100%);
   background-size: 60px 60px, 60px 60px, 70px 70px, 80px 80px;
 }
+
+/* ── Lobby game tiles (in-game backgrounds as thumbnails) ── */
+
+.lobby-tile-bg-blackjack {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 95% 55% at 25% 88%, rgba(168, 85, 247, 0.2) 0%, transparent 58%),
+    radial-gradient(ellipse 75% 48% at 78% 12%, rgba(236, 72, 153, 0.14) 0%, transparent 52%),
+    linear-gradient(
+      145deg,
+      #1a1334 0%,
+      #261a40 22%,
+      #2e1c42 42%,
+      #221636 62%,
+      #1e1230 82%,
+      #1a1334 100%
+    );
+}
+
+.lobby-tile-bg-blackjack::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      120deg,
+      transparent,
+      transparent 20px,
+      rgba(180, 120, 255, 0.45) 20px,
+      rgba(180, 120, 255, 0.45) 21px,
+      transparent 21px,
+      transparent 40px
+    ),
+    repeating-linear-gradient(
+      60deg,
+      transparent,
+      transparent 28px,
+      rgba(255, 100, 180, 0.35) 28px,
+      rgba(255, 100, 180, 0.35) 29px,
+      transparent 29px,
+      transparent 55px
+    );
+  background-size: 40px 40px, 55px 55px;
+}
+
+.lobby-tile-bg-blackjack-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.38) 50%, rgba(0, 0, 0, 0.78) 100%);
+}
+
+.lobby-tile-bg-frootjarz {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #1a1230 0%, #2a1f48 48%, #1a1528 100%);
+}
+
+.lobby-tile-bg-frootjarz-tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.32) 48%, rgba(0, 0, 0, 0.76) 100%);
+}

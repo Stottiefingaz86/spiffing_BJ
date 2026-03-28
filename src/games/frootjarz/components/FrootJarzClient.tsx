@@ -21,6 +21,7 @@ const PRELOAD_ASSETS = [
   '/frootshoot/LOGO.png',
   '/frootshoot/symbols/sounds/spin.mp3',
   '/frootshoot/symbols/sounds/scatter.mp3',
+  '/frootshoot/reelend.mp3',
 ];
 
 const glassPill =
@@ -90,7 +91,7 @@ function FrootJarzGame() {
     unlockFJAudio();
     preloadFJSfx();
     startFJBgm(0.04);
-    playFJ('spin', 0.25);
+    playFJ('spin', 0.1);
     setDisplayedWin(0);
     targetWinRef.current = 0;
     lastSpinWinRef.current = 0;

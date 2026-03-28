@@ -10,6 +10,7 @@ const BASE =
 
 const SFX_FILES = {
   spin: `${BASE}frootshoot/first spin.wav`,
+  reelEnd: `${BASE}frootshoot/reelend.mp3`,
   rowClick: `${BASE}frootshoot/row_clcik.wav`,
   jar: `${BASE}frootshoot/jar.wav`,
   explode: `${BASE}frootshoot/explode.wav`,

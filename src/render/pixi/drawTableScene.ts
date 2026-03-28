@@ -551,7 +551,8 @@ function drawBettingLayout(
   title.alpha = narrow ? 0.92 : 0.85;
   title.anchor.set(0.5, 0);
   title.x = w / 2;
-  title.y = h * (narrow ? 0.04 : 0.048);
+  // `h` is drawable height below HTML logo (PixiTableCanvas contentInsetTopPx)
+  title.y = h * (narrow ? 0.028 : 0.048);
   root.addChild(title);
   const padX = w * (narrow ? 0.025 : 0.035);
   const usable = w - padX * 2;
@@ -562,7 +563,8 @@ function drawBettingLayout(
   const mainH = Math.min(mainSz, colW * (1 - boxInset * 2) * 0.98);
   const mainW = Math.min(colW * (1 - boxInset * 2) * 0.98, mainH * 1.12);
   const stackGap = Math.max(6, h * 0.016);
-  const baseY = h * (narrow ? 0.385 : 0.415);
+  // Narrow: pull main BET stack up — large gap under “PLACE YOUR BETS” looked empty on phones
+  const baseY = h * (narrow ? 0.30 : 0.415);
 
   const seatGeom: { cx: number; midY: number }[] = [];
   for (let i = 0; i < 5; i++) {
@@ -618,7 +620,7 @@ function drawBettingLayout(
     }
   }
 
-  const chipY = h * (narrow ? 0.755 : 0.785);
+  const chipY = h * (narrow ? 0.72 : 0.785);
   const totalChipW = Math.min(w * (narrow ? 0.97 : 0.94), narrow ? 520 : 500);
   const step = totalChipW / TABLE_CHIP_DENOMS.length;
   const startX = w / 2 - (TABLE_CHIP_DENOMS.length - 1) * step * 0.5;
@@ -985,7 +987,8 @@ export function drawGameLayer(
     });
     phaseBanner.anchor.set(0.5, 0);
     phaseBanner.x = centerX;
-    phaseBanner.y = 8;
+    // Clear HTML logo + subtitle (gameLayer is already offset by contentInsetTopPx; y=8 still sat in that band)
+    phaseBanner.y = Math.max(40, Math.round(h * (narrow ? 0.072 : 0.056)));
     root.addChild(phaseBanner);
   }
 }

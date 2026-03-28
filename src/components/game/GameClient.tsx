@@ -13,11 +13,44 @@ import { AnimatedBalance, type RoundResult } from '@/components/game/AnimatedBal
 import { formatMoney } from '@/lib/formatMoney';
 import { PixiTableCanvas } from '@/render/pixi/PixiTableCanvas';
 import { SettingsModal, type RoundHistoryEntry } from '@/components/game/SettingsModal';
-import { playSfx, playSfxPitched, preloadSfx, setSfxMuted, startBgm, setBgmMuted, unlockAudio } from '@/audio/sfx';
+import {
+  playSfx,
+  playSfxPitched,
+  preloadBgm,
+  preloadSfx,
+  setBgmMuted,
+  setSfxMuted,
+  startBgm,
+  stopBgm,
+  unlockAudio,
+} from '@/audio/sfx';
 import { setAnimationSpeed } from '@/render/pixi/cardFlights';
 
 const headerGlassPill =
   'rounded-[14px] bg-white/[0.10] sm:bg-white/[0.06] sm:backdrop-blur-xl border border-white/[0.07] shadow-[0_0_20px_rgba(168,85,247,0.06)]';
+
+const BJ_ASSET_BASE =
+  typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
+    ? import.meta.env.BASE_URL.replace(/\/?$/, '/')
+    : '/';
+/** `public/cards/multihand logo.png` */
+const BJ_MULTIHAND_LOGO_SRC = `${BJ_ASSET_BASE}cards/multihand%20logo.png`;
+
+/** Vertical band reserved in Pixi so dealer/cards/betting sit below the HTML logo overlay. */
+/** Mobile uses a smaller HTML logo stack after trim — keep inset tight so felt isn’t pushed down too far */
+const PIXI_TOP_INSET = { belowLg: 100, lgUp: 96 } as const;
+
+function usePixiTopInsetPx(): number {
+  const [px, setPx] = useState(PIXI_TOP_INSET.belowLg);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const apply = () => setPx(mq.matches ? PIXI_TOP_INSET.lgUp : PIXI_TOP_INSET.belowLg);
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, []);
+  return px;
+}
 
 function DealActionButton({
   children,
@@ -36,7 +69,7 @@ function DealActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 rounded-[10px] text-[11px] font-bold tracking-[0.06em] shadow-none lg:min-h-[5.25rem] lg:flex-1 lg:text-xs',
+        'flex h-auto min-h-0 w-full shrink-0 flex-col items-center justify-center gap-1.5 rounded-[10px] text-[11px] font-bold tracking-[0.06em] shadow-none lg:aspect-[2/3] lg:gap-2 lg:text-xs',
         className,
       )}
     >
@@ -62,7 +95,7 @@ function PlayActionButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex min-h-[4.75rem] w-full flex-col items-center justify-center gap-1 rounded-[10px] border-2 bg-white/[0.08] sm:bg-white/[0.06] sm:backdrop-blur-md text-[11px] font-bold tracking-[0.06em] shadow-none hover:bg-white/[0.12] active:scale-[0.97] disabled:opacity-40 lg:min-h-[5.25rem] lg:flex-1 lg:rounded-[14px] lg:text-xs',
+        'flex h-auto min-h-0 w-full shrink-0 flex-col items-center justify-center gap-1.5 rounded-[10px] border-2 bg-white/[0.08] sm:bg-white/[0.06] sm:backdrop-blur-md text-[11px] font-bold tracking-[0.06em] shadow-none hover:bg-white/[0.12] active:scale-[0.97] disabled:opacity-40 lg:aspect-[2/3] lg:rounded-[14px] lg:gap-2 lg:text-xs',
         className,
       )}
     >
@@ -73,13 +106,14 @@ function PlayActionButton({
 
 function handleBJPreloaderPlay() {
   unlockAudio();
+  preloadBgm();
   preloadSfx();
   startBgm();
 }
 
 export default function GameClient() {
   return (
-    <GamePreloader onPlay={handleBJPreloaderPlay}>
+    <GamePreloader onPlay={handleBJPreloaderPlay} assets={[BJ_MULTIHAND_LOGO_SRC]}>
       <BlackjackGame />
     </GamePreloader>
   );
@@ -96,8 +130,8 @@ function BlackjackGame() {
   const [selectedChipCents, setSelectedChipCents] = useState(500);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
-  const [musicOn, setMusicOn] = useState(false);
-  const [fastAnimations, setFastAnimations] = useState(false);
+  const [musicOn, setMusicOn] = useState(true);
+  const [fastAnimations, setFastAnimations] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -110,11 +144,16 @@ function BlackjackGame() {
 
   useEffect(() => {
     setSfxMuted(!soundOn);
-    setBgmMuted(!soundOn);
-  }, [soundOn]);
+    setBgmMuted(!soundOn || !musicOn);
+  }, [soundOn, musicOn]);
 
   useEffect(() => {
-    const handler = () => { unlockAudio(); preloadSfx(); startBgm(); };
+    const handler = () => {
+      unlockAudio();
+      preloadBgm();
+      preloadSfx();
+      startBgm();
+    };
     document.addEventListener('touchstart', handler, { once: true });
     document.addEventListener('click', handler, { once: true });
     return () => {
@@ -137,10 +176,17 @@ function BlackjackGame() {
   }, [headerMenuOpen]);
 
   useEffect(() => {
-    const handler = () => { unlockAudio(); preloadSfx(); startBgm(); };
+    const handler = () => {
+      unlockAudio();
+      preloadBgm();
+      preloadSfx();
+      startBgm();
+    };
     window.addEventListener('pointerdown', handler, { once: true });
     return () => window.removeEventListener('pointerdown', handler);
   }, []);
+
+  useEffect(() => () => stopBgm(), []);
 
   /** Advance the shoe one card at a time while the engine is in the dealing phase. */
   useEffect(() => {
@@ -330,6 +376,8 @@ function BlackjackGame() {
 
   const totalBet = snap.seats.reduce((sum, s) => sum + s.bet + s.ppBet + s.twentyOneBet, 0);
 
+  const pixiTopInsetPx = usePixiTopInsetPx();
+
   return (
     <div
       className="game-bg box-border flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden text-white"
@@ -389,36 +437,24 @@ function BlackjackGame() {
         </div>
       </header>
 
-      <section className="shrink-0 px-3 pb-1 pt-3 text-center sm:pt-4 lg:px-4 lg:pb-2.5 lg:pt-5">
-        <h1 className="font-black tracking-[-0.02em]">
-          <span className="block text-[1.35rem] leading-none text-[#c084fc] sm:text-2xl lg:text-4xl">
-            MULTI-HAND
-          </span>
-          <span className="mt-0.5 block text-[1.65rem] leading-none text-white sm:text-3xl lg:mt-1 lg:text-5xl">
-            BLACKJACK
-          </span>
-        </h1>
-        <p className="mt-1.5 text-[8px] font-medium uppercase leading-normal tracking-[0.12em] text-white/60 lg:mt-2 lg:text-[11px] lg:tracking-[0.14em]">
-          {session.operator.copy.gameSubtitle}
-        </p>
-      </section>
-
-      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 gap-2 px-3 pb-2 lg:gap-3 lg:px-12 lg:pb-4">
-        <div className="hidden w-[118px] shrink-0 lg:block" aria-hidden="true" />
+      <div className="relative isolate mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 gap-2 px-3 pb-2 lg:gap-3 lg:px-12 lg:pb-4">
+        <div className="relative z-0 hidden w-[118px] shrink-0 lg:block" aria-hidden="true" />
         <PixiTableCanvas
           snapshot={snap}
           selectedChipCents={selectedChipCents}
           onSelectChip={onSelectChip}
           onMainBet={onMainBet}
           onSideBet={onSideBet}
-          className="min-h-0 min-w-0 flex-1 overflow-hidden"
+          contentInsetTopPx={pixiTopInsetPx}
+          className="relative z-0 min-h-0 min-w-0 flex-1 overflow-hidden"
         />
 
-        <aside className="hidden w-[118px] shrink-0 flex-col gap-2.5 pt-1 lg:flex">
+        <aside className="relative z-10 hidden min-h-0 w-[118px] shrink-0 flex-col justify-center gap-2.5 lg:flex">
           {betting ? (
             <>
               <DealActionButton
                 onClick={() => {
+                  preloadBgm();
                   preloadSfx();
                   session.dispatch({ type: 'DEAL' });
                   refresh();
@@ -554,6 +590,24 @@ function BlackjackGame() {
             </>
           ) : null}
         </aside>
+
+        {/*
+          Last in tree + z-30: full felt (Pixi) paints underneath; logo/subtitle are purely decorative.
+          pointer-events-none keeps chips and betting spots usable under the art.
+        */}
+        <div className="pointer-events-none absolute left-1/2 top-1 z-30 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 flex-col items-center gap-1 px-2 sm:top-1.5 lg:top-2">
+          <h1 className="m-0 flex justify-center">
+            <img
+              src={BJ_MULTIHAND_LOGO_SRC}
+              alt="Multi-Hand Blackjack"
+              className="h-[4rem] w-auto max-w-[min(92vw,640px)] object-contain object-center drop-shadow-[0_4px_28px_rgba(0,0,0,0.72)] sm:h-[4.75rem] lg:h-[5.75rem]"
+              decoding="async"
+            />
+          </h1>
+          <p className="m-0 max-w-[min(92vw,520px)] text-center text-[8px] font-medium uppercase leading-tight tracking-[0.12em] text-white/65 lg:text-[11px] lg:tracking-[0.14em]">
+            {session.operator.copy.gameSubtitle}
+          </p>
+        </div>
       </div>
 
       {/* ---- Mobile action bar (single row, always visible during relevant phases) ---- */}
@@ -627,7 +681,7 @@ function BlackjackGame() {
           </button>
           <button
             type="button"
-            onClick={() => { preloadSfx(); session.dispatch({ type: 'DEAL' }); refresh(); }}
+            onClick={() => { preloadBgm(); preloadSfx(); session.dispatch({ type: 'DEAL' }); refresh(); }}
             className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-emerald-400/70 bg-emerald-500/25 active:scale-[0.97]"
           >
             <Zap className="size-7 text-emerald-400" strokeWidth={2.5} fill="currentColor" />

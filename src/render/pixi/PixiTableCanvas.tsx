@@ -30,12 +30,7 @@ import {
   clearWinParticles,
 } from './winParticles';
 import { loadBrandLogoTexture, loadChipTextures, loadDealerIconTexture, loadSuitTextures } from './cardTextures';
-import {
-  drawFeltBackground,
-  drawGameLayer,
-  updateRegisteredCardFlightWraps,
-  type TableDrawInteraction,
-} from './drawTableScene';
+import { drawFeltBackground, drawGameLayer, type TableDrawInteraction } from './drawTableScene';
 import { buildSeatUiSpots } from './playLayout';
 import { tablePixelRatio } from './renderQuality';
 
@@ -46,6 +41,8 @@ export interface PixiTableCanvasProps {
   onMainBet: (seat: HandIndex) => void;
   onSideBet: (seat: HandIndex, kind: 'pp' | '21+3') => void;
   className?: string;
+  /** Pushes all table content down so Pixi respects the HTML logo overlay (stage Y). */
+  contentInsetTopPx?: number;
 }
 
 export function PixiTableCanvas({
@@ -55,8 +52,11 @@ export function PixiTableCanvas({
   onMainBet,
   onSideBet,
   className,
+  contentInsetTopPx = 0,
 }: PixiTableCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const insetRef = useRef(0);
+  insetRef.current = Math.max(0, contentInsetTopPx);
   const appRef = useRef<Application | null>(null);
   const gameRef = useRef<Container | null>(null);
   const suitTexRef = useRef<Record<Suit, Texture> | null>(null);
@@ -85,13 +85,16 @@ export function PixiTableCanvas({
 
     const paintGame = (fw: number, fh: number) => {
       if (fw < 16 || fh < 16) return;
+      const inset = insetRef.current;
+      const lh = Math.max(16, fh - inset);
+      gameLayer.position.y = inset;
       const inter =
         snapshotRef.current.phase === GamePhase.Betting ? interactionRef.current : null;
       drawGameLayer(
         gameLayer,
         snapshotRef.current,
         fw,
-        fh,
+        lh,
         inter,
         suitTexRef.current,
         brandLogoRef.current,
@@ -203,7 +206,10 @@ export function PixiTableCanvas({
     const fw = app.renderer.width;
     const fh = app.renderer.height;
     const prev = prevSnapshotRef.current;
-    syncCardFlights(prev, snapshot, fw, fh);
+    const inset = insetRef.current;
+    const lh = Math.max(16, fh - inset);
+    gameLayer.position.y = inset;
+    syncCardFlights(prev, snapshot, fw, lh);
 
     // Update the live ref AFTER flights are queued so the ticker never sees
     // a new snapshot without corresponding flights (prevents snap).
@@ -219,10 +225,10 @@ export function PixiTableCanvas({
       if (seat?.settlement) {
         const kind = seat.settlement.kind;
         if (kind === 'win' || kind === 'blackjack') {
-          const spots = buildSeatUiSpots(snapshot, fw, fh);
+          const spots = buildSeatUiSpots(snapshot, fw, lh);
           const spot = spots.find((s) => s.index === snapshot.settlementRevealIndex);
           if (spot) {
-            emitWinParticles(spot.sx, spot.sy, kind === 'blackjack');
+            emitWinParticles(spot.sx, spot.sy + inset, kind === 'blackjack');
           }
         }
       }
@@ -239,9 +245,9 @@ export function PixiTableCanvas({
         const ppJustWon = seat.ppResult?.won && !prevSeat?.ppResult;
         const t1JustWon = seat.twentyOneResult?.won && !prevSeat?.twentyOneResult;
         if (ppJustWon || t1JustWon) {
-          const spots = buildSeatUiSpots(snapshot, fw, fh);
+          const spots = buildSeatUiSpots(snapshot, fw, lh);
           const spot = spots.find((s) => s.index === seat.index);
-          if (spot) emitWinParticles(spot.sx, spot.sy, false);
+          if (spot) emitWinParticles(spot.sx, spot.sy + inset, false);
         }
       }
     }
@@ -254,9 +260,9 @@ export function PixiTableCanvas({
       for (const seat of snapshot.seats) {
         if (!seat.inRound || seat.hand.cards.length !== 2) continue;
         if (isBlackjack(seat.hand.cards)) {
-          const spots = buildSeatUiSpots(snapshot, fw, fh);
+          const spots = buildSeatUiSpots(snapshot, fw, lh);
           const spot = spots.find((s) => s.index === seat.index);
-          if (spot) emitWinParticles(spot.sx, spot.sy, true);
+          if (spot) emitWinParticles(spot.sx, spot.sy + inset, true);
         }
       }
     }
@@ -279,7 +285,7 @@ export function PixiTableCanvas({
       gameLayer,
       snapshot,
       fw,
-      fh,
+      lh,
       inter,
       suitTexRef.current,
       brandLogoRef.current,
@@ -288,7 +294,7 @@ export function PixiTableCanvas({
         dealerIcon: dealerIconRef.current,
       },
     );
-  }, [snapshot.revision, snapshot, selectedChipCents]);
+  }, [snapshot.revision, snapshot, selectedChipCents, contentInsetTopPx]);
 
   return (
     <div

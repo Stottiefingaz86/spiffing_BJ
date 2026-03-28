@@ -79,8 +79,8 @@ function computeLayout(snapshot: TableSnapshot, width: number, height: number) {
     snapshot.phase === GamePhase.RoundComplete
   );
 
-  // Top margin — leave room for phase banner text
-  const topPad = n ? 28 : 34;
+  // Room for phase banner (~7–9% h in drawTableScene) + clearance under HTML logo overlap
+  const topPad = Math.max(n ? 52 : 46, Math.round(height * (n ? 0.095 : 0.078)));
 
   // ---- Zone heights (fractions of remaining canvas below topPad) ----
   const playH = height - topPad;
@@ -142,7 +142,8 @@ function computeLayout(snapshot: TableSnapshot, width: number, height: number) {
   const dealerY = dealerShowdown
     ? topPad + showdownAvail * 0.50
     : dealerZoneTop + dealerCh / 2 - 2;
-  const dealerCx = dealerShowdown ? cx : (n ? width * 0.76 : width * 0.78);
+  // Narrow: keep dealer hand under balance / away from centred HTML logo (was 0.76w → overlap)
+  const dealerCx = dealerShowdown ? cx : (n ? width * 0.84 : width * 0.78);
 
   // Hero: card center pushed up from zone midpoint
   const heroTopY = heroZoneTop + heroZoneH * 0.36;
