@@ -918,7 +918,6 @@ export function drawGameLayer(
     }
 
     const showSettlement =
-      !narrow &&
       seat.settlement &&
       (snapshot.phase === GamePhase.RoundComplete ||
         snapshot.phase === GamePhase.Settlement);
