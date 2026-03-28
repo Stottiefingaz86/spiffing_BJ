@@ -1,4 +1,4 @@
-import { Application, Container } from 'pixi.js';
+import { Application, Container, TextureSource } from 'pixi.js';
 import { useCallback, useEffect, useRef } from 'react';
 
 import type { HotFiestaSnapshot } from '../engine/session';
@@ -98,6 +98,8 @@ export function HotFiestaCanvas({
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+
+    TextureSource.defaultOptions.scaleMode = 'linear';
 
     const app = new Application();
     let destroyed = false;
