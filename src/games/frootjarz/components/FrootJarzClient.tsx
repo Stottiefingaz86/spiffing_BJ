@@ -3,11 +3,25 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
+import { GamePreloader } from '@/components/GamePreloader';
 
 import { FrootJarzSession, GamePhase, BUY_BONUS_COST } from '../engine/session';
 import { FrootJarzCanvas } from '../render/FrootJarzCanvas';
 import { FrootJarzSettingsModal } from './FrootJarzSettingsModal';
 import { preloadFJSfx, playFJ, setFJSfxMuted, setFJBgmMuted, startFJBgm, stopFJBgm, unlockFJAudio, preloadBgm } from '../audio/frootjarzSfx';
+
+const PRELOAD_ASSETS = [
+  '/frootshoot/symbols/s1.png',
+  '/frootshoot/symbols/s2.png',
+  '/frootshoot/symbols/s3.png',
+  '/frootshoot/symbols/s4.png',
+  '/frootshoot/symbols/s5.png',
+  '/frootshoot/symbols/s6.png',
+  '/frootshoot/symbols/jar.png',
+  '/frootshoot/LOGO.png',
+  '/frootshoot/symbols/sounds/spin.mp3',
+  '/frootshoot/symbols/sounds/scatter.mp3',
+];
 
 const glassPill =
   'rounded-[14px] bg-white/[0.08] border border-white/[0.07]';
@@ -15,7 +29,21 @@ const glassPill =
 const infoPill =
   'rounded-full bg-white/[0.06] border border-white/[0.06]';
 
+function handleFJPreloaderPlay() {
+  unlockFJAudio();
+  preloadFJSfx();
+  startFJBgm(0.04);
+}
+
 export default function FrootJarzClient() {
+  return (
+    <GamePreloader assets={PRELOAD_ASSETS} onPlay={handleFJPreloaderPlay}>
+      <FrootJarzGame />
+    </GamePreloader>
+  );
+}
+
+function FrootJarzGame() {
   const sessionRef = useRef<FrootJarzSession | null>(null);
   if (!sessionRef.current) {
     sessionRef.current = new FrootJarzSession();

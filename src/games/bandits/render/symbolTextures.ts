@@ -1,4 +1,4 @@
-import { Assets, Graphics, Texture, type Renderer } from 'pixi.js';
+import { Graphics, Texture, type Renderer } from 'pixi.js';
 import { BanditSymbol, SYMBOL_COLORS } from '../engine/symbols';
 
 const TEXTURE_SIZE = 128;
@@ -308,8 +308,9 @@ async function loadTrimmedTexture(url: string): Promise<Texture | null> {
     }
 
     if (maxX <= minX || maxY <= minY) {
-      // No transparent border to trim - use image as-is
-      return Texture.from(c);
+      const tex = Texture.from(c);
+      tex.source.scaleMode = 'linear';
+      return tex;
     }
 
     const tw = maxX - minX + 1;
@@ -321,7 +322,9 @@ async function loadTrimmedTexture(url: string): Promise<Texture | null> {
     if (!tctx) return null;
     tctx.drawImage(c, minX, minY, tw, th, 0, 0, tw, th);
 
-    return Texture.from(trimmed);
+    const tex = Texture.from(trimmed);
+    tex.source.scaleMode = 'linear';
+    return tex;
   } catch (e) {
     console.warn('loadTrimmedTexture failed:', url, e);
     return null;

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
+import { GamePreloader } from '@/components/GamePreloader';
 
 import { BanditSession, GamePhase, BUY_BONUS_COST, type FreeSpinMode } from '../engine/session';
 import { ReelCanvas, type FrameRect } from '../render/ReelCanvas';
@@ -18,10 +19,48 @@ import {
   preloadBanditSfx,
 } from '../audio/banditSfx';
 
+const PRELOAD_ASSETS = [
+  '/bandits/bg2.png',
+  '/bandits/frame.png',
+  '/bandits/mask.png',
+  '/bandits/logo.png',
+  '/bandits/cowboy.png',
+  '/bandits/WILD.png',
+  '/bandits/scatter.png',
+  '/bandits/J.png',
+  '/bandits/q.png',
+  '/bandits/k.png',
+  '/bandits/a.png',
+  '/bandits/SKULL_SYMBOL.png',
+  '/bandits/FLASH.png',
+  '/bandits/DYNAMITE.png',
+  '/bandits/goldbag.png',
+  '/bandits/bullion.png',
+  '/bandits/sounds/spin.mp3',
+  '/bandits/sounds/reel stop.mp3',
+  '/bandits/sounds/scatter.mp3',
+  '/bandits/sounds/scatter_maybe.mp3',
+  '/bandits/sounds/WIN_LINE.mp3',
+];
+
 const glassPill = 'rounded-[14px] bg-white/[0.08] border border-white/[0.07]';
 const infoPill = 'rounded-full bg-white/[0.06] border border-white/[0.06]';
 
+function handlePreloaderPlay() {
+  unlockBanditAudio();
+  preloadBanditSfx();
+  startBanditBgm(0.15);
+}
+
 export default function BanditClient() {
+  return (
+    <GamePreloader assets={PRELOAD_ASSETS} onPlay={handlePreloaderPlay}>
+      <BanditGame />
+    </GamePreloader>
+  );
+}
+
+function BanditGame() {
   const sessionRef = useRef<BanditSession | null>(null);
   if (!sessionRef.current) {
     sessionRef.current = new BanditSession();
@@ -42,19 +81,10 @@ export default function BanditClient() {
     setSnap(session.getSnapshot());
   }, [session]);
 
+  // Audio is activated by the preloader's onPlay callback.
+  // This ensures BGM resumes if it was stopped, and cleans up on unmount.
   useEffect(() => {
-    const handler = () => {
-      unlockBanditAudio();
-      preloadBanditSfx();
-      startBanditBgm(0.15);
-    };
-    window.addEventListener('pointerdown', handler, { once: true });
-    window.addEventListener('touchstart', handler, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', handler);
-      window.removeEventListener('touchstart', handler);
-      stopBanditBgm();
-    };
+    return () => { stopBanditBgm(); };
   }, []);
 
   useEffect(() => {
@@ -126,6 +156,9 @@ export default function BanditClient() {
     const handleKey = (e: KeyboardEvent) => {
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
+        unlockBanditAudio();
+        preloadBanditSfx();
+        startBanditBgm(0.15);
         if (snap.phase === GamePhase.FreeSpinOutro) {
           session.dismissFreeSpins();
           refresh();

@@ -3,6 +3,7 @@ import { Home, Hand, Menu, RefreshCw, RotateCcw, Settings, Volume2, VolumeX, X, 
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { GamePreloader } from '@/components/GamePreloader';
 import { addMoney } from '@/game/domain/money';
 import { GameSession } from '@/game/engine/session';
 import { isBlackjack, scoreHand } from '@/game/rules/scoring';
@@ -70,7 +71,21 @@ function PlayActionButton({
   );
 }
 
+function handleBJPreloaderPlay() {
+  unlockAudio();
+  preloadSfx();
+  startBgm();
+}
+
 export default function GameClient() {
+  return (
+    <GamePreloader onPlay={handleBJPreloaderPlay}>
+      <BlackjackGame />
+    </GamePreloader>
+  );
+}
+
+function BlackjackGame() {
   const sessionRef = useRef<GameSession | null>(null);
   if (!sessionRef.current) {
     sessionRef.current = new GameSession();
