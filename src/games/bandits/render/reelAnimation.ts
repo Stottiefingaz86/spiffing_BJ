@@ -49,15 +49,15 @@ interface InternalReel {
   scrollInElapsed: number;
 }
 
-const MAX_SPEED = 0.38;
-const ACCEL_DURATION = 300;
-const DECEL_RATE = 0.008;
-const LANDING_TRIGGER_SPEED = 0.16;
-const MIN_SPIN_CELLS = 8;
+const MAX_SPEED = 0.52;
+const ACCEL_DURATION = 180;
+const DECEL_RATE = 0.014;
+const LANDING_TRIGGER_SPEED = 0.2;
+const MIN_SPIN_CELLS = 6;
 const LANDING_CELLS = 4;
-const SCROLL_IN_MAX_MS = 1500;
-const BOUNCE_DURATION = 350;
-const BOUNCE_AMPLITUDE = 8;
+const SCROLL_IN_MAX_MS = 1200;
+const BOUNCE_DURATION = 250;
+const BOUNCE_AMPLITUDE = 6;
 
 export function createReelAnimator(): ReelAnimator {
   const internals: InternalReel[] = [];

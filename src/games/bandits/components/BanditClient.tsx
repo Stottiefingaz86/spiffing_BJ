@@ -63,7 +63,12 @@ export default function BanditClient() {
   }, [soundOn]);
 
   const onSpin = useCallback(() => {
-    if (snap.phase !== GamePhase.Idle || snap.balance < snap.bet) return;
+    // Allow spinning from ShowWins to skip win display
+    if (snap.phase === GamePhase.ShowWins) {
+      session.dismissWins();
+    }
+    const s = session.getSnapshot();
+    if (s.phase !== GamePhase.Idle || s.balance < s.bet) return;
     unlockBanditAudio();
     playBandit('spin', 0.25);
     setDisplayedWin(0);
@@ -179,7 +184,7 @@ export default function BanditClient() {
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  const canSpin = snap.phase === GamePhase.Idle && snap.balance >= snap.bet;
+  const canSpin = (snap.phase === GamePhase.Idle || snap.phase === GamePhase.ShowWins) && snap.balance >= snap.bet;
   const showWin = Math.round(displayedWin);
 
   const isFreeSpinIntro = snap.phase === GamePhase.FreeSpinIntro;
@@ -204,7 +209,7 @@ export default function BanditClient() {
 
       {/* Header */}
       <header
-        className="relative z-10 flex shrink-0 items-center gap-2 px-2 pt-[max(0.25rem,env(safe-area-inset-top))] pb-0 lg:px-8 lg:pt-6 lg:pb-1"
+        className="relative z-10 flex shrink-0 items-center gap-2 px-3 pt-[max(0.5rem,calc(env(safe-area-inset-top)+0.15rem))] pb-0 lg:px-8 lg:pt-6 lg:pb-1"
         onClick={(e) => e.stopPropagation()}
       >
         <a
@@ -255,9 +260,9 @@ export default function BanditClient() {
           style={frameRect ? (() => {
             const isMobile = window.innerWidth < 1024;
             const logoH = isMobile
-              ? Math.max(60, frameRect.w * 0.22)
+              ? Math.max(100, frameRect.w * 0.65)
               : Math.max(80, frameRect.w * 0.3);
-            const overlap = isMobile ? 0.55 : 0.35;
+            const overlap = isMobile ? 0.5 : 0.35;
             const top = Math.max(0, frameRect.y - logoH * overlap);
             return {
               top: `${top}px`,
@@ -270,11 +275,11 @@ export default function BanditClient() {
             transform: 'translateX(-50%) translateY(5%)',
           }}
         />
-        {/* Cowboy character — left of the frame */}
+        {/* Cowboy character — bottom-left, feet off screen */}
         <img
           src="/bandits/cowboy.png"
           alt=""
-          className="pointer-events-none absolute bottom-0 left-[calc(2%-30px)] z-30 hidden h-[48%] w-auto object-contain brightness-[0.8] sepia-[0.25] saturate-[1.2] drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)] xl:left-[calc(10%-50px)] xl:h-[62%] 2xl:left-[calc(16%-50px)] 2xl:h-[72%] lg:block"
+          className="pointer-events-none absolute -bottom-36 -left-14 z-30 h-[55%] w-auto object-contain brightness-[0.8] sepia-[0.25] saturate-[1.2] drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)] lg:-bottom-12 lg:left-[calc(2%-30px)] lg:h-[55%] xl:left-[calc(10%-50px)] xl:h-[65%] 2xl:left-[calc(16%-50px)] 2xl:h-[75%]"
         />
 
         <ReelCanvas
@@ -354,98 +359,100 @@ export default function BanditClient() {
         )}
       </div>
 
-      {/* MOBILE: Spin button */}
-      {!isFreeSpinActive && (
-        <div className="pointer-events-none absolute bottom-[0.75rem] left-0 right-0 z-30 flex justify-center lg:hidden">
-          <button
-            type="button"
-            onClick={onSpin}
-            disabled={!canSpin}
-            className={cn(
-              'pointer-events-auto flex size-16 items-center justify-center rounded-full shadow-2xl transition-all active:scale-[0.90]',
-              canSpin
-                ? 'bg-amber-600 text-white shadow-amber-600/40'
-                : 'bg-white/10 text-white/30',
-            )}
-          >
-            {isSpinning ? (
-              <svg className="size-7 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
+      {/* MOBILE footer + spin button wrapper */}
+      <div className="relative z-10 shrink-0 lg:hidden">
+        {/* Spin button — floats above footer */}
+        {!isFreeSpinActive && (
+          <div className="pointer-events-none absolute -top-28 left-0 right-0 z-30 flex justify-center">
+            <button
+              type="button"
+              onClick={onSpin}
+              disabled={!canSpin}
+              className={cn(
+                'pointer-events-auto flex size-22 items-center justify-center rounded-full shadow-2xl transition-all active:scale-[0.90]',
+                canSpin
+                  ? 'bg-amber-600 text-white shadow-amber-600/40'
+                  : 'bg-white/10 text-white/30',
+              )}
+            >
+              {isSpinning ? (
+                <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <RefreshCw className="size-10" strokeWidth={2.5} />
+              )}
+            </button>
+          </div>
+        )}
+
+        <footer
+          className="px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mx-auto flex max-w-sm items-center gap-1.5">
+            <button
+              type="button"
+              disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
+              className={cn(
+                infoPill,
+                'flex flex-1 flex-col items-center px-2 py-1.5 transition-all active:scale-[0.94]',
+                snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
+                  ? 'text-amber-400'
+                  : 'text-white/20',
+              )}
+              onClick={() => {
+                session.buyBonus();
+                setDisplayedWin(0);
+                targetWinRef.current = 0;
+                lastSpinWinRef.current = 0;
+                refresh();
+              }}
+            >
+              <span className="flex items-center gap-0.5 text-[7px] font-semibold uppercase tracking-[0.15em] opacity-70">
+                <Zap className="size-2.5" strokeWidth={2.2} />
+                Bonus Buy
+              </span>
+              <span className="text-xs font-bold tabular-nums">{formatMoney(BUY_BONUS_COST)}</span>
+            </button>
+
+            {isFreeSpinActive ? (
+              <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
+                <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-amber-400/60">Free Spins</span>
+                <span className="text-xs font-bold tabular-nums text-amber-400">
+                  {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
+                </span>
+              </div>
             ) : (
-              <RefreshCw className="size-8" strokeWidth={2.5} />
+              <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
+                <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
+                <span className={cn(
+                  'text-xs font-bold tabular-nums transition-colors duration-300',
+                  showWin > 0 ? 'text-emerald-400' : 'text-white/40',
+                )}>
+                  {showWin > 0 ? formatMoney(showWin) : '—'}
+                </span>
+              </div>
             )}
-          </button>
-        </div>
-      )}
 
-      {/* MOBILE footer */}
-      <footer
-        className="relative z-10 shrink-0 px-2 pb-[max(0.15rem,env(safe-area-inset-bottom))] pt-0 lg:hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto flex max-w-sm items-center gap-1.5">
-          <button
-            type="button"
-            disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
-            className={cn(
-              infoPill,
-              'flex flex-1 flex-col items-center px-2 py-1 transition-all active:scale-[0.94]',
-              snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
-                ? 'text-amber-400'
-                : 'text-white/20',
-            )}
-            onClick={() => {
-              session.buyBonus();
-              setDisplayedWin(0);
-              targetWinRef.current = 0;
-              lastSpinWinRef.current = 0;
-              refresh();
-            }}
-          >
-            <span className="flex items-center gap-0.5 text-[7px] font-semibold uppercase tracking-[0.15em] opacity-70">
-              <Zap className="size-2.5" strokeWidth={2.2} />
-              Bonus Buy
-            </span>
-            <span className="text-xs font-bold tabular-nums">{formatMoney(BUY_BONUS_COST)}</span>
-          </button>
-
-          {isFreeSpinActive ? (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-amber-400/60">Free Spins</span>
-              <span className="text-xs font-bold tabular-nums text-amber-400">
-                {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
-              </span>
-            </div>
-          ) : (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
-              <span className={cn(
-                'text-xs font-bold tabular-nums transition-colors duration-300',
-                showWin > 0 ? 'text-emerald-400' : 'text-white/40',
-              )}>
-                {showWin > 0 ? formatMoney(showWin) : '—'}
-              </span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => !isSpinning && setStakeOpen(true)}
-            disabled={isSpinning}
-            className={cn(infoPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
-          >
-            <div className="flex flex-1 flex-col items-center">
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
-              <span className="text-xs font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
-            </div>
-            <div className="flex size-5 items-center justify-center rounded bg-white/10">
-              <ChevronDown className="size-3 text-white/50" />
-            </div>
-          </button>
-        </div>
-      </footer>
+            <button
+              type="button"
+              onClick={() => !isSpinning && setStakeOpen(true)}
+              disabled={isSpinning}
+              className={cn(infoPill, 'flex flex-1 items-center px-2 py-1.5 disabled:opacity-40')}
+            >
+              <div className="flex flex-1 flex-col items-center">
+                <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
+                <span className="text-xs font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
+              </div>
+              <div className="flex size-5 items-center justify-center rounded bg-white/10">
+                <ChevronDown className="size-3 text-white/50" />
+              </div>
+            </button>
+          </div>
+        </footer>
+      </div>
 
       {/* DESKTOP footer */}
       <footer

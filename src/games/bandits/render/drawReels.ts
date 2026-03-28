@@ -171,7 +171,7 @@ export function computeReelLayout(canvasW: number, canvasH: number): ReelLayout 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const cssW = canvasW / dpr;
   const isMobile = cssW < 768;
-  const margin = isMobile ? 0 : 8;
+  const margin = 0;
   const gap = isMobile ? 1 : 3;
 
   let maxW: number, maxH: number;
@@ -181,28 +181,26 @@ export function computeReelLayout(canvasW: number, canvasH: number): ReelLayout 
     const innerFracW = frameData.innerRight - frameData.innerLeft;
     const innerFracH = frameData.innerBottom - frameData.innerTop;
 
-    // 1) Fit the frame in the canvas at its native aspect ratio
-    const availW = canvasW - margin * 2;
-    const availH = canvasH - margin * 2;
+    const availH = canvasH;
     const aspect = frameData.aspect;
 
-    if (availW / availH > aspect) {
+    // On mobile, overshoot width so frame edges bleed off-screen
+    // and symbols fill the visible area
+    const overshoot = isMobile ? 1.15 : 1.0;
+    frameW = canvasW * overshoot;
+    frameH = frameW / aspect;
+    if (frameH > availH) {
       frameH = availH;
       frameW = frameH * aspect;
-    } else {
-      frameW = availW;
-      frameH = frameW / aspect;
     }
 
     frameX = Math.floor((canvasW - frameW) / 2);
-    // On mobile, push frame toward top to leave room for spin button
     if (isMobile) {
-      frameY = Math.floor((canvasH - frameH) * 0.3);
+      frameY = Math.floor((canvasH - frameH) * 0.35);
     } else {
       frameY = Math.floor((canvasH - frameH) / 2);
     }
 
-    // 2) Inner area of the frame = where symbols go
     maxW = Math.floor(frameW * innerFracW);
     maxH = Math.floor(frameH * innerFracH);
   } else {

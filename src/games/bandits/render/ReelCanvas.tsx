@@ -385,10 +385,10 @@ export function ReelCanvas({
 
         // Schedule staggered stops per reel.
         // Base cascade is fast; scatter anticipation delays extend specific reels.
-        const baseDelay = 600;
+        const baseDelay = 350;
         for (let r = 0; r < REELS; r++) {
           const extraDelay = snap.reelStopDelays[r] ?? 0;
-          const totalDelay = baseDelay + r * 300 + extraDelay;
+          const totalDelay = baseDelay + r * 180 + extraDelay;
           scheduleTimer(() => {
             if (!reelStopScheduledRef.current[r]) {
               reelStopScheduledRef.current[r] = true;
@@ -426,7 +426,7 @@ export function ReelCanvas({
         if (!paylineCycleRef.current) {
           paylineCycleRef.current = setInterval(() => {
             onPaylineDoneRef.current();
-          }, 1200);
+          }, 700);
         }
       } else {
         clearTimers();
