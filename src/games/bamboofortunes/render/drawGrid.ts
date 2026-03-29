@@ -90,8 +90,8 @@ const METER_SEGMENTS = SCATTER_TRIGGER;
 /** Vertical gap between meter bottom and grid mask top (mobile). 0 = flush / touching. */
 const MOBILE_SCATTER_METER_GAP = 0;
 
-/** Push scatter meter + grid down together on narrow viewports (e.g. under header/logo). */
-const MOBILE_GRID_METER_NUDGE_Y = 5;
+/** Push scatter meter + grid down together on narrow viewports (logo stays in React header). */
+const MOBILE_GRID_METER_NUDGE_Y = 10;
 
 /** Min space from canvas top to scatter meter (mobile), as fraction of canvas height. */
 const MOBILE_METER_TOP_MARGIN_FRAC = 0.05;
