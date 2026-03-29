@@ -1,24 +1,27 @@
 ---
 import Layout from '@/layouts/Layout.astro';
+import { ParticleBackground } from '@/components/ParticleBackground';
+import { LobbyHamburgerMenu } from '@/components/lobby/LobbyHamburgerMenu';
 
 type LobbyTileBg =
   | { type: 'image'; src: string }
-  | { type: 'blackjack' }
-  | { type: 'frootjarz' };
+  | { type: 'blackjack' };
 
 interface GameTile {
   title: string;
   subtitle: string;
   href: string;
   accent: string;
-  /** Game logo under `public/`; emoji fallback when omitted */
   logoSrc?: string;
-  /** Taller logo area + wider cap (e.g. portrait / padded PNG art) */
-  logoSlot?: 'default' | 'tall';
-  /** Full-bleed background (in-game art or felt-style CSS) */
   tileBg?: LobbyTileBg;
   icon: string;
   available: boolean;
+  /** Tags for lobby filters: slots | table | exclusive */
+  filterTags: string[];
+  /** Higher = newer; used for “Release date” sort */
+  releaseOrder: number;
+  /** Bigger logo slot inside the same tile height (e.g. wide/short artwork) */
+  largeLobbyLogo?: boolean;
 }
 
 const games: GameTile[] = [
@@ -31,6 +34,8 @@ const games: GameTile[] = [
     tileBg: { type: 'blackjack' },
     icon: '🃏',
     available: true,
+    filterTags: ['table', 'exclusive'],
+    releaseOrder: 20,
   },
   {
     title: 'Bamboo Fortunes',
@@ -41,6 +46,8 @@ const games: GameTile[] = [
     tileBg: { type: 'image', src: '/bamboofortunes/bg.png' },
     icon: '🐼',
     available: true,
+    filterTags: ['slots', 'exclusive'],
+    releaseOrder: 85,
   },
   {
     title: 'Froot Jarz',
@@ -48,10 +55,12 @@ const games: GameTile[] = [
     href: '/frootjarz',
     accent: 'from-amber-400 to-orange-500',
     logoSrc: '/frootshoot/LOGO.png',
-    logoSlot: 'tall',
-    tileBg: { type: 'frootjarz' },
+    tileBg: { type: 'image', src: '/frootshoot/bg.png' },
     icon: '🍓',
     available: true,
+    filterTags: ['slots', 'exclusive'],
+    releaseOrder: 75,
+    largeLobbyLogo: true,
   },
   {
     title: 'Hot Fiesta',
@@ -62,6 +71,8 @@ const games: GameTile[] = [
     tileBg: { type: 'image', src: '/hotfiesta/bg.png' },
     icon: '🌮',
     available: true,
+    filterTags: ['slots', 'exclusive'],
+    releaseOrder: 70,
   },
   {
     title: 'Breaking Bandits',
@@ -72,180 +83,377 @@ const games: GameTile[] = [
     tileBg: { type: 'image', src: '/bandits/bg2.png' },
     icon: '🤠',
     available: true,
+    filterTags: ['slots', 'exclusive'],
+    releaseOrder: 65,
   },
-  {
-    title: 'Baccarat',
-    subtitle: 'Punto Banco',
-    href: '/baccarat',
-    accent: 'from-amber-500 to-orange-500',
-    icon: '🎴',
-    available: false,
-  },
-  {
-    title: 'Hi-Lo',
-    subtitle: 'Higher or Lower Card Game',
-    href: '/hilo',
-    accent: 'from-rose-500 to-pink-500',
-    icon: '🔮',
-    available: false,
-  },
+];
+
+const filterDefs: { id: string; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'slots', label: 'Slots' },
+  { id: 'table', label: 'Cards' },
+  { id: 'exclusive', label: 'Exclusive' },
 ];
 ---
 
-<Layout title="Spiffing Casino">
-  <div class="relative flex h-dvh flex-col overflow-y-auto bg-[#0e0620]">
-    {/*
-      CSS-only backdrop (matches preloader base: #0e0620 + purple/pink glows).
-      No React island — keeps the lobby resilient in dev/build.
-    */}
-    <div class="pointer-events-none fixed inset-0 z-0" aria-hidden="true">
-      <div class="absolute inset-0 bg-[#0e0620]" />
+<Layout title="Spiffing Casino — Game lobby">
+  <!-- Same deep base as GamePreloader (#0e0620) + navy gradient — darker than Layout body -->
+  <div
+    class="font-staatliches relative flex h-dvh min-h-0 flex-col overflow-y-auto bg-[#0e0620] text-white antialiased"
+  >
+    <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+      <!-- Same particle field as GamePreloader -->
+      <div class="absolute inset-0">
+        <ParticleBackground client:load />
+      </div>
+      <!-- Preloader card–style vertical wash (rgba(14,6,32) → rgba(20,10,45)) -->
       <div
-        class="absolute inset-0 opacity-100 bg-[radial-gradient(ellipse_75%_55%_at_30%_78%,rgba(168,85,247,0.14),transparent_58%)]"
+        class="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,6,32,0.88)_0%,rgba(22,10,48,0.92)_38%,rgba(20,10,45,0.95)_62%,rgba(10,4,28,0.93)_100%)]"
       />
       <div
-        class="absolute inset-0 opacity-100 bg-[radial-gradient(ellipse_60%_48%_at_72%_22%,rgba(236,72,153,0.1),transparent_52%)]"
+        class="absolute inset-0 bg-[radial-gradient(ellipse_90%_65%_at_50%_-5%,rgba(168,85,247,0.14),transparent_55%)]"
+      />
+      <div
+        class="absolute inset-0 bg-[radial-gradient(ellipse_75%_55%_at_28%_72%,rgba(168,85,247,0.1),transparent_58%)]"
+      />
+      <div
+        class="absolute inset-0 bg-[radial-gradient(ellipse_65%_50%_at_74%_20%,rgba(236,72,153,0.08),transparent_52%)]"
+      />
+      <!-- Subtle pattern + grain (pointer-events none on parent) -->
+      <div class="lobby-bg-pattern-weave absolute inset-0 opacity-[0.7]" />
+      <div class="lobby-bg-pattern-dots absolute inset-0 opacity-[0.65]" />
+      <div class="lobby-bg-pattern-noise absolute inset-0 mix-blend-overlay" />
+      <div
+        class="absolute inset-0 bg-[radial-gradient(ellipse_100%_100%_at_50%_50%,transparent_0%,rgba(0,0,0,0.38)_100%)]"
       />
     </div>
 
     <div class="relative z-10 flex min-h-0 flex-1 flex-col">
-    <header class="shrink-0 px-6 pb-2 pt-[max(2.5rem,calc(env(safe-area-inset-top)+1.5rem))] text-center sm:pt-14">
-      <img
-        src="/logo-spiffing.svg"
-        alt="Spiffing Studios"
-        class="mx-auto mb-5 h-[min(42vw,10.5rem)] w-auto sm:mb-6 sm:h-[11.5rem] lg:h-[12.5rem]"
-        onerror="this.style.display='none'"
-      />
-      <h1 class="text-3xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">
-        Choose Your Game
-      </h1>
-      <p class="mt-2 text-sm font-medium tracking-wide text-white/40 sm:text-base">
-        Select a table to start playing
-      </p>
-    </header>
-
-    <main class="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-8 sm:py-12">
-      <div class="grid grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
-        {games.map((game) => (
+      <div
+        class="sticky top-0 z-50 w-full shrink-0 self-start border-b border-white/[0.05] bg-gradient-to-b from-white/[0.04] via-[#0e0620]/52 to-[#0e0620]/36 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md supports-[backdrop-filter]:from-white/[0.03] supports-[backdrop-filter]:via-[#0e0620]/44 supports-[backdrop-filter]:to-[#0e0620]/30"
+      >
+        <!-- Preloader card: purple rim energy -->
+        <div
+          class="h-0.5 w-full shrink-0 bg-gradient-to-r from-purple-500/55 via-fuchsia-500/45 to-purple-500/55 opacity-80"
+          aria-hidden="true"
+        />
+        <header
+          class="mx-auto grid max-w-6xl grid-cols-3 items-center gap-2 px-4 py-1.5 sm:px-6 sm:py-2 lg:px-8"
+        >
+          <div class="flex min-w-0 justify-start">
+            <LobbyHamburgerMenu client:load />
+          </div>
           <a
-            href={game.available ? game.href : undefined}
-            class:list={[
-              'group relative flex h-full min-h-[260px] flex-col overflow-hidden rounded-2xl border transition-all duration-300 sm:min-h-[280px]',
-              game.available
-                ? game.tileBg
-                  ? 'cursor-pointer border-white/10 bg-transparent hover:border-white/25 hover:shadow-lg hover:shadow-purple-500/15 active:scale-[0.98]'
-                  : 'cursor-pointer border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07] hover:shadow-lg hover:shadow-purple-500/10 active:scale-[0.98]'
-                : 'cursor-default border-white/[0.05] bg-white/[0.02] opacity-50',
-            ]}
+            href="/"
+            class="flex justify-center justify-self-center leading-none"
+            aria-label="Spiffing Studios home"
           >
-            {game.tileBg && (
-              <div
-                class="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-2xl"
-                aria-hidden="true"
-              >
-                {game.tileBg.type === 'image' && (
-                  <div class="relative h-full w-full">
-                    <img
-                      src={game.tileBg.src}
-                      alt=""
-                      class="absolute inset-0 h-full w-full object-cover object-center"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                    <div class="absolute inset-0 bg-gradient-to-b from-black/15 via-black/48 to-black/90" />
-                  </div>
-                )}
-                {game.tileBg.type === 'blackjack' && (
-                  <div class="relative h-full min-h-0 w-full">
-                    <div class="lobby-tile-bg-blackjack" />
-                    <div class="lobby-tile-bg-blackjack-tint" />
-                  </div>
-                )}
-                {game.tileBg.type === 'frootjarz' && (
-                  <div class="relative h-full min-h-0 w-full">
-                    <div class="lobby-tile-bg-frootjarz" />
-                    <div class="fj-bg-pattern absolute inset-0 opacity-[0.11]" />
-                    <div class="lobby-tile-bg-frootjarz-tint" />
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div
-              class:list={[
-                'relative z-[1] flex min-h-0 flex-1 flex-col',
-                game.tileBg && game.available && 'transition-colors group-hover:bg-white/[0.05]',
-              ]}
+            <img
+              src="/logo-spiffing.svg"
+              alt="Spiffing Studios"
+              class="block h-[3.15rem] w-auto sm:h-[3.95rem] md:h-[4.65rem] lg:h-[4.95rem]"
+              width="280"
+              height="172"
+            />
+          </a>
+          <div class="flex min-w-0 justify-end">
+            <a
+              href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20demo"
+              class="lobby-brand-cta inline-flex h-10 shrink-0 items-center justify-center rounded-lg px-2.5 text-center text-[9px] font-bold uppercase tracking-[0.16em] sm:h-11 sm:px-3 sm:text-[10px] sm:tracking-[0.18em]"
             >
-              <div class={`relative h-1.5 w-full shrink-0 bg-gradient-to-r ${game.accent}`} />
+              Contact
+            </a>
+          </div>
+        </header>
+      </div>
 
-              <div class="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center sm:px-6 sm:py-10 lg:py-14">
+      <div class="relative mx-auto w-full max-w-6xl flex-1 px-4 pb-8 pt-2 sm:px-6 sm:pb-10 sm:pt-3 lg:px-8">
+        <div id="games" class="mt-4 flex flex-col gap-6 sm:mt-5 sm:gap-8">
+        <section
+          class="relative px-0 py-1 sm:py-2"
+          aria-label="Game filters and sort"
+        >
+          <div
+            class="relative flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="mb-2 text-[10px] font-normal uppercase tracking-[0.22em] text-[#7ed987]/92">
+                Filter by
+              </p>
+              <div
+                class="flex flex-wrap gap-2 max-sm:-mx-1 max-sm:flex-nowrap max-sm:touch-pan-x max-sm:gap-2 max-sm:overflow-x-auto max-sm:overflow-y-hidden max-sm:overscroll-x-contain max-sm:px-1 max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
+                id="lobby-filter-group"
+                role="group"
+                aria-label="Filter games"
+              >
+                {
+                  filterDefs.map((f, i) => (
+                    <button
+                      type="button"
+                      class:list={[
+                        'lobby-filter-btn shrink-0 whitespace-nowrap rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-[color,background-color,border-color,box-shadow] sm:px-3.5 sm:text-xs',
+                        i === 0 ? 'lobby-filter-on' : 'lobby-filter-off',
+                      ]}
+                      data-filter={f.id}
+                      aria-pressed={i === 0 ? 'true' : 'false'}
+                    >
+                      {f.label}
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
+            <div class="min-w-0 shrink-0 lg:text-right">
+              <p class="mb-2 text-[10px] font-normal uppercase tracking-[0.22em] text-[#7ed987]/92">
+                Sort by
+              </p>
+              <button
+                type="button"
+                id="lobby-sort-btn"
+                class="lobby-sort-btn flex w-full items-center justify-center gap-2 rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:inline-flex sm:w-auto sm:justify-start sm:px-3.5 sm:text-xs"
+                data-sort-mode="release"
+                aria-label="Change sort order"
+              >
+                <span id="lobby-sort-label">Release date</span>
+                <span class="text-[#7ed987]/85" aria-hidden="true">↕</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <div
+          class="mt-6 flex w-full items-center gap-3 text-left sm:mt-8 sm:gap-4 md:mt-10 md:gap-5 lg:mt-12"
+        >
+          <h1 class="shrink-0 text-xl font-normal tracking-tight text-white sm:text-2xl md:text-3xl lg:text-4xl">
+            Exceedingly Exciting
+          </h1>
+          <div
+            class="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-white/30 via-white/12 to-transparent sm:from-white/35"
+            aria-hidden="true"
+          />
+        </div>
+
+        <div
+          class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:gap-5"
+          data-lobby-grid
+        >
+          {
+            games.map((game) => (
+              <a
+                href={game.available ? game.href : undefined}
+                class:list={[
+                  'group relative flex h-[272px] w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 sm:h-[296px] lg:h-[312px]',
+                  game.available
+                    ? game.tileBg
+                      ? 'cursor-pointer border-white/10 bg-transparent hover:border-white/25 hover:shadow-lg hover:shadow-purple-500/15 active:scale-[0.98]'
+                      : 'cursor-pointer border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07] hover:shadow-lg hover:shadow-purple-500/10 active:scale-[0.98]'
+                    : 'cursor-default border-white/[0.05] bg-white/[0.02] opacity-50',
+                ]}
+                data-lobby-tile
+                data-tags={game.filterTags.join(',')}
+                data-title={game.title}
+                data-release={String(game.releaseOrder)}
+              >
+                {game.tileBg && (
+                  <div
+                    class="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-2xl"
+                    aria-hidden="true"
+                  >
+                    {game.tileBg.type === 'image' && (
+                      <div class="relative h-full w-full">
+                        <img
+                          src={game.tileBg.src}
+                          alt=""
+                          class="absolute inset-0 h-full w-full object-cover object-center"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        <div class="absolute inset-0 bg-gradient-to-b from-black/15 via-black/48 to-black/90" />
+                      </div>
+                    )}
+                    {game.tileBg.type === 'blackjack' && (
+                      <div class="relative h-full min-h-0 w-full">
+                        <div class="lobby-tile-bg-blackjack" />
+                        <div class="lobby-tile-bg-blackjack-tint" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div
                   class:list={[
-                    'mb-4 flex w-full items-center justify-center',
-                    game.logoSlot === 'tall'
-                      ? 'h-[9rem] sm:h-[11.5rem] lg:h-[14rem]'
-                      : 'h-[6.5rem] sm:h-[8rem] lg:h-40',
+                    'relative z-[1] flex min-h-0 flex-1 flex-col',
+                    game.tileBg && game.available && 'transition-colors group-hover:bg-white/[0.05]',
                   ]}
                 >
-                  {game.logoSrc ? (
-                    <img
-                      src={game.logoSrc}
-                      alt={`${game.title} logo`}
+                  <div class={`relative h-1.5 w-full shrink-0 bg-gradient-to-r ${game.accent}`} />
+
+                  <div
+                    class:list={[
+                      'flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-2 text-center sm:px-4 lg:px-5',
+                      game.largeLobbyLogo ? 'py-3 sm:py-4 lg:py-4' : 'py-4 sm:py-5 lg:py-5',
+                    ]}
+                  >
+                    <div
                       class:list={[
-                        'max-h-full w-auto object-contain object-center drop-shadow-[0_6px_24px_rgba(0,0,0,0.55)]',
-                        game.logoSlot === 'tall'
-                          ? 'max-w-[min(100%,26rem)]'
-                          : 'max-w-[min(100%,20rem)]',
+                        'mb-2 flex w-full shrink-0 items-center justify-center sm:mb-2',
+                        game.largeLobbyLogo
+                          ? 'h-[7.35rem] sm:h-[8.85rem] lg:h-[10.5rem]'
+                          : 'h-24 sm:h-28 lg:h-32',
                       ]}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <span class="text-4xl sm:text-5xl lg:text-6xl" aria-hidden="true">
-                      {game.icon}
-                    </span>
+                    >
+                      {game.logoSrc ? (
+                        <img
+                          src={game.logoSrc}
+                          alt={`${game.title} logo`}
+                          class:list={[
+                            'max-h-full w-auto object-contain object-center drop-shadow-[0_6px_24px_rgba(0,0,0,0.55)]',
+                            game.largeLobbyLogo
+                              ? 'max-w-[min(100%,19rem)] sm:max-w-[min(100%,21rem)] lg:max-w-[min(100%,23rem)]'
+                              : 'max-w-[min(100%,15rem)] sm:max-w-[min(100%,17rem)]',
+                          ]}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span class="text-4xl sm:text-5xl lg:text-6xl" aria-hidden="true">
+                          {game.icon}
+                        </span>
+                      )}
+                    </div>
+                    <h2 class="text-[13px] font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.85)] sm:text-sm lg:text-base">
+                      {game.title}
+                    </h2>
+                    <p class="mt-0.5 text-[9px] font-medium leading-snug text-white/55 drop-shadow-[0_1px_10px_rgba(0,0,0,0.75)] sm:text-[10px] lg:text-[11px]">
+                      {game.subtitle}
+                    </p>
+                  </div>
+
+                  {game.available && (
+                    <div
+                      class:list={[
+                        'shrink-0 border-t border-t-[rgba(92,179,93,0.35)] px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5',
+                        game.tileBg
+                          ? 'border-white/10 bg-black/40'
+                          : 'border-white/[0.06]',
+                      ]}
+                    >
+                      <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c8f0c9] transition-colors group-hover:text-white">
+                        Demo Play
+                      </span>
+                    </div>
                   )}
                 </div>
-                <h2 class="text-base font-bold tracking-tight text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.85)] sm:text-lg lg:text-xl">
-                  {game.title}
-                </h2>
-                <p class="mt-1 text-[11px] font-medium leading-snug text-white/55 drop-shadow-[0_1px_10px_rgba(0,0,0,0.75)] sm:text-xs">
-                  {game.subtitle}
-                </p>
-              </div>
 
-              {game.available && (
-                <div
-                  class:list={[
-                    'shrink-0 border-t px-4 py-3 text-center backdrop-blur-sm',
-                    game.tileBg
-                      ? 'border-white/10 bg-black/40'
-                      : 'border-white/[0.06]',
-                  ]}
-                >
-                  <span class="text-[11px] font-bold uppercase tracking-[0.14em] text-white/55 transition-colors group-hover:text-white/85">
-                    Play Now
-                  </span>
-                </div>
-              )}
-            </div>
+                {!game.available && (
+                  <div class="absolute inset-0 z-[5] flex items-center justify-center rounded-2xl bg-black/35">
+                    <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/50">
+                      Coming Soon
+                    </span>
+                  </div>
+                )}
+              </a>
+            ))
+          }
+        </div>
 
-            {!game.available && (
-              <div class="absolute inset-0 z-[5] flex items-center justify-center rounded-2xl bg-black/35">
-                <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/50">
-                  Coming Soon
-                </span>
-              </div>
-            )}
-          </a>
-        ))}
+        <p
+          id="lobby-empty"
+          class="mt-10 hidden text-center text-sm font-medium text-white/50"
+          role="status"
+        >
+          No titles in this category yet — try another filter.
+        </p>
+        </div>
       </div>
-    </main>
 
-    <footer class="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 text-center text-[10px] font-medium tracking-wide text-white/25 sm:text-[11px]">
-      Spiffing Studios &mdash; Play Responsibly
-    </footer>
+      <footer
+        class="relative z-10 mt-auto shrink-0 border-t border-white/[0.05] bg-black/40 px-4 py-4 text-center text-[10px] font-medium tracking-wide text-white/28 sm:text-[11px]"
+      >
+        Spiffing Studios &mdash; Play Responsibly
+      </footer>
     </div>
   </div>
 </Layout>
+
+<script is:inline>
+  (function () {
+    var grid = document.querySelector('[data-lobby-grid]');
+    var emptyEl = document.getElementById('lobby-empty');
+    var filterBtns = document.querySelectorAll('.lobby-filter-btn');
+    var sortBtn = document.getElementById('lobby-sort-btn');
+    var sortLabel = document.getElementById('lobby-sort-label');
+    if (!grid || !filterBtns.length) return;
+
+    var activeFilter = 'all';
+    var sortMode = 'release';
+
+    function tileMatchesFilter(tile, tag) {
+      if (tag === 'all') return true;
+      var raw = tile.getAttribute('data-tags') || '';
+      var tags = raw.split(',').map(function (t) {
+        return t.trim();
+      }).filter(Boolean);
+      return tags.indexOf(tag) !== -1;
+    }
+
+    function applyFilter(tag) {
+      activeFilter = tag;
+      var tiles = grid.querySelectorAll('[data-lobby-tile]');
+      var any = false;
+      tiles.forEach(function (tile) {
+        var show = tileMatchesFilter(tile, tag);
+        tile.classList.toggle('hidden', !show);
+        if (show) any = true;
+      });
+      filterBtns.forEach(function (btn) {
+        var id = btn.getAttribute('data-filter');
+        var on = id === tag;
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.classList.toggle('lobby-filter-on', on);
+        btn.classList.toggle('lobby-filter-off', !on);
+      });
+      if (emptyEl) emptyEl.classList.toggle('hidden', any);
+    }
+
+    function applySort() {
+      var tiles = Array.prototype.slice.call(grid.querySelectorAll('[data-lobby-tile]'));
+      tiles.sort(function (a, b) {
+        if (sortMode === 'az') {
+          return (a.getAttribute('data-title') || '').localeCompare(b.getAttribute('data-title') || '');
+        }
+        return (
+          Number(b.getAttribute('data-release') || 0) - Number(a.getAttribute('data-release') || 0)
+        );
+      });
+      tiles.forEach(function (t) {
+        grid.appendChild(t);
+      });
+      applyFilter(activeFilter);
+    }
+
+    filterBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var tag = btn.getAttribute('data-filter') || 'all';
+        applyFilter(tag);
+      });
+    });
+
+    if (sortBtn && sortLabel) {
+      sortBtn.addEventListener('click', function () {
+        if (sortMode === 'release') {
+          sortMode = 'az';
+          sortLabel.textContent = 'A–Z';
+          sortBtn.setAttribute('data-sort-mode', 'az');
+        } else {
+          sortMode = 'release';
+          sortLabel.textContent = 'Release date';
+          sortBtn.setAttribute('data-sort-mode', 'release');
+        }
+        applySort();
+      });
+    }
+
+    applySort();
+  })();
+</script>

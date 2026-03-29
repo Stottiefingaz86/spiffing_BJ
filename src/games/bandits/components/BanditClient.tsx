@@ -4,6 +4,12 @@ import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
 import { GamePreloader } from '@/components/GamePreloader';
+import {
+  slotGlassPill,
+  slotInfoPill,
+  slotSpinDesktopClasses,
+  slotSpinMobileClasses,
+} from '@/components/game/slotChrome';
 
 import { BanditSession, GamePhase, BUY_BONUS_COST, type FreeSpinMode } from '../engine/session';
 import { ReelCanvas, type FrameRect } from '../render/ReelCanvas';
@@ -42,9 +48,6 @@ const PRELOAD_ASSETS = [
   '/bandits/sounds/scatter_maybe.mp3',
   '/bandits/sounds/WIN_LINE.mp3',
 ];
-
-const glassPill = 'rounded-[14px] bg-white/[0.08] border border-white/[0.07]';
-const infoPill = 'rounded-full bg-white/[0.06] border border-white/[0.06]';
 
 function handlePreloaderPlay() {
   unlockBanditAudio();
@@ -249,14 +252,14 @@ function BanditGame() {
       >
         <a
           href="/"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Back to lobby"
         >
           <Home className="size-4" strokeWidth={1.8} />
         </a>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Settings"
           onClick={() => setSettingsOpen(true)}
         >
@@ -264,7 +267,7 @@ function BanditGame() {
         </button>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label={soundOn ? 'Mute' : 'Unmute'}
           onClick={() => setSoundOn((v) => !v)}
         >
@@ -275,7 +278,7 @@ function BanditGame() {
 
         <div className="flex-1" />
 
-        <div className={cn(glassPill, 'ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5')}>
+        <div className={cn(slotGlassPill, 'ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5')}>
           <span className="shrink-0 text-[7px] font-semibold uppercase leading-none tracking-[0.15em] text-white/40 lg:text-[8px]">
             Balance
           </span>
@@ -403,12 +406,7 @@ function BanditGame() {
               type="button"
               onClick={onSpin}
               disabled={!canSpin}
-              className={cn(
-                'pointer-events-auto flex size-22 items-center justify-center rounded-full shadow-2xl transition-all active:scale-[0.90]',
-                canSpin
-                  ? 'bg-amber-600 text-white shadow-amber-600/40'
-                  : 'bg-white/10 text-white/30',
-              )}
+              className={cn(slotSpinMobileClasses(canSpin, 'amber'), 'pointer-events-auto')}
             >
               {isSpinning ? (
                 <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -431,7 +429,7 @@ function BanditGame() {
               type="button"
               disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
               className={cn(
-                infoPill,
+                slotInfoPill,
                 'flex flex-1 flex-col items-center px-2 py-1.5 transition-all active:scale-[0.94]',
                 snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
                   ? 'text-amber-400'
@@ -453,14 +451,14 @@ function BanditGame() {
             </button>
 
             {isFreeSpinActive ? (
-              <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
+              <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
                 <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-amber-400/60">Free Spins</span>
                 <span className="text-xs font-bold tabular-nums text-amber-400">
                   {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
                 </span>
               </div>
             ) : (
-              <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
+              <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
                 <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
                 <span className={cn(
                   'text-xs font-bold tabular-nums transition-colors duration-300',
@@ -475,7 +473,7 @@ function BanditGame() {
               type="button"
               onClick={() => !isSpinning && setStakeOpen(true)}
               disabled={isSpinning}
-              className={cn(infoPill, 'flex flex-1 items-center px-2 py-1.5 disabled:opacity-40')}
+              className={cn(slotInfoPill, 'flex flex-1 items-center px-2 py-1.5 disabled:opacity-40')}
             >
               <div className="flex flex-1 flex-col items-center">
                 <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
@@ -499,7 +497,7 @@ function BanditGame() {
             type="button"
             disabled={isFreeSpinActive || snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
             className={cn(
-              infoPill,
+              slotInfoPill,
               'flex flex-1 flex-col items-center px-3 py-1.5 transition-all active:scale-[0.94]',
               snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST && !isFreeSpinActive
                 ? 'text-amber-400 hover:bg-amber-400/10'
@@ -521,7 +519,7 @@ function BanditGame() {
           </button>
 
           {isFreeSpinActive ? (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
               <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-amber-400/70">Free Spins</span>
               <span className="text-sm font-bold tabular-nums text-amber-400">
                 {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
@@ -532,7 +530,7 @@ function BanditGame() {
               type="button"
               onClick={() => !isSpinning && setStakeOpen(true)}
               disabled={isSpinning}
-              className={cn(infoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
+              className={cn(slotInfoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
             >
               <div className="flex flex-1 flex-col items-center">
                 <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Stake</span>
@@ -544,7 +542,7 @@ function BanditGame() {
             </button>
           )}
 
-          <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+          <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
             <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Win</span>
             <span className={cn(
               'text-sm font-bold tabular-nums transition-colors duration-300',
@@ -559,12 +557,7 @@ function BanditGame() {
               type="button"
               onClick={onSpin}
               disabled={!canSpin}
-              className={cn(
-                'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-black transition-all active:scale-[0.97]',
-                canSpin
-                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/25 hover:bg-amber-500'
-                  : 'bg-white/10 text-white/30',
-              )}
+              className={cn(slotSpinDesktopClasses(canSpin, 'amber'), 'shrink-0')}
             >
               {isSpinning ? (
                 <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none">

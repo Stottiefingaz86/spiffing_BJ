@@ -3,6 +3,12 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
+import {
+  slotGlassPill,
+  slotInfoPill,
+  slotSpinDesktopClasses,
+  slotSpinMobileClasses,
+} from '@/components/game/slotChrome';
 
 import { BambooFortunesSession, GamePhase, BUY_BONUS_COST } from '../engine/session';
 import type { Cluster } from '../engine/grid';
@@ -12,15 +18,6 @@ import { preloadBFSfx, playBF, setBFSfxMuted, setBFBgmMuted, startBFBgm, stopBFB
 import { countScatters } from '../engine/grid';
 import { getSymbolMultiplier, type SymbolMultiplier } from '../engine/symbolMultipliers';
 import { getPayoutMultiplier, SCATTER, type BambooSymbol } from '../engine/symbols';
-
-const glassPill =
-  'rounded-[14px] border border-amber-200/20 bg-gradient-to-b from-white/[0.16] to-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-xl';
-
-/** Match Breaking Bandits / Hot Fiesta footer chips. */
-const infoPill = 'rounded-full bg-white/[0.06] border border-white/[0.06]';
-
-/** Google Shojumaru — loaded on `bamboofortunes.astro` via Layout `head` slot. */
-const winFontClass = "font-['Shojumaru',cursive]";
 
 const BF_ASSET_BASE =
   typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
@@ -219,6 +216,7 @@ function BambooFortunesGame() {
 
   const isSpinning = snap.phase === GamePhase.Spinning || snap.phase === GamePhase.FreeSpinSpinning;
   const canSpin = (snap.phase === GamePhase.Idle && snap.balance >= snap.bet) || snap.phase === GamePhase.ShowWin;
+
   const footerWinCents = targetWin > 0 ? Math.round(displayedWin) : 0;
   const showWin = footerWinCents;
   const winOverlayLine =
@@ -283,14 +281,14 @@ function BambooFortunesGame() {
       >
         <a
           href="/"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Back to lobby"
         >
           <Home className="size-4" strokeWidth={1.8} />
         </a>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Settings"
           onClick={() => setSettingsOpen(true)}
         >
@@ -298,7 +296,7 @@ function BambooFortunesGame() {
         </button>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label={soundOn ? 'Mute' : 'Unmute'}
           onClick={() => setSoundOn((v) => !v)}
         >
@@ -311,14 +309,14 @@ function BambooFortunesGame() {
 
         <div
           className={cn(
-            glassPill,
+            slotGlassPill,
             'ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5',
           )}
         >
           <span className="shrink-0 text-[7px] font-semibold uppercase leading-none tracking-[0.15em] text-white/40 lg:text-[8px]">
             Balance
           </span>
-          <span className="text-sm font-bold leading-none tabular-nums text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] lg:text-base">
+          <span className="text-sm font-bold leading-none tabular-nums text-white lg:text-base">
             {formatMoney(snap.balance)}
           </span>
         </div>
@@ -351,30 +349,15 @@ function BambooFortunesGame() {
 
         {isShowWin && snap.spinWin > 0 && (
           <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center px-4">
-            <div className="relative max-w-[min(100%,22rem)] rounded-3xl border border-amber-400/35 bg-black/78 px-8 py-7 text-center shadow-[0_0_0_1px_rgba(250,204,21,0.12),0_24px_80px_rgba(0,0,0,0.75),0_0_60px_rgba(245,158,11,0.12)] backdrop-blur-xl sm:max-w-lg sm:px-12 sm:py-9">
-              <p
-                className={cn(
-                  winFontClass,
-                  'text-[10px] font-normal uppercase tracking-[0.42em] text-amber-300/95 sm:text-[11px]',
-                )}
-              >
+            <div className="max-w-[min(100%,22rem)] rounded-2xl border border-white/10 bg-black/78 px-8 py-7 text-center backdrop-blur-xl sm:max-w-lg sm:px-12 sm:py-9">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-400/90 sm:text-[11px]">
                 Total win
               </p>
-              <p
-                className={cn(
-                  winFontClass,
-                  'mt-2 text-5xl font-normal tabular-nums text-amber-200 [text-shadow:0_0_40px_rgba(251,191,36,0.45),0_2px_0_rgba(120,53,15,0.5)] sm:mt-3 sm:text-7xl',
-                )}
-              >
+              <p className="mt-2 text-5xl font-bold tabular-nums text-amber-200 sm:mt-3 sm:text-6xl">
                 {formatMoney(Math.max(0, Math.round(displayedWin)))}
               </p>
               {winOverlayLine && (
-                <p
-                  className={cn(
-                    winFontClass,
-                    'mt-4 max-w-[min(100%,22rem)] text-center text-xs font-normal leading-relaxed text-white/90 sm:text-sm',
-                  )}
-                >
+                <p className="mt-4 max-w-[min(100%,22rem)] text-center text-xs font-medium leading-relaxed text-white/85 sm:text-sm">
                   {winOverlayLine}
                 </p>
               )}
@@ -404,12 +387,7 @@ function BambooFortunesGame() {
               <p className="text-center text-2xl font-black tracking-tight text-emerald-400 sm:text-3xl">
                 FREE SPINS COMPLETE
               </p>
-              <p
-                className={cn(
-                  winFontClass,
-                  'mt-2 text-center text-4xl font-normal text-yellow-400 sm:text-5xl',
-                )}
-              >
+              <p className="mt-2 text-center text-4xl font-bold tabular-nums text-emerald-400 sm:text-5xl">
                 {formatMoney(snap.freeSpinsTotalWin)}
               </p>
               <p className="mt-4 text-center text-sm text-white/50">Tap anywhere to continue</p>
@@ -425,12 +403,7 @@ function BambooFortunesGame() {
               </span>
             </div>
             {snap.freeSpinsTotalWin > 0 && (
-              <div
-                className={cn(
-                  winFontClass,
-                  'rounded-full bg-black/55 px-3 py-0.5 text-[10px] font-normal tabular-nums text-yellow-300 backdrop-blur-sm sm:text-xs',
-                )}
-              >
+              <div className="rounded-full bg-black/55 px-3 py-0.5 text-[10px] font-semibold tabular-nums text-amber-300 backdrop-blur-sm sm:text-xs">
                 Session win {formatMoney(snap.freeSpinsTotalWin)}
               </div>
             )}
@@ -446,12 +419,7 @@ function BambooFortunesGame() {
               type="button"
               onClick={onSpin}
               disabled={!canSpin}
-              className={cn(
-                'pointer-events-auto flex size-22 items-center justify-center rounded-full shadow-2xl transition-all active:scale-[0.90]',
-                canSpin
-                  ? 'bg-amber-600 text-white shadow-amber-600/40'
-                  : 'bg-white/10 text-white/30',
-              )}
+              className={cn(slotSpinMobileClasses(canSpin, 'emerald'), 'pointer-events-auto')}
             >
               {isSpinning ? (
                 <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -474,7 +442,7 @@ function BambooFortunesGame() {
               type="button"
               disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
               className={cn(
-                infoPill,
+                slotInfoPill,
                 'flex flex-1 flex-col items-center px-2 py-1.5 transition-all active:scale-[0.94]',
                 snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
                   ? 'text-amber-400'
@@ -499,14 +467,14 @@ function BambooFortunesGame() {
             </button>
 
             {isFreeSpinActive ? (
-              <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
+              <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
                 <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-amber-400/60">Free Spins</span>
                 <span className="text-xs font-bold tabular-nums text-amber-400">
                   {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
                 </span>
               </div>
             ) : (
-              <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
+              <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
                 <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
                 <span
                   className={cn(
@@ -523,7 +491,7 @@ function BambooFortunesGame() {
               type="button"
               onClick={() => !isSpinning && setStakeOpen(true)}
               disabled={isSpinning}
-              className={cn(infoPill, 'flex flex-1 items-center px-2 py-1.5 disabled:opacity-40')}
+              className={cn(slotInfoPill, 'flex flex-1 items-center px-2 py-1.5 disabled:opacity-40')}
             >
               <div className="flex flex-1 flex-col items-center">
                 <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
@@ -547,7 +515,7 @@ function BambooFortunesGame() {
             type="button"
             disabled={isFreeSpinActive || snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
             className={cn(
-              infoPill,
+              slotInfoPill,
               'flex flex-1 flex-col items-center px-3 py-1.5 transition-all active:scale-[0.94]',
               snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST && !isFreeSpinActive
                 ? 'text-amber-400 hover:bg-amber-400/10'
@@ -572,7 +540,7 @@ function BambooFortunesGame() {
           </button>
 
           {isFreeSpinActive ? (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
               <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-amber-400/70">Free Spins</span>
               <span className="text-sm font-bold tabular-nums text-amber-400">
                 {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
@@ -583,7 +551,7 @@ function BambooFortunesGame() {
               type="button"
               onClick={() => !isSpinning && setStakeOpen(true)}
               disabled={isSpinning}
-              className={cn(infoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
+              className={cn(slotInfoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
             >
               <div className="flex flex-1 flex-col items-center">
                 <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Stake</span>
@@ -595,7 +563,7 @@ function BambooFortunesGame() {
             </button>
           )}
 
-          <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+          <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
             <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Win</span>
             <span
               className={cn(
@@ -612,12 +580,7 @@ function BambooFortunesGame() {
               type="button"
               onClick={onSpin}
               disabled={!canSpin}
-              className={cn(
-                'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-black transition-all active:scale-[0.97]',
-                canSpin
-                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/25 hover:bg-amber-500'
-                  : 'bg-white/10 text-white/30',
-              )}
+              className={cn(slotSpinDesktopClasses(canSpin, 'emerald'), 'shrink-0')}
             >
               {isSpinning ? (
                 <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none">

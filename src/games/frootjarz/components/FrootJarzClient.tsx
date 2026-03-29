@@ -4,13 +4,21 @@ import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
 import { GamePreloader } from '@/components/GamePreloader';
-
+import {
+  slotGlassPill,
+  slotInfoPill,
+  slotSpinDesktopClasses,
+  slotSpinMobileClasses,
+} from '@/components/game/slotChrome';
 import { FrootJarzSession, GamePhase, BUY_BONUS_COST } from '../engine/session';
 import { FrootJarzCanvas } from '../render/FrootJarzCanvas';
 import { FrootJarzSettingsModal } from './FrootJarzSettingsModal';
 import { preloadFJSfx, playFJ, setFJSfxMuted, setFJBgmMuted, startFJBgm, stopFJBgm, unlockFJAudio, preloadBgm } from '../audio/frootjarzSfx';
 
+const FJ_BG_SRC = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}frootshoot/bg.png`;
+
 const PRELOAD_ASSETS = [
+  '/frootshoot/bg.png',
   '/frootshoot/symbols/s1.png',
   '/frootshoot/symbols/s2.png',
   '/frootshoot/symbols/s3.png',
@@ -23,12 +31,6 @@ const PRELOAD_ASSETS = [
   '/frootshoot/symbols/sounds/scatter.mp3',
   '/frootshoot/reelend.mp3',
 ];
-
-const glassPill =
-  'rounded-[14px] bg-white/[0.08] border border-white/[0.07]';
-
-const infoPill =
-  'rounded-full bg-white/[0.06] border border-white/[0.06]';
 
 function handleFJPreloaderPlay() {
   unlockFJAudio();
@@ -226,7 +228,7 @@ function FrootJarzGame() {
         'relative flex h-dvh max-h-dvh flex-col overflow-hidden text-white transition-colors duration-700',
         isFreeSpinActive
           ? 'bg-gradient-to-b from-[#1a0e0a] via-[#3d1f0a] to-[#1a0e0a]'
-          : 'game-bg',
+          : 'bg-[#0a0f1c]',
       )}
       onClick={() => {
         if (isFreeSpinOutro) {
@@ -235,11 +237,33 @@ function FrootJarzGame() {
         }
       }}
     >
-      {/* ══════ Subtle background pattern ══════ */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        <div className="fj-bg-pattern absolute inset-0 opacity-[0.07]" />
-        <div className="fj-bg-shimmer absolute inset-0 opacity-[0.04]" />
-      </div>
+      {/* Background: light blur + bottom legibility + edge vignette */}
+      {!isFreeSpinActive && (
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#0a0f1c]">
+          <img
+            src={FJ_BG_SRC}
+            alt=""
+            className="absolute inset-0 h-full w-full blur-[2px] scale-[1.05] brightness-[0.85] object-cover"
+            loading="eager"
+            decoding="async"
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 h-[30%]"
+            style={{
+              background:
+                'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.9) 100%)',
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse 96% 92% at 50% 44%, transparent 0%, transparent 26%, rgba(0,0,0,0.14) 52%, rgba(0,0,0,0.42) 78%, rgba(0,0,0,0.72) 100%)',
+            }}
+            aria-hidden
+          />
+        </div>
+      )}
 
       {/* ══════ Header: buttons only ══════ */}
       <header
@@ -248,14 +272,14 @@ function FrootJarzGame() {
       >
         <a
           href="/"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Back to lobby"
         >
           <Home className="size-4" strokeWidth={1.8} />
         </a>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Settings"
           onClick={() => setSettingsOpen(true)}
         >
@@ -263,7 +287,7 @@ function FrootJarzGame() {
         </button>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label={soundOn ? 'Mute' : 'Unmute'}
           onClick={() => setSoundOn((v) => !v)}
         >
@@ -276,7 +300,7 @@ function FrootJarzGame() {
 
         <div
           className={cn(
-            glassPill,
+            slotGlassPill,
             'ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5',
           )}
         >
@@ -289,9 +313,9 @@ function FrootJarzGame() {
         </div>
       </header>
 
-      {/* ══════ Game canvas ══════ */}
+      {/* ══════ Game canvas (z-0 so mobile footer z-10 + spin always stack above) ══════ */}
       <div
-        className="relative min-h-0 flex-1 max-lg:-mt-[10px]"
+        className="relative z-0 min-h-0 flex-1 max-lg:-mt-[10px]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Logo — absolutely positioned so it doesn't shrink the grid */}
@@ -350,46 +374,39 @@ function FrootJarzGame() {
         )}
       </div>
 
-      {/* ══════ MOBILE: Big centered spin button (overlaps canvas bottom) ══════ */}
-      {!isFreeSpinActive && (
-        <div
-          className="pointer-events-none absolute bottom-[1.4375rem] left-0 right-0 z-30 flex justify-center lg:hidden"
-        >
-          <button
-            type="button"
-            onClick={onSpin}
-            disabled={!canSpin}
-            className={cn(
-              'pointer-events-auto flex size-24 items-center justify-center rounded-full shadow-2xl transition-all active:scale-[0.90]',
-              canSpin
-                ? 'bg-[#22c55e] text-white shadow-emerald-500/40'
-                : 'bg-white/10 text-white/30',
-            )}
-          >
-            {isSpinning ? (
-              <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <RefreshCw className="size-11" strokeWidth={2.5} />
-            )}
-          </button>
-        </div>
-      )}
+      {/* ══════ MOBILE: footer row + spin floated up into canvas (avoids z-index covering chips) ══════ */}
+      <div className="relative z-10 shrink-0 lg:hidden">
+        {!isFreeSpinActive && (
+          <div className="pointer-events-none absolute -top-28 left-0 right-0 z-30 flex justify-center">
+            <button
+              type="button"
+              onClick={onSpin}
+              disabled={!canSpin}
+              className={cn(slotSpinMobileClasses(canSpin, 'emerald'), 'pointer-events-auto')}
+            >
+              {isSpinning ? (
+                <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <RefreshCw className="size-11" strokeWidth={2.5} />
+              )}
+            </button>
+          </div>
+        )}
 
-      {/* ══════ MOBILE footer: BonusBuy | Win | Stake ══════ */}
-      <footer
-        className="shrink-0 px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] lg:hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto flex max-w-sm items-center gap-1.5">
+        <footer
+          className="relative z-40 bg-black/80 px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mx-auto flex max-w-sm items-center gap-1.5">
           {/* Bonus Buy — left */}
           <button
             type="button"
             disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
             className={cn(
-              infoPill,
+              slotInfoPill,
               'flex flex-1 flex-col items-center px-2 py-1 transition-all active:scale-[0.94]',
               snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
                 ? 'text-amber-400'
@@ -412,14 +429,14 @@ function FrootJarzGame() {
 
           {/* Win — center */}
           {isFreeSpinActive ? (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
               <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-amber-400/60">Free Spins</span>
               <span className="text-xs font-bold tabular-nums text-amber-400">
                 {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
               </span>
             </div>
           ) : (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
               <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
               <span className={cn(
                 'text-xs font-bold tabular-nums transition-colors duration-300',
@@ -435,7 +452,7 @@ function FrootJarzGame() {
             type="button"
             onClick={() => !isSpinning && setStakeOpen(true)}
             disabled={isSpinning}
-            className={cn(infoPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
+            className={cn(slotInfoPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
           >
             <div className="flex flex-1 flex-col items-center">
               <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
@@ -445,12 +462,13 @@ function FrootJarzGame() {
               <ChevronDown className="size-3 text-white/50" />
             </div>
           </button>
-        </div>
-      </footer>
+          </div>
+        </footer>
+      </div>
 
       {/* ══════ DESKTOP footer: Balance | Bet | Win | Spin ══════ */}
       <footer
-        className="hidden shrink-0 px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 lg:block"
+        className="relative z-10 hidden shrink-0 px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 lg:block"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-xl items-center gap-2">
@@ -459,7 +477,7 @@ function FrootJarzGame() {
             type="button"
             disabled={isFreeSpinActive || snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
             className={cn(
-              infoPill,
+              slotInfoPill,
               'flex flex-1 flex-col items-center px-3 py-1.5 transition-all active:scale-[0.94]',
               snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST && !isFreeSpinActive
                 ? 'text-amber-400 hover:bg-amber-400/10'
@@ -482,7 +500,7 @@ function FrootJarzGame() {
 
           {/* Stake / Free Spins */}
           {isFreeSpinActive ? (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
               <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-amber-400/70">Free Spins</span>
               <span className="text-sm font-bold tabular-nums text-amber-400">
                 {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
@@ -493,7 +511,7 @@ function FrootJarzGame() {
               type="button"
               onClick={() => !isSpinning && setStakeOpen(true)}
               disabled={isSpinning}
-              className={cn(infoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
+              className={cn(slotInfoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
             >
               <div className="flex flex-1 flex-col items-center">
                 <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Stake</span>
@@ -506,7 +524,7 @@ function FrootJarzGame() {
           )}
 
           {/* Win */}
-          <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+          <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
             <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Win</span>
             <span className={cn(
               'text-sm font-bold tabular-nums transition-colors duration-300',
@@ -516,18 +534,12 @@ function FrootJarzGame() {
             </span>
           </div>
 
-          {/* Spin button — desktop, next to Win */}
           {!isFreeSpinActive && (
             <button
               type="button"
               onClick={onSpin}
               disabled={!canSpin}
-              className={cn(
-                'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-black transition-all active:scale-[0.97]',
-                canSpin
-                  ? 'bg-[#22c55e] text-white shadow-lg shadow-emerald-500/25 hover:bg-[#2dd468]'
-                  : 'bg-white/10 text-white/30',
-              )}
+              className={cn(slotSpinDesktopClasses(canSpin, 'emerald'), 'shrink-0')}
             >
               {isSpinning ? (
                 <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none">

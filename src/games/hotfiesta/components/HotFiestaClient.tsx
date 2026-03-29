@@ -3,17 +3,17 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
+import {
+  slotGlassPill,
+  slotInfoPill,
+  slotSpinDesktopClasses,
+  slotSpinMobileClasses,
+} from '@/components/game/slotChrome';
 
 import { HotFiestaSession, GamePhase, BUY_BONUS_COST } from '../engine/session';
 import { HotFiestaCanvas } from '../render/HotFiestaCanvas';
 import { HotFiestaSettingsModal } from './HotFiestaSettingsModal';
 import { preloadHFSfx, playHF, setHFSfxMuted, setHFBgmMuted, startHFBgm, stopHFBgm, unlockHFAudio, preloadHFBgm } from '../audio/hotfiestaSfx';
-
-const glassPill =
-  'rounded-[14px] bg-white/[0.08] border border-white/[0.07]';
-
-const infoPill =
-  'rounded-full bg-white/[0.06] border border-white/[0.06]';
 
 export default function HotFiestaClient() {
   return <HotFiestaGame />;
@@ -231,14 +231,14 @@ function HotFiestaGame() {
       >
         <a
           href="/"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Back to lobby"
         >
           <Home className="size-4" strokeWidth={1.8} />
         </a>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label="Settings"
           onClick={() => setSettingsOpen(true)}
         >
@@ -246,7 +246,7 @@ function HotFiestaGame() {
         </button>
         <button
           type="button"
-          className={cn(glassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
+          className={cn(slotGlassPill, 'flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]')}
           aria-label={soundOn ? 'Mute' : 'Unmute'}
           onClick={() => setSoundOn((v) => !v)}
         >
@@ -259,7 +259,7 @@ function HotFiestaGame() {
 
         <div
           className={cn(
-            glassPill,
+            slotGlassPill,
             'ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5',
           )}
         >
@@ -293,7 +293,7 @@ function HotFiestaGame() {
         {isFreeSpinIntro && (
           <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center">
             <div className="animate-bounce rounded-2xl bg-black/70 px-10 py-6 backdrop-blur-sm">
-              <p className="text-center text-3xl font-black tracking-tight text-orange-400 sm:text-4xl">
+              <p className="text-center text-3xl font-black tracking-tight text-amber-400 sm:text-4xl">
                 FREE SPINS
               </p>
               <p className="mt-1 text-center text-5xl font-black text-white sm:text-6xl">
@@ -310,7 +310,7 @@ function HotFiestaGame() {
             onClick={() => { session.dismissFreeSpins(); refresh(); }}
           >
             <div className="rounded-2xl bg-black/75 px-10 py-8 backdrop-blur-sm">
-              <p className="text-center text-2xl font-black tracking-tight text-orange-400 sm:text-3xl">
+              <p className="text-center text-2xl font-black tracking-tight text-amber-400 sm:text-3xl">
                 FREE SPINS COMPLETE
               </p>
               <p className="mt-2 text-center text-4xl font-black text-emerald-400 sm:text-5xl">
@@ -324,7 +324,7 @@ function HotFiestaGame() {
         {/* Free Spin Counter Badge */}
         {isFreeSpinActive && !isFreeSpinIntro && !isFreeSpinOutro && (
           <div className="absolute bottom-2 left-1/2 z-10 -translate-x-1/2">
-            <div className="rounded-full bg-orange-500/90 px-4 py-1 shadow-lg shadow-orange-500/30">
+            <div className="rounded-full bg-amber-500/90 px-4 py-1 shadow-lg shadow-amber-500/30">
               <span className="text-xs font-black tabular-nums text-white">
                 FREE SPINS {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
               </span>
@@ -342,12 +342,7 @@ function HotFiestaGame() {
             type="button"
             onClick={onSpin}
             disabled={!canSpin}
-            className={cn(
-              'pointer-events-auto flex size-24 items-center justify-center rounded-full shadow-2xl transition-all active:scale-[0.90]',
-              canSpin
-                ? 'bg-[#ff6600] text-white shadow-orange-500/40'
-                : 'bg-white/10 text-white/30',
-            )}
+            className={cn(slotSpinMobileClasses(canSpin, 'orange'), 'pointer-events-auto')}
           >
             {isSpinning ? (
               <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -371,10 +366,10 @@ function HotFiestaGame() {
             type="button"
             disabled={snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
             className={cn(
-              infoPill,
+              slotInfoPill,
               'flex flex-1 flex-col items-center px-2 py-1 transition-all active:scale-[0.94]',
               snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST
-                ? 'text-orange-400'
+                ? 'text-amber-400'
                 : 'text-white/20',
             )}
             onClick={() => {
@@ -393,14 +388,14 @@ function HotFiestaGame() {
           </button>
 
           {isFreeSpinActive ? (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-orange-400/60">Free Spins</span>
-              <span className="text-xs font-bold tabular-nums text-orange-400">
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
+              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-amber-400/60">Free Spins</span>
+              <span className="text-xs font-bold tabular-nums text-amber-400">
                 {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
               </span>
             </div>
           ) : (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
               <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
               <span className={cn(
                 'text-xs font-bold tabular-nums transition-colors duration-300',
@@ -415,7 +410,7 @@ function HotFiestaGame() {
             type="button"
             onClick={() => !isSpinning && setStakeOpen(true)}
             disabled={isSpinning}
-            className={cn(infoPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
+            className={cn(slotInfoPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
           >
             <div className="flex flex-1 flex-col items-center">
               <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
@@ -438,10 +433,10 @@ function HotFiestaGame() {
             type="button"
             disabled={isFreeSpinActive || snap.phase !== GamePhase.Idle || snap.balance < BUY_BONUS_COST}
             className={cn(
-              infoPill,
+              slotInfoPill,
               'flex flex-1 flex-col items-center px-3 py-1.5 transition-all active:scale-[0.94]',
               snap.phase === GamePhase.Idle && snap.balance >= BUY_BONUS_COST && !isFreeSpinActive
-                ? 'text-orange-400 hover:bg-orange-400/10'
+                ? 'text-amber-400 hover:bg-amber-400/10'
                 : 'text-white/20',
             )}
             onClick={() => {
@@ -460,9 +455,9 @@ function HotFiestaGame() {
           </button>
 
           {isFreeSpinActive ? (
-            <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
-              <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-orange-400/70">Free Spins</span>
-              <span className="text-sm font-bold tabular-nums text-orange-400">
+            <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+              <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-amber-400/70">Free Spins</span>
+              <span className="text-sm font-bold tabular-nums text-amber-400">
                 {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
               </span>
             </div>
@@ -471,7 +466,7 @@ function HotFiestaGame() {
               type="button"
               onClick={() => !isSpinning && setStakeOpen(true)}
               disabled={isSpinning}
-              className={cn(infoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
+              className={cn(slotInfoPill, 'flex flex-1 items-center gap-1 px-3 py-1.5 hover:bg-white/[0.08] disabled:opacity-40')}
             >
               <div className="flex flex-1 flex-col items-center">
                 <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Stake</span>
@@ -483,7 +478,7 @@ function HotFiestaGame() {
             </button>
           )}
 
-          <div className={cn(infoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
+          <div className={cn(slotInfoPill, 'flex flex-1 flex-col items-center px-3 py-1.5')}>
             <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">Win</span>
             <span className={cn(
               'text-sm font-bold tabular-nums transition-colors duration-300',
@@ -498,12 +493,7 @@ function HotFiestaGame() {
               type="button"
               onClick={onSpin}
               disabled={!canSpin}
-              className={cn(
-                'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-black transition-all active:scale-[0.97]',
-                canSpin
-                  ? 'bg-[#ff6600] text-white shadow-lg shadow-orange-500/25 hover:bg-[#ff7711]'
-                  : 'bg-white/10 text-white/30',
-              )}
+              className={cn(slotSpinDesktopClasses(canSpin, 'orange'), 'shrink-0')}
             >
               {isSpinning ? (
                 <svg className="size-5 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -606,7 +596,7 @@ function StakeDrawer({
               className={cn(
                 'flex items-center justify-center rounded-xl border-2 py-3.5 text-sm font-bold tabular-nums transition-all active:scale-95',
                 cents === currentBet
-                  ? 'border-orange-400 bg-orange-500/15 text-orange-300'
+                  ? 'border-amber-400 bg-amber-500/15 text-amber-300'
                   : 'border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/20',
               )}
             >

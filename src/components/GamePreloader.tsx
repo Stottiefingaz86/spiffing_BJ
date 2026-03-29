@@ -150,21 +150,68 @@ export function GamePreloader({ children, assets = [], onPlay: onPlayProp }: Gam
             }}>
               {progress}%
             </p>
-            <div style={{
-              width: '100%',
-              height: '8px',
-              background: 'rgba(255,255,255,0.06)',
-              borderRadius: '4px',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                width: `${progress}%`,
-                height: '100%',
-                background: 'linear-gradient(90deg, #22c55e, #4ade80)',
-                borderRadius: '4px',
-                transition: 'width 0.4s ease',
-                boxShadow: progress > 0 ? '0 0 20px rgba(34,197,94,0.5)' : 'none',
-              }} />
+            {/* Logo-matched coral → magenta fill + gloss “candy” highlight */}
+            <div
+              style={{
+                width: '100%',
+                height: '11px',
+                borderRadius: '999px',
+                overflow: 'hidden',
+                background: 'rgba(0,0,0,0.28)',
+                boxShadow: 'inset 0 1px 4px rgba(0,0,0,0.45)',
+                border: '1px solid rgba(255,255,255,0.07)',
+              }}
+            >
+              <div
+                style={{
+                  width: `${progress}%`,
+                  height: '100%',
+                  borderRadius: '999px',
+                  transition: 'width 0.4s ease',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  minWidth: progress > 0 ? '11px' : 0,
+                  boxShadow:
+                    progress > 0
+                      ? '0 0 16px rgba(241,37,98,0.42), 0 0 10px rgba(250,135,47,0.32), inset 0 -1px 0 rgba(0,0,0,0.2)'
+                      : 'none',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(180deg, rgba(0,0,0,0.08) 0%, transparent 42%, rgba(0,0,0,0.14) 100%), linear-gradient(90deg, #FA872F 0%, #ff6b4a 42%, #f03d68 72%, #F12562 100%)',
+                  }}
+                />
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.2) 22%, rgba(255,255,255,0.04) 45%, transparent 62%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    left: '8%',
+                    right: '8%',
+                    top: 1,
+                    height: 2,
+                    borderRadius: 999,
+                    background:
+                      'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 15%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0.25) 85%, transparent 100%)',
+                    opacity: 0.92,
+                    pointerEvents: 'none',
+                    boxShadow: '0 0 6px rgba(255,255,255,0.35)',
+                  }}
+                />
+              </div>
             </div>
           </div>
 
