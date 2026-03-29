@@ -90,6 +90,9 @@ const METER_SEGMENTS = SCATTER_TRIGGER;
 /** Vertical gap between meter bottom and grid mask top (mobile). 0 = flush / touching. */
 const MOBILE_SCATTER_METER_GAP = 0;
 
+/** Push scatter meter + grid down together on narrow viewports (e.g. under header/logo). */
+const MOBILE_GRID_METER_NUDGE_Y = 5;
+
 /** Min space from canvas top to scatter meter (mobile), as fraction of canvas height. */
 const MOBILE_METER_TOP_MARGIN_FRAC = 0.05;
 
@@ -152,7 +155,8 @@ export function computeGridLayout(canvasW: number, canvasH: number): GridLayout 
     const innerH = canvasH - mobileBottomReserve;
     const contentH = mobileMeterBandH + MOBILE_SCATTER_METER_GAP + gridBodyH;
     const centeredMeterTop = Math.max(vPad * 0.5, (innerH - contentH) / 2);
-    scatterMeterTop = Math.max(mobileMeterTopMargin, centeredMeterTop);
+    scatterMeterTop =
+      Math.max(mobileMeterTopMargin, centeredMeterTop) + MOBILE_GRID_METER_NUDGE_Y;
     gridY = scatterMeterTop + mobileMeterBandH + MOBILE_SCATTER_METER_GAP + bgPad;
   } else {
     gridY =
