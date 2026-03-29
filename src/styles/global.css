@@ -179,10 +179,18 @@
 }
 
 /**
- * Lobby marketing green — PLAY / CTA reference (~#5cb35d body, #7ed987 highlights).
- * Component classes so filter script + Astro stay in sync without purge issues.
+ * Lobby: green = PLAY / CTA only (~#5cb35d, #7ed987).
+ * Coral = Spiffing logo (~#f0715e) — filter/sort UI and their labels.
  */
 @layer components {
+  .lobby-brand-accent {
+    color: rgba(240, 113, 94, 0.92);
+  }
+
+  .lobby-brand-accent-dim {
+    color: rgba(240, 113, 94, 0.85);
+  }
+
   .lobby-brand-cta {
     border: 1px solid rgba(126, 217, 135, 0.45);
     background: linear-gradient(180deg, #6abf69 0%, #459648 100%);
@@ -199,10 +207,10 @@
   }
 
   .lobby-filter-on {
-    border-color: rgba(106, 191, 105, 0.92);
-    background-color: #5cb35d;
+    border-color: rgba(240, 113, 94, 0.92);
+    background-color: #e85542;
     color: #fff;
-    box-shadow: 0 0 22px rgba(92, 179, 93, 0.38);
+    box-shadow: 0 0 22px rgba(240, 113, 94, 0.35);
   }
 
   .lobby-filter-off {
@@ -213,15 +221,15 @@
   }
 
   .lobby-filter-off:hover {
-    border-color: rgba(126, 217, 135, 0.42);
-    background-color: rgba(92, 179, 93, 0.14);
+    border-color: rgba(240, 113, 94, 0.42);
+    background-color: rgba(240, 113, 94, 0.14);
     color: rgba(255, 255, 255, 0.96);
   }
 
   .lobby-sort-btn {
-    border-color: rgba(126, 217, 135, 0.45);
-    background-color: rgba(92, 179, 93, 0.12);
-    color: rgba(240, 253, 244, 0.96);
+    border-color: rgba(240, 113, 94, 0.45);
+    background-color: rgba(240, 113, 94, 0.12);
+    color: rgba(255, 248, 246, 0.96);
     transition:
       border-color 0.15s ease,
       background-color 0.15s ease,
@@ -229,9 +237,9 @@
   }
 
   .lobby-sort-btn:hover {
-    border-color: rgba(126, 217, 135, 0.72);
-    background-color: rgba(92, 179, 93, 0.2);
-    box-shadow: 0 0 18px rgba(92, 179, 93, 0.18);
+    border-color: rgba(240, 113, 94, 0.72);
+    background-color: rgba(240, 113, 94, 0.2);
+    box-shadow: 0 0 18px rgba(240, 113, 94, 0.2);
   }
 }
 
