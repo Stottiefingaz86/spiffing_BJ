@@ -1,0 +1,580 @@
+/**
+ * Quest Raider — drop, highlight, pop, fall, particles (5×3 line-pay avalanche).
+ * Flush wall + heavy stone motion (Gonzo-style): full-cell slabs, tilt while falling, snap square on land.
+ */
+
+import { REELS, ROWS } from '../engine/symbols';
+
+function easeInQuad(t: number): number {
+  return t * t;
+}
+
+/** Fraction of vertical drop completed (0 = top, 1 = landed): accelerates like gravity, eases last bit into slot */
+function brickDropTravel(t: number): number {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const landStart = 0.82;
+  if (t <= landStart) {
+    const u = t / landStart;
+    return Math.pow(u, 1.78) * 0.88;
+  }
+  const u = (t - landStart) / (1 - landStart);
+  return 0.88 + 0.12 * (1 - Math.pow(1 - u, 2.6));
+}
+
+/** Same idea for shorter falls (cascade) */
+function brickShortFallTravel(t: number): number {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const landStart = 0.78;
+  if (t <= landStart) {
+    const u = t / landStart;
+    return Math.pow(u, 1.72) * 0.86;
+  }
+  const u = (t - landStart) / (1 - landStart);
+  return 0.86 + 0.14 * (1 - Math.pow(1 - u, 2.4));
+}
+
+/** Stable pseudo-random in [-1, 1] per cell id — used for tilt/sway so each stone feels distinct */
+function stoneTiltUnit(cellId: number): number {
+  const s = Math.sin(cellId * 12.9898) * 43758.5453;
+  return (s - Math.floor(s)) * 2 - 1;
+}
+
+function stoneTiltRad(cellId: number, maxDeg: number): number {
+  return stoneTiltUnit(cellId) * ((maxDeg * Math.PI) / 180);
+}
+
+export interface CellRenderState {
+  xOffset: number;
+  yOffset: number;
+  scaleX: number;
+  scaleY: number;
+  alpha: number;
+  /** Radians; + = clockwise (Pixi). Used for brick tilt on landing / pop. */
+  rotation: number;
+}
+
+// --- drop out ---
+interface DropOutAnim {
+  cellId: number;
+  row: number;
+  col: number;
+  delayMs: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+const dropOutMap = new Map<number, DropOutAnim>();
+
+function cellStateFromDropOut(d: DropOutAnim): CellRenderState {
+  if (d.delayMs > 0) return { xOffset: 0, yOffset: 0, scaleX: 1, scaleY: 1, alpha: 1, rotation: 0 };
+  const t = Math.min(1, d.elapsedMs / d.durationMs);
+  const e = brickDropTravel(t);
+  const fallDist = ROWS - d.row + 1;
+  const tilt = stoneTiltRad(d.cellId, 9);
+  const centerCol = (REELS - 1) / 2;
+  /** Wall breaks: reels peel slightly away from center as they drop */
+  const peel = (d.col - centerCol) * 0.036 * e + stoneTiltUnit(d.cellId + 2) * 0.018 * e;
+  return {
+    xOffset: peel,
+    yOffset: fallDist * e,
+    scaleX: 1,
+    scaleY: 1,
+    alpha: 1,
+    rotation: tilt * e,
+  };
+}
+
+export function queueDropOutAnimations(
+  grid: { id: number }[][],
+  durationMs = 165,
+  /** Tight stagger so the wall releases almost as one piece */
+  colStaggerMs = 26,
+  rowStaggerMs = 9,
+): number {
+  dropOutMap.clear();
+  let maxEnd = 0;
+  for (let c = 0; c < REELS; c++) {
+    for (let r = 0; r < ROWS; r++) {
+      const cell = grid[r]?.[c];
+      if (!cell) continue;
+      const delay = c * colStaggerMs + (ROWS - 1 - r) * rowStaggerMs;
+      dropOutMap.set(cell.id, { cellId: cell.id, row: r, col: c, delayMs: delay, elapsedMs: 0, durationMs });
+      maxEnd = Math.max(maxEnd, delay + durationMs);
+    }
+  }
+  return maxEnd;
+}
+
+// --- drop in (slab falls straight down its column, gravity + landing thud) ---
+interface DropInAnim {
+  cellId: number;
+  row: number;
+  col: number;
+  delayMs: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+const dropInMap = new Map<number, DropInAnim>();
+
+/**
+ * Vertical drop → brief “loose” (not a locked wall) → snap flush — “come together”.
+ * `looseW` is continuous at the handoff so x/rot don’t pop.
+ */
+function cellStateFromDropIn(d: DropInAnim): CellRenderState {
+  const tiltA = stoneTiltRad(d.cellId, 8);
+  const stackAbove = 2.35;
+  const spread = stoneTiltUnit(d.cellId + d.col * 17) * 0.042;
+  const looseRot = stoneTiltRad(d.cellId + 5, 5);
+  if (d.delayMs > 0) {
+    return {
+      xOffset: 0,
+      yOffset: -(d.row + stackAbove),
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      rotation: tiltA * 0.35,
+    };
+  }
+  const t = Math.min(1, d.elapsedMs / d.durationMs);
+  const fallDist = d.row + stackAbove;
+  const e = brickDropTravel(t);
+  const yOffset = -fallDist * (1 - e);
+
+  const looseStart = 0.7;
+  const snapStart = 0.86;
+  let looseW = 0;
+  if (t < looseStart) {
+    looseW = 0;
+  } else if (t < snapStart) {
+    const u = (t - looseStart) / (snapStart - looseStart);
+    looseW = Math.sin(u * Math.PI * 0.5);
+  } else {
+    const u = (t - snapStart) / (1 - snapStart);
+    looseW = Math.pow(1 - u, 2.2);
+  }
+
+  const xOff = spread * looseW;
+  const settleBlend = Math.min(1, t * 1.12);
+  let rot =
+    Math.sin(t * Math.PI) * tiltA * (1 - settleBlend * 0.82) + looseRot * looseW * 0.88;
+  if (t >= snapStart) {
+    const u = (t - snapStart) / (1 - snapStart);
+    rot *= 1 - u * 0.96;
+  }
+
+  return { xOffset: xOff, yOffset, scaleX: 1, scaleY: 1, alpha: 1, rotation: rot };
+}
+
+export function queueDropInAnimations(
+  grid: { id: number }[][],
+  baseDurationMs = 198,
+  colStaggerMs = 52,
+  rowStaggerMs = 14,
+  onlyIds?: Set<number>,
+): number {
+  dropInMap.clear();
+  let maxEnd = 0;
+  for (let c = 0; c < REELS; c++) {
+    for (let r = 0; r < ROWS; r++) {
+      const cell = grid[r]?.[c];
+      if (!cell) continue;
+      if (onlyIds && !onlyIds.has(cell.id)) continue;
+      const jitter = Math.round(stoneTiltUnit(cell.id + c * 9) * 10);
+      const delay = c * colStaggerMs + (ROWS - 1 - r) * rowStaggerMs + jitter;
+      const dist = r + 1;
+      const dur = baseDurationMs + dist * 20;
+      dropInMap.set(cell.id, { cellId: cell.id, row: r, col: c, delayMs: delay, elapsedMs: 0, durationMs: dur });
+      maxEnd = Math.max(maxEnd, delay + dur);
+    }
+  }
+  return maxEnd;
+}
+
+// --- highlight ---
+interface HighlightAnim {
+  cellId: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+const highlightMap = new Map<number, HighlightAnim>();
+
+function cellStateFromHighlight(_h: HighlightAnim): CellRenderState {
+  /** Keep scale locked — scaling reads like rubber, not solid stone (glow is drawn separately). */
+  return { xOffset: 0, yOffset: 0, scaleX: 1, scaleY: 1, alpha: 1, rotation: 0 };
+}
+
+export function queueHighlightAnimations(cellIds: number[], durationMs = 420): void {
+  highlightMap.clear();
+  for (const id of cellIds) {
+    highlightMap.set(id, { cellId: id, elapsedMs: 0, durationMs });
+  }
+}
+
+// --- pop ---
+interface PopAnim {
+  cellId: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+const popMap = new Map<number, PopAnim>();
+
+function cellStateFromPop(p: PopAnim): CellRenderState {
+  const t = Math.min(1, p.elapsedMs / p.durationMs);
+  const ease = easeInQuad(t);
+  /** Rigid slab: no squash/stretch — crumble reads as fade + tilt only */
+  return {
+    xOffset: -0.04 * ease,
+    yOffset: 0.02 * ease,
+    scaleX: 1,
+    scaleY: 1,
+    alpha: 1 - ease * ease,
+    rotation: -0.08 * ease,
+  };
+}
+
+export function queuePopAnimations(cellIds: number[], durationMs = 320): void {
+  popMap.clear();
+  for (const id of cellIds) {
+    popMap.set(id, { cellId: id, elapsedMs: 0, durationMs });
+  }
+}
+
+// --- fall ---
+interface FallAnim {
+  cellId: number;
+  fromRow: number;
+  toRow: number;
+  col: number;
+  delayMs: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+const fallMap = new Map<number, FallAnim>();
+
+function cellStateFromFall(f: FallAnim): CellRenderState {
+  const tiltMax = stoneTiltRad(f.cellId, 7);
+  if (f.delayMs > 0) {
+    return {
+      xOffset: 0,
+      yOffset: f.fromRow - f.toRow,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      rotation: tiltMax * 0.45,
+    };
+  }
+  const t = Math.min(1, f.elapsedMs / f.durationMs);
+  const rowDelta = f.fromRow - f.toRow;
+  const e = brickShortFallTravel(t);
+  const yOffset = rowDelta * (1 - e);
+  const airPhase = t < 0.82 ? Math.sin(t * Math.PI) : 0;
+  let rot = airPhase * tiltMax;
+  if (t > 0.82) {
+    const lt = (t - 0.82) / 0.18;
+    rot *= 1 - lt;
+  }
+  return { xOffset: 0, yOffset, scaleX: 1, scaleY: 1, alpha: 1, rotation: rot };
+}
+
+export function queueFallAnimations(
+  moves: { cellId: number; fromRow: number; toRow: number; col: number }[],
+  durationMs = 212,
+  staggerMs = 5,
+): number {
+  fallMap.clear();
+  let maxEnd = 0;
+  for (let i = 0; i < moves.length; i++) {
+    const m = moves[i];
+    const dist = Math.abs(m.toRow - m.fromRow);
+    const dur = durationMs + dist * 26;
+    const jitter = Math.round(stoneTiltUnit(m.cellId + m.col * 17) * 7);
+    const delay = m.col * 10 + m.toRow * 4 + i * staggerMs + jitter;
+    fallMap.set(m.cellId, { ...m, delayMs: Math.max(0, delay), elapsedMs: 0, durationMs: dur });
+    maxEnd = Math.max(maxEnd, delay + dur);
+  }
+  return maxEnd;
+}
+
+function combinedState(s: CellRenderState): CellRenderState {
+  return s;
+}
+
+export function getCellAnimState(cellId: number): CellRenderState | null {
+  const dropOut = dropOutMap.get(cellId);
+  if (dropOut) return combinedState(cellStateFromDropOut(dropOut));
+  const dropIn = dropInMap.get(cellId);
+  if (dropIn) return combinedState(cellStateFromDropIn(dropIn));
+  const pop = popMap.get(cellId);
+  if (pop) return combinedState(cellStateFromPop(pop));
+  const highlight = highlightMap.get(cellId);
+  if (highlight) return combinedState(cellStateFromHighlight(highlight));
+  const fall = fallMap.get(cellId);
+  if (fall) return combinedState(cellStateFromFall(fall));
+  return null;
+}
+
+// --- particles ---
+export type ParticleKind = 'debris' | 'smoke';
+
+export interface Particle {
+  kind: ParticleKind;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  baseSize: number;
+  rotation: number;
+  rotSpeed: number;
+  aspect: number;
+  /** Thick pulverized-stone cloud vs light wisp */
+  dense?: boolean;
+}
+
+const activeParticles: Particle[] = [];
+
+const SMOKE_DUST = [0x5c5348, 0x7a6e62, 0x4a433c, 0x8c8072, 0x3d3830, 0x6b6358];
+const STONE_DUST_DARK = [0x2a2824, 0x353330, 0x3e3b36, 0x48443e, 0x322f2c, 0x4a4540];
+const STONE_CHIP = [0x1c1a18, 0x252220, 0x2e2b27, 0x383430];
+
+export function spawnParticles(x: number, y: number, color: number, count = 12, speed = 4, lifeMs = 620): void {
+  const n = Math.max(count, 10);
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 1.1;
+    const v = speed * (0.55 + Math.random() * 1.05);
+    const sz = 2.5 + Math.random() * 4;
+    activeParticles.push({
+      kind: 'debris',
+      x: x + (Math.random() - 0.5) * 6,
+      y: y + (Math.random() - 0.5) * 6,
+      vx: Math.cos(angle) * v,
+      vy: Math.sin(angle) * v - 3.2,
+      color,
+      life: 0,
+      maxLife: lifeMs * (0.75 + Math.random() * 0.7),
+      size: sz,
+      baseSize: sz,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.28,
+      aspect: 0.45 + Math.random() * 0.55,
+    });
+  }
+}
+
+/**
+ * Stone slab shatter: dark chips + grit burst + dense grey-brown dust cloud (Gonzo-style).
+ */
+export function spawnBrickExplosion(cx: number, cy: number, accentColor: number, spread = 14): void {
+  const shardN = 22;
+  for (let i = 0; i < shardN; i++) {
+    const angle = (Math.PI * 2 * i) / shardN + (Math.random() - 0.5) * 1.15;
+    const v = 3 + Math.random() * 5.5;
+    const useAccent = Math.random() < 0.22;
+    const col = useAccent ? accentColor : STONE_CHIP[Math.floor(Math.random() * STONE_CHIP.length)];
+    const sz = 2.4 + Math.random() * 5;
+    activeParticles.push({
+      kind: 'debris',
+      x: cx + (Math.random() - 0.5) * spread * 0.92,
+      y: cy + (Math.random() - 0.5) * spread * 0.92,
+      vx: Math.cos(angle) * v,
+      vy: Math.sin(angle) * v - 3.2,
+      color: col,
+      life: 0,
+      maxLife: 420 + Math.random() * 520,
+      size: sz,
+      baseSize: sz,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.55,
+      aspect: 0.32 + Math.random() * 0.55,
+    });
+  }
+
+  const gritN = 32;
+  for (let i = 0; i < gritN; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const v = 1.8 + Math.random() * 5;
+    const sz = 1 + Math.random() * 2.2;
+    activeParticles.push({
+      kind: 'debris',
+      x: cx + (Math.random() - 0.5) * spread * 0.75,
+      y: cy + (Math.random() - 0.5) * spread * 0.75,
+      vx: Math.cos(angle) * v,
+      vy: Math.sin(angle) * v - 2.8,
+      color: STONE_CHIP[Math.floor(Math.random() * STONE_CHIP.length)],
+      life: 0,
+      maxLife: 220 + Math.random() * 320,
+      size: sz,
+      baseSize: sz,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.9,
+      aspect: 0.4 + Math.random() * 0.45,
+    });
+  }
+
+  const denseSmokeN = 18;
+  for (let i = 0; i < denseSmokeN; i++) {
+    const col = STONE_DUST_DARK[Math.floor(Math.random() * STONE_DUST_DARK.length)];
+    const bs = 12 + Math.random() * 22;
+    const ang = Math.random() * Math.PI * 2;
+    const puff = 0.8 + Math.random() * 2.4;
+    activeParticles.push({
+      kind: 'smoke',
+      x: cx + (Math.random() - 0.5) * spread * 0.88,
+      y: cy + (Math.random() - 0.5) * spread * 0.88,
+      vx: Math.cos(ang) * puff,
+      vy: Math.sin(ang) * puff - (0.6 + Math.random() * 1.2),
+      color: col,
+      life: 0,
+      maxLife: 880 + Math.random() * 700,
+      size: bs,
+      baseSize: bs,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.1,
+      aspect: 0.75 + Math.random() * 0.45,
+      dense: true,
+    });
+  }
+
+  const wispN = 26;
+  for (let i = 0; i < wispN; i++) {
+    const col = SMOKE_DUST[Math.floor(Math.random() * SMOKE_DUST.length)];
+    const bs = 6 + Math.random() * 14;
+    activeParticles.push({
+      kind: 'smoke',
+      x: cx + (Math.random() - 0.5) * (spread * 1.15),
+      y: cy + (Math.random() - 0.5) * (spread * 1.05),
+      vx: (Math.random() - 0.5) * 2.2,
+      vy: (Math.random() - 0.5) * 1.8 - (0.4 + Math.random() * 1.1),
+      color: col,
+      life: 0,
+      maxLife: 620 + Math.random() * 750,
+      size: bs,
+      baseSize: bs,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.08,
+      aspect: 0.82 + Math.random() * 0.38,
+      dense: false,
+    });
+  }
+}
+
+export function getParticles(): readonly Particle[] {
+  return activeParticles;
+}
+
+// --- floating win ---
+export interface FloatingWinText {
+  x: number;
+  y: number;
+  amount: number;
+  elapsedMs: number;
+  durationMs: number;
+}
+
+const activeFloatingWins: FloatingWinText[] = [];
+
+export function spawnFloatingWin(x: number, y: number, amount: number, durationMs = 2200): void {
+  activeFloatingWins.push({ x, y, amount, elapsedMs: 0, durationMs });
+}
+
+export function getFloatingWins(): readonly FloatingWinText[] {
+  return activeFloatingWins;
+}
+
+// --- camera shake ---
+let shakeIntensity = 0;
+let shakeElapsed = 0;
+let shakeDuration = 0;
+let shakeActive = false;
+
+export function triggerCameraShake(intensity = 7, durationMs = 380): void {
+  shakeIntensity = intensity;
+  shakeDuration = durationMs;
+  shakeElapsed = 0;
+  shakeActive = true;
+}
+
+export function getCameraShakeOffset(): { x: number; y: number } {
+  if (!shakeActive) return { x: 0, y: 0 };
+  const decay = 1 - shakeElapsed / shakeDuration;
+  const amp = shakeIntensity * decay;
+  return { x: (Math.random() * 2 - 1) * amp, y: (Math.random() * 2 - 1) * amp };
+}
+
+export function tickAnimations(dtMs: number): void {
+  for (const d of dropOutMap.values()) {
+    if (d.delayMs > 0) {
+      d.delayMs -= dtMs;
+      continue;
+    }
+    d.elapsedMs += dtMs;
+  }
+  for (const d of dropInMap.values()) {
+    if (d.delayMs > 0) {
+      d.delayMs -= dtMs;
+      continue;
+    }
+    d.elapsedMs += dtMs;
+  }
+  for (const h of highlightMap.values()) h.elapsedMs += dtMs;
+  for (const p of popMap.values()) p.elapsedMs += dtMs;
+  for (const f of fallMap.values()) {
+    if (f.delayMs > 0) {
+      f.delayMs -= dtMs;
+      continue;
+    }
+    f.elapsedMs += dtMs;
+  }
+  for (let i = activeFloatingWins.length - 1; i >= 0; i--) {
+    activeFloatingWins[i].elapsedMs += dtMs;
+    if (activeFloatingWins[i].elapsedMs >= activeFloatingWins[i].durationMs) {
+      activeFloatingWins.splice(i, 1);
+    }
+  }
+  for (let i = activeParticles.length - 1; i >= 0; i--) {
+    const p = activeParticles[i];
+    const dt = dtMs / 16;
+    if (p.kind === 'smoke') {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.985;
+      p.vy = p.vy * 0.991 + 0.022 * dt;
+      const t = p.life / Math.max(1, p.maxLife);
+      const billow = p.dense ? 4.6 : 3.5;
+      p.size = p.baseSize * (1 + billow * t);
+      p.rotation += p.rotSpeed * dt;
+      p.life += dtMs;
+    } else {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 0.11 * dt;
+      p.vx *= 0.994;
+      p.rotation += p.rotSpeed * dt;
+      p.life += dtMs;
+    }
+    if (p.life >= p.maxLife) activeParticles.splice(i, 1);
+  }
+  if (shakeActive) {
+    shakeElapsed += dtMs;
+    if (shakeElapsed >= shakeDuration) shakeActive = false;
+  }
+}
+
+export function clearAllAnimations(): void {
+  dropOutMap.clear();
+  dropInMap.clear();
+  highlightMap.clear();
+  popMap.clear();
+  fallMap.clear();
+  activeParticles.length = 0;
+  shakeActive = false;
+}
+
+export function clearAllAnimationsAndFloats(): void {
+  clearAllAnimations();
+  activeFloatingWins.length = 0;
+}
