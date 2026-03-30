@@ -290,6 +290,9 @@ export function QuestRaiderCanvas({
         const cell = step.gridBefore[row]?.[col];
         if (cell) winIds.add(cell.id);
       }
+      const hasWins = winIds.size > 0;
+      /** First cascade after a spin is the initial line hit — `win` covers it; `explode` only on later avalanches. */
+      const playExplodeSfx = hasWins && snap.currentCascadeIndex > 0;
 
       const multLabel = `×${step.avalancheMult}`;
 
@@ -298,42 +301,44 @@ export function QuestRaiderCanvas({
 
       scheduleTimer(() => {
         clearAllAnimations();
-        queueHighlightAnimations([...winIds], highlightMs);
-        playTF('tick', 0.35);
+        if (hasWins) queueHighlightAnimations([...winIds], highlightMs);
+        if (hasWins) playTF('tick', 0.35);
         displayRef.current = {
           grid: step.gridBefore,
-          winCells: winIds,
+          winCells: hasWins ? winIds : undefined,
           multLabel,
         };
-        draw(gl, app.renderer, step.gridBefore, layout, winIds, multLabel);
+        draw(gl, app.renderer, step.gridBefore, layout, hasWins ? winIds : undefined, multLabel);
       }, 0);
 
       scheduleTimer(() => {
         clearAllAnimations();
-        queuePopAnimations([...winIds], popMs);
-        playTF('explode', 0.3);
-        if (stepWin > 0) playTF('win', 0.28);
-        const accent = particleColorForCells(step.gridBefore, winIds);
-        const minDim = Math.min(layout.cellW, layout.cellH);
-        const spread = minDim * 0.82;
-        const { cellW: cw, cellH: ch } = layout;
-        for (const { row, col: c } of step.winningCells) {
-          const cx = layout.gridX + c * cw + cw / 2;
-          const cy = layout.gridY + row * ch + ch / 2;
-          spawnBrickExplosion(cx, cy, accent, spread);
+        if (hasWins) queuePopAnimations([...winIds], popMs);
+        if (hasWins) {
+          if (playExplodeSfx) playTF('explode', 0.3);
+          if (stepWin > 0) playTF('win', 0.28);
+          const accent = particleColorForCells(step.gridBefore, winIds);
+          const minDim = Math.min(layout.cellW, layout.cellH);
+          const spread = minDim * 0.82;
+          const { cellW: cw, cellH: ch } = layout;
+          for (const { row, col: c } of step.winningCells) {
+            const cx = layout.gridX + c * cw + cw / 2;
+            const cy = layout.gridY + row * ch + ch / 2;
+            spawnBrickExplosion(cx, cy, accent, spread);
+          }
+          runningWinRef.current += stepWin;
+          const avgX = layout.gridX + (REELS / 2) * cw;
+          const avgY = layout.gridY + (ROWS / 2) * ch;
+          spawnFloatingWin(avgX, avgY, stepWin, 2000);
+          triggerCameraShake(Math.min(11, 4 + stepWin / Math.max(1, snap.bet)), 320);
         }
-        runningWinRef.current += stepWin;
-        const avgX = layout.gridX + (REELS / 2) * cw;
-        const avgY = layout.gridY + (ROWS / 2) * ch;
-        spawnFloatingWin(avgX, avgY, stepWin, 2000);
-        triggerCameraShake(Math.min(11, 4 + stepWin / Math.max(1, snap.bet)), 320);
 
         displayRef.current = {
           grid: step.gridBefore,
-          winCells: winIds,
+          winCells: hasWins ? winIds : undefined,
           multLabel,
         };
-        draw(gl, app.renderer, step.gridBefore, layout, winIds, multLabel);
+        draw(gl, app.renderer, step.gridBefore, layout, hasWins ? winIds : undefined, multLabel);
       }, highlightMs + 20);
 
       const fallStart = highlightMs + 20 + popMs + 40;

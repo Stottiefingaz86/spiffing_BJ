@@ -259,12 +259,12 @@ export class QuestRaiderSession {
     if (this.currentCascadeIndex >= this.cascadeSteps.length) {
       this.initialGrid = null;
       if (this.freeSpinsRemaining > 0) {
-        this.startFreeSpin();
-      } else {
-        this.phase = GamePhase.FreeSpinOutro;
+        this.startFreeSpin(); // bumps revision — must return so we don’t double-count
+        return;
       }
-      return;
+      this.phase = GamePhase.FreeSpinOutro;
     }
+    /** Always bump when phase/index changed so React clears cascade timers (avoids stray explode SFX). */
     this.revision++;
   }
 

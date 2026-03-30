@@ -28,8 +28,9 @@ const SFX_ROUTING: Record<TfSfxName, { file: QrAudioFileKey; gainMul: number }> 
   spin: { file: 'reel_end', gainMul: 0.9 },
   rowClick: { file: 'reel_end', gainMul: 0.32 },
   tick: { file: 'reel_end', gainMul: 0.28 },
-  chime: { file: 'win', gainMul: 0.42 },
-  /** Cascade pop — same hot `win.mp3`; keep well below `win` sting. */
+  /** Scatter column tick — use reel so it isn’t mistaken for win/explode (`win.mp3`). */
+  chime: { file: 'reel_end', gainMul: 0.38 },
+  /** Only for 2nd+ cascade pops; first hit uses `win` only (see QuestRaiderCanvas). */
   explode: { file: 'win', gainMul: 0.22 },
 };
 
