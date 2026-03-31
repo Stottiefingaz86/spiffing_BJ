@@ -43,3 +43,15 @@ export const QR_LOGO_ON_FRAME = {
   /** Max width as fraction of frame width (centered) */
   widthFrac: 0.68,
 } as const;
+
+/**
+ * Central emerald under the reel window on `frame.png` — fractions of the full frame bitmap (0–1).
+ * Tweak if art changes; used for the spin-state glow overlay in `QuestRaiderClient`.
+ */
+export const QR_FRAME_EMERALD = {
+  centerXFrac: 0.5,
+  /** Center of the inset gem on `frame.png` — on the ledge below the reel window (window bottom ≈ 0.79 of frame from top). */
+  centerYFrac: 0.9,
+  /** Tight halo around the sphere only (~70–90px at authored frame width); keep small or it reads as a UI blob over the grid */
+  glowDiameterFrac: 0.065,
+} as const;

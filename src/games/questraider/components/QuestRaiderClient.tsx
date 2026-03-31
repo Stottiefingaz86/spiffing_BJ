@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
@@ -10,7 +10,7 @@ import {
 
 import { QuestRaiderSession, GamePhase } from '../engine/session';
 import { QuestRaiderCanvas, type QuestRaiderFrameRect } from '../render/QuestRaiderCanvas';
-import { QR_LOGO_ON_FRAME } from '../render/questRaiderLayout';
+import { QR_FRAME_EMERALD, QR_LOGO_ON_FRAME } from '../render/questRaiderLayout';
 import { QuestRaiderSettingsModal } from './QuestRaiderSettingsModal';
 import {
   preloadTFSfx,
@@ -45,6 +45,9 @@ function QuestRaiderGame() {
   const targetWinRef = useRef(0);
   const lastSpinWinRef = useRef(0);
   const rafRef = useRef(0);
+  /** Mirrored from Pixi gameLayer each tick — emerald HTML overlay follows the same shake. */
+  const cameraShakeRef = useRef({ x: 0, y: 0 });
+  const emeraldGlowRef = useRef<HTMLDivElement | null>(null);
 
   const refresh = useCallback(() => {
     setSnap(session.getSnapshot());
@@ -201,6 +204,53 @@ function QuestRaiderGame() {
   const canSpin = snap.phase === GamePhase.Idle && snap.balance >= snap.bet;
   const showWin = Math.round(displayedWin);
 
+  /** Lit during trap-door / fall-in only; fades out for cascades, win banner, free-spin intro, etc. */
+  const emeraldGlowLit =
+    snap.phase === GamePhase.Dropping || snap.phase === GamePhase.FreeSpinDropping;
+  const [emeraldGlowOpacity, setEmeraldGlowOpacity] = useState(0);
+
+  useEffect(() => {
+    if (!emeraldGlowLit) {
+      setEmeraldGlowOpacity(0);
+      return;
+    }
+    setEmeraldGlowOpacity(0);
+    let innerRaf = 0;
+    const outerRaf = requestAnimationFrame(() => {
+      innerRaf = requestAnimationFrame(() => setEmeraldGlowOpacity(1));
+    });
+    return () => {
+      cancelAnimationFrame(outerRaf);
+      cancelAnimationFrame(innerRaf);
+    };
+  }, [emeraldGlowLit]);
+
+  useLayoutEffect(() => {
+    if (!frameRect || !isSpinning) return;
+    const el = emeraldGlowRef.current;
+    if (!el) return;
+    const w = frameRect.w * QR_FRAME_EMERALD.glowDiameterFrac;
+    el.style.width = `${w}px`;
+    el.style.height = `${w}px`;
+    el.style.borderRadius = '50%';
+    el.style.background =
+      'radial-gradient(circle closest-side, rgba(220,255,230,0.78) 0%, rgba(110,231,183,0.52) 38%, rgba(52,211,153,0.22) 62%, rgba(16,185,129,0.08) 82%, transparent 100%)';
+    el.style.boxShadow =
+      '0 0 12px 5px rgba(167,243,208,0.55), 0 0 26px 12px rgba(52,211,153,0.38), 0 0 44px 18px rgba(16,185,129,0.2)';
+
+    let id = 0;
+    const tick = () => {
+      const node = emeraldGlowRef.current;
+      if (node) {
+        const { x, y } = cameraShakeRef.current;
+        node.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+      }
+      id = requestAnimationFrame(tick);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, [frameRect, isSpinning]);
+
   return (
     <div
       className={cn(
@@ -308,6 +358,7 @@ function QuestRaiderGame() {
           onDropComplete={onDropComplete}
           onCascadeStepComplete={onCascadeStepComplete}
           onFrameLayout={setFrameRect}
+          cameraShakeRef={cameraShakeRef}
           className="relative z-10 h-full w-full min-h-0"
         />
         {/* Vignette over the whole playfield (frame + reels) so stone doesn’t “float” above the grade; keep soft. */}
@@ -320,6 +371,19 @@ function QuestRaiderGame() {
               : 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(0,0,0,0.1) 64%, rgba(0,0,0,0.3) 100%)',
           }}
         />
+        {frameRect && isSpinning && (
+          <div
+            className="pointer-events-none absolute z-[25] transition-opacity duration-500 ease-[cubic-bezier(0.25,0.85,0.3,1)] motion-reduce:duration-100 motion-reduce:ease-linear"
+            aria-hidden
+            style={{
+              left: `${frameRect.x + frameRect.w * QR_FRAME_EMERALD.centerXFrac}px`,
+              top: `${frameRect.y + frameRect.h * QR_FRAME_EMERALD.centerYFrac}px`,
+              opacity: emeraldGlowOpacity,
+            }}
+          >
+            <div ref={emeraldGlowRef} className="qr-emerald-spin-glow pointer-events-none absolute left-0 top-0" />
+          </div>
+        )}
         <img
           src={`${ASSET_BASE}quest_raiders/logo.png`}
           alt="Quest Raider"

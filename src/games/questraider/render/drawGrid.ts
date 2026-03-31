@@ -81,6 +81,19 @@ function minCellDim(layout: GridLayout): number {
   return Math.min(layout.cellW, layout.cellH);
 }
 
+/** Base game avalanche caps at ×5; free falls use ×3 steps up to ×15. */
+const MULT_TIERS_BASE = [1, 2, 3, 4, 5] as const;
+const MULT_TIERS_FREE = [3, 6, 9, 12, 15] as const;
+
+function parseMultiplierFromLabel(label: string): number {
+  const normalized = label.replace(/[×✕]/g, 'x').trim();
+  const xm = normalized.match(/x\s*(\d+)/i);
+  if (xm) return Math.max(1, parseInt(xm[1], 10));
+  const any = normalized.match(/(\d+)/);
+  if (any) return Math.max(1, parseInt(any[1], 10));
+  return 1;
+}
+
 const CELL_COUNT = REELS * ROWS;
 /** Spin clear can overlap many explode drop-outs; pool must cover full grid so tiles don’t vanish mid-fall. */
 const SPIN_ORPHAN_POOL = CELL_COUNT;
@@ -146,7 +159,8 @@ let particleGfx: Graphics;
 const floatTexts: Text[] = [];
 let multPill: Container;
 let multBg: Graphics;
-let multText: Text;
+let multTitle: Text;
+const multSegTexts: Text[] = [];
 /** Debug: magenta tint of shaped mask, or rect fallback before load. */
 let debugReelMaskSprite: Sprite | null = null;
 let debugReelMaskGfx: Graphics | null = null;
@@ -255,19 +269,38 @@ export function initGridScene(root: Container): void {
   multPill = new Container();
   multBg = new Graphics();
   multPill.addChild(multBg);
-  multText = new Text({
-    text: '',
+  multTitle = new Text({
+    text: 'MULTIPLIER',
     style: new TextStyle({
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: 20,
-      fontWeight: '900',
-      fill: 0xffe8a8,
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 2.5,
+      fill: 0xf2eee6,
       align: 'center',
     }),
   });
-  multText.anchor.set(0.5);
-  multPill.addChild(multText);
-  multPill.visible = false;
+  multTitle.anchor.set(0.5, 0);
+  multPill.addChild(multTitle);
+  multSegTexts.length = 0;
+  for (let i = 0; i < 5; i++) {
+    const t = new Text({
+      text: '×1',
+      style: new TextStyle({
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+        fontSize: 18,
+        fontWeight: '900',
+        fill: 0x8f8c86,
+        stroke: { color: 0x0c0b09, width: 3 },
+        align: 'center',
+        lineJoin: 'round',
+      }),
+    });
+    t.anchor.set(0.5, 0.5);
+    multSegTexts.push(t);
+    multPill.addChild(t);
+  }
+  multPill.visible = true;
   root.addChild(multPill);
 
   if (QR_DEBUG_SHOW_REEL_MASK) {
@@ -673,21 +706,66 @@ export function updateGridScene(
     }
   }
 
-  if (multiplierLabel) {
-    multPill.visible = true;
-    multText.text = multiplierLabel;
-    const pw = multText.width + 28;
-    const ph = 34;
-    const mx = gridX + REELS * cellW - pw - 4;
-    const my = gridY - 42;
-    multPill.position.set(mx + pw / 2, my + ph / 2);
-    multBg.clear();
-    multBg.roundRect(-pw / 2, -ph / 2, pw, ph, 10);
-    multBg.fill({ color: 0x2a1a0e, alpha: 0.92 });
-    multBg.stroke({ color: 0xc9a227, width: 1.5 });
-  } else {
-    multPill.visible = false;
+  /** Compact multiplier strip — top-right; large chiseled tier type (Gonzo-style read). */
+  const multLabelShown = multiplierLabel?.trim() ? multiplierLabel.trim() : '×1';
+  const currentMult = parseMultiplierFromLabel(multLabelShown);
+  const tiers = inFreeSpins ? MULT_TIERS_FREE : MULT_TIERS_BASE;
+  const cornerGap = 8;
+  const maxW = Math.max(112, stage.innerW - cornerGap * 2);
+  const barW = Math.min(maxW, Math.min(220, Math.max(152, stage.innerW * 0.44)));
+  const barH = Math.max(42, Math.min(52, minDim * 0.42));
+  const barX = stage.innerX + stage.innerW - barW - cornerGap;
+  const barY = Math.max(stage.frameY + 6, stage.innerY - barH - cornerGap);
+  multPill.position.set(barX, barY);
+
+  multBg.clear();
+  multBg.roundRect(0, 0, barW, barH, 7);
+  multBg.fill({ color: 0x080706, alpha: 0.97 });
+  multBg.stroke({ color: inFreeSpins ? 0x5a3518 : 0x2a241c, width: 2 });
+  multBg.roundRect(2.5, 2.5, barW - 5, barH - 5, 5);
+  multBg.stroke({ color: inFreeSpins ? 0xd88840 : 0x9a8048, width: 1.35, alpha: 0.92 });
+
+  multTitle.style.fontSize = Math.max(8, Math.min(11, Math.round(barH * 0.2)));
+  multTitle.position.set(barW / 2, 5);
+  multTitle.style.fill = inFreeSpins ? 0xffe8d8 : 0xf5f0e8;
+
+  const segFont = Math.max(15, Math.min(22, Math.round(barW / 10.5)));
+  const rowY = barH * 0.62;
+  const padX = 6;
+  const usable = barW - padX * 2;
+  const colW = usable / 5;
+
+  const dimFill = 0x8a8780;
+  const dimStroke = 0x0a0908;
+  const activeFill = 0xffee88;
+  const activeStroke = 0x3d2208;
+
+  for (let i = 0; i < 5; i++) {
+    const t = multSegTexts[i];
+    t.text = `×${tiers[i]}`;
+    t.style.fontSize = segFont;
+    const on = tiers[i] === currentMult;
+    t.style.fill = on ? activeFill : dimFill;
+    t.style.stroke = {
+      color: on ? activeStroke : dimStroke,
+      width: on ? 3.25 : 2.75,
+    };
+    if (on) {
+      t.style.dropShadow = {
+        alpha: 1,
+        angle: Math.PI / 2,
+        blur: 6,
+        color: 0xffb020,
+        distance: 0,
+      };
+    } else {
+      t.style.dropShadow = false;
+    }
+    t.position.set(padX + colW * (i + 0.5), rowY);
+    t.scale.set(on ? 1.08 : 1);
   }
+
+  multPill.visible = true;
 
   void renderer; // layout pass may use renderer later
 }

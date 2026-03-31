@@ -115,13 +115,13 @@ function randomPaying(): TempleSymbol {
   return TempleSymbol.BirdBlue;
 }
 
-/** New symbol for column `col` (wild only on middle reels). */
+/** New symbol for column `col` (wild only on middle reels). Scatter/wild same odds with or without PAR strips. */
 export function randomSymbolForColumn(col: number): TempleSymbol {
-  if (isQuestParMathEnabled()) return parRandomStripSymbol(col);
   const r = Math.random();
   if (col >= WILD_MIN_COL && col <= WILD_MAX_COL && r < 0.055) {
     return TempleSymbol.Wild;
   }
   if (r < 0.06) return TempleSymbol.Scatter;
+  if (isQuestParMathEnabled()) return parRandomStripSymbol(col);
   return randomPaying();
 }

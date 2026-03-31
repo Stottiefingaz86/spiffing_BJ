@@ -1,5 +1,4 @@
 import { REELS, ROWS, randomSymbolForColumn, TempleSymbol } from './symbols';
-import { dealParSymbolWindow, isQuestParMathEnabled } from '../math/parMath';
 
 export interface Cell {
   symbol: TempleSymbol;
@@ -16,18 +15,6 @@ export function makeCell(symbol: TempleSymbol): Cell {
 export type Grid = Cell[][];
 
 export function createGrid(): Grid {
-  if (isQuestParMathEnabled()) {
-    const syms = dealParSymbolWindow();
-    const grid: Grid = [];
-    for (let r = 0; r < ROWS; r++) {
-      const row: Cell[] = [];
-      for (let c = 0; c < REELS; c++) {
-        row.push(makeCell(syms[r][c]));
-      }
-      grid.push(row);
-    }
-    return grid;
-  }
   const grid: Grid = [];
   for (let r = 0; r < ROWS; r++) {
     const row: Cell[] = [];

@@ -1,5 +1,5 @@
 import { Application, Container } from 'pixi.js';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 
 import type { QuestRaiderSnapshot } from '../engine/session';
 import { GamePhase } from '../engine/session';
@@ -66,12 +66,17 @@ export interface QuestRaiderFrameRect {
   innerH: number;
 }
 
+/** Latest camera shake in CSS px — same offset applied to the Pixi game layer each tick (for HTML overlays). */
+export type QuestRaiderCameraShakeRef = MutableRefObject<{ x: number; y: number }>;
+
 export interface QuestRaiderCanvasProps {
   snapshot: QuestRaiderSnapshot;
   onDropComplete: () => void;
   onCascadeStepComplete: () => void;
   /** Screen-space frame bounds (CSS px) for HTML overlays — same role as Breaking Bandits `onFrameLayout`. */
   onFrameLayout?: (rect: QuestRaiderFrameRect) => void;
+  /** Written every frame with the same `{x,y}` applied to `gameLayer` (shake); omit if unused. */
+  cameraShakeRef?: QuestRaiderCameraShakeRef;
   className?: string;
 }
 
@@ -80,6 +85,7 @@ export function QuestRaiderCanvas({
   onDropComplete,
   onCascadeStepComplete,
   onFrameLayout,
+  cameraShakeRef,
   className,
 }: QuestRaiderCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -94,6 +100,8 @@ export function QuestRaiderCanvas({
   onCascadeRef.current = onCascadeStepComplete;
   const onFrameLayoutRef = useRef(onFrameLayout);
   onFrameLayoutRef.current = onFrameLayout;
+  const cameraShakeSinkRef = useRef(cameraShakeRef);
+  cameraShakeSinkRef.current = cameraShakeRef;
   const lastFrameKeyRef = useRef('');
 
   const displayRef = useRef<{
@@ -188,6 +196,11 @@ export function QuestRaiderCanvas({
               : getCameraShakeOffset();
           gl.x = shake.x;
           gl.y = shake.y;
+          const shakeOut = cameraShakeSinkRef.current;
+          if (shakeOut?.current) {
+            shakeOut.current.x = shake.x;
+            shakeOut.current.y = shake.y;
+          }
           const d = displayRef.current;
           const s = snapRef.current;
           const l = getLayout(app.renderer.width, app.renderer.height);
