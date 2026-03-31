@@ -3,33 +3,37 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  isQuestParMathEnabled,
-  setQuestRaiderParMathDevOverride,
-} from '../math/parMath';
+  isAztecParMathEnabled,
+  setAztecParMathDevOverride,
+} from '../math/aztecParMath';
 import { PAYING_SYMBOLS, TempleSymbol, getLinePayout } from '../engine/symbols';
 import {
-  QUEST_RAIDER_SYMBOL1_STANDIN,
-  QUEST_RAIDER_SYMBOL_TEXTURES,
-} from '../render/questRaiderSymbolTextures';
+  AZTEC_SYMBOL1_STANDIN,
+  AZTEC_SYMBOL_TEXTURES,
+} from '../render/aztecSymbolTextures';
 
-const PAYTABLE_ROW_ORDER: TempleSymbol[] = [TempleSymbol.Wild, ...PAYING_SYMBOLS];
+const PAYTABLE_ROW_ORDER: TempleSymbol[] = [
+  TempleSymbol.Wild,
+  TempleSymbol.Scatter,
+  ...PAYING_SYMBOLS,
+];
 
 const SYMBOL_HELP_NAME: Record<TempleSymbol, string> = {
   [TempleSymbol.Wild]: 'Wild',
   [TempleSymbol.Scatter]: 'Scatter',
-  [TempleSymbol.MaskSilver]: 'Silver mask',
-  [TempleSymbol.MaskGreen]: 'Green mask',
-  [TempleSymbol.MaskGold]: 'Gold mask',
-  [TempleSymbol.MaskPurple]: 'Purple mask',
-  [TempleSymbol.CreatureTan]: 'Stone carving',
-  [TempleSymbol.BirdRed]: 'Red bird',
-  [TempleSymbol.BirdBlue]: 'Blue bird',
+  [TempleSymbol.MaskSilver]: 'Stone mask',
+  [TempleSymbol.MaskGreen]: 'Feathered serpent',
+  [TempleSymbol.MaskGold]: 'Sun mask',
+  [TempleSymbol.MaskPurple]: 'Eagle',
+  [TempleSymbol.CreatureTan]: 'Sun medallion',
+  [TempleSymbol.BirdRed]: 'Jaguar',
+  [TempleSymbol.BirdBlue]: 'Water rite',
 };
 
 function symbolTextureSrc(sym: TempleSymbol): string {
   return (
-    QUEST_RAIDER_SYMBOL_TEXTURES[sym] ??
-    QUEST_RAIDER_SYMBOL_TEXTURES[QUEST_RAIDER_SYMBOL1_STANDIN]!
+    AZTEC_SYMBOL_TEXTURES[sym] ??
+    AZTEC_SYMBOL_TEXTURES[AZTEC_SYMBOL1_STANDIN]!
   );
 }
 
@@ -39,7 +43,7 @@ function formatLineCoins(sym: TempleSymbol, n: 3 | 4 | 5): string {
   return String(v);
 }
 
-interface QuestRaiderSettingsModalProps {
+interface AztecSettingsModalProps {
   open: boolean;
   onClose: () => void;
   sfxOn: boolean;
@@ -68,14 +72,14 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
-export function QuestRaiderSettingsModal({
+export function AztecSettingsModal({
   open,
   onClose,
   sfxOn,
   bgmOn,
   onToggleSfx,
   onToggleBgm,
-}: QuestRaiderSettingsModalProps) {
+}: AztecSettingsModalProps) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const closingRef = useRef(false);
@@ -84,7 +88,7 @@ export function QuestRaiderSettingsModal({
 
   useEffect(() => {
     if (open && isDev) {
-      setParMathOn(isQuestParMathEnabled());
+      setParMathOn(isAztecParMathEnabled());
     }
   }, [open, isDev]);
 
@@ -121,7 +125,7 @@ export function QuestRaiderSettingsModal({
     <div className={overlay} onClick={onClose}>
       <div className={drawerPanel} onClick={(e) => e.stopPropagation()}>
         <header className="shrink-0 flex items-center justify-between border-b border-white/10 px-5 py-4">
-          <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-white">Quest Raider</h2>
+          <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-white">Aztec</h2>
           <button
             type="button"
             onClick={onClose}
@@ -197,6 +201,11 @@ export function QuestRaiderSettingsModal({
                             No separate wild coin row on the PAR sheet.
                           </p>
                         ) : null}
+                        {noDirectPay && sym === TempleSymbol.Scatter ? (
+                          <p className="col-span-4 -mt-0.5 px-1 pb-1 text-[10px] leading-snug text-white/35">
+                            Does not pay as a line symbol in this build; shown for artwork reference.
+                          </p>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -254,7 +263,7 @@ export function QuestRaiderSettingsModal({
                   onToggle={() => {
                     const next = !parMathOn;
                     setParMathOn(next);
-                    setQuestRaiderParMathDevOverride(next);
+                    setAztecParMathDevOverride(next);
                   }}
                 />
               </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, Home, Music, RefreshCw, Settings, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
@@ -8,10 +8,9 @@ import {
   slotSpinMobileClasses,
 } from '@/components/game/slotChrome';
 
-import { QuestRaiderSession, GamePhase } from '../engine/session';
-import { QuestRaiderCanvas, type QuestRaiderFrameRect } from '../render/QuestRaiderCanvas';
-import { QR_FRAME_EMERALD, QR_LOGO_ON_FRAME } from '../render/questRaiderLayout';
-import { QuestRaiderSettingsModal } from './QuestRaiderSettingsModal';
+import { AztecSession, GamePhase } from '../engine/session';
+import { AztecCanvas } from '../render/AztecCanvas';
+import { AztecSettingsModal } from './AztecSettingsModal';
 import {
   preloadTFSfx,
   playTF,
@@ -21,18 +20,22 @@ import {
   setTFBgmMuted,
   unlockTFAudio,
   preloadTFBgm,
-} from '../audio/questRaiderSfx';
+} from '../audio/aztecSfx';
+
+/** Darker pills + blur so Win/Stake labels read over stone and the bottom fade. */
+const aztecFooterPill =
+  'rounded-2xl border border-white/20 bg-black/60 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md';
 
 const ASSET_BASE = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
-export default function QuestRaiderClient() {
-  return <QuestRaiderGame />;
+export default function AztecClient() {
+  return <AztecGame />;
 }
 
-function QuestRaiderGame() {
-  const sessionRef = useRef<QuestRaiderSession | null>(null);
+function AztecGame() {
+  const sessionRef = useRef<AztecSession | null>(null);
   if (!sessionRef.current) {
-    sessionRef.current = new QuestRaiderSession();
+    sessionRef.current = new AztecSession();
   }
   const session = sessionRef.current;
 
@@ -41,14 +44,12 @@ function QuestRaiderGame() {
   const [bgmOn, setBgmOn] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stakeOpen, setStakeOpen] = useState(false);
-  const [frameRect, setFrameRect] = useState<QuestRaiderFrameRect | null>(null);
   const [displayedWin, setDisplayedWin] = useState(0);
   const targetWinRef = useRef(0);
   const lastSpinWinRef = useRef(0);
   const rafRef = useRef(0);
-  /** Mirrored from Pixi gameLayer each tick — emerald HTML overlay follows the same shake. */
+  /** Mirrored from Pixi gameLayer each tick — HTML overlays can follow the same shake if needed. */
   const cameraShakeRef = useRef({ x: 0, y: 0 });
-  const emeraldGlowRef = useRef<HTMLDivElement | null>(null);
 
   const refresh = useCallback(() => {
     setSnap(session.getSnapshot());
@@ -208,58 +209,11 @@ function QuestRaiderGame() {
   const canSpin = snap.phase === GamePhase.Idle && snap.balance >= snap.bet;
   const showWin = Math.round(displayedWin);
 
-  /** Lit during trap-door / fall-in only; fades out for cascades, win banner, free-spin intro, etc. */
-  const emeraldGlowLit =
-    snap.phase === GamePhase.Dropping || snap.phase === GamePhase.FreeSpinDropping;
-  const [emeraldGlowOpacity, setEmeraldGlowOpacity] = useState(0);
-
-  useEffect(() => {
-    if (!emeraldGlowLit) {
-      setEmeraldGlowOpacity(0);
-      return;
-    }
-    setEmeraldGlowOpacity(0);
-    let innerRaf = 0;
-    const outerRaf = requestAnimationFrame(() => {
-      innerRaf = requestAnimationFrame(() => setEmeraldGlowOpacity(1));
-    });
-    return () => {
-      cancelAnimationFrame(outerRaf);
-      cancelAnimationFrame(innerRaf);
-    };
-  }, [emeraldGlowLit]);
-
-  useLayoutEffect(() => {
-    if (!frameRect || !isSpinning) return;
-    const el = emeraldGlowRef.current;
-    if (!el) return;
-    const w = frameRect.w * QR_FRAME_EMERALD.glowDiameterFrac;
-    el.style.width = `${w}px`;
-    el.style.height = `${w}px`;
-    el.style.borderRadius = '50%';
-    el.style.background =
-      'radial-gradient(circle closest-side, rgba(220,255,230,0.78) 0%, rgba(110,231,183,0.52) 38%, rgba(52,211,153,0.22) 62%, rgba(16,185,129,0.08) 82%, transparent 100%)';
-    el.style.boxShadow =
-      '0 0 12px 5px rgba(167,243,208,0.55), 0 0 26px 12px rgba(52,211,153,0.38), 0 0 44px 18px rgba(16,185,129,0.2)';
-
-    let id = 0;
-    const tick = () => {
-      const node = emeraldGlowRef.current;
-      if (node) {
-        const { x, y } = cameraShakeRef.current;
-        node.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-      }
-      id = requestAnimationFrame(tick);
-    };
-    id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [frameRect, isSpinning]);
-
   return (
     <div
       className={cn(
         'relative h-dvh max-h-dvh overflow-hidden text-white transition-colors duration-700',
-        isFreeSpinActive ? 'bg-[#181008]' : 'bg-[#121016]',
+        isFreeSpinActive ? 'bg-[#181008]' : 'bg-[#081018]',
       )}
       onClick={() => {
         if (isFreeSpinOutro) {
@@ -271,14 +225,51 @@ function QuestRaiderGame() {
       <div className="pointer-events-none absolute inset-0 z-0">
         <div
           className={cn(
-            'absolute inset-0 bg-[#0f0e12] transition-opacity duration-700',
+            'absolute inset-0 transition-opacity duration-700',
             isFreeSpinActive ? 'opacity-95' : 'opacity-100',
           )}
+        >
+          <div className="absolute inset-0 bg-[#0b1828]" aria-hidden />
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            aria-hidden
+            style={{
+              backgroundImage: `url(${ASSET_BASE}aztec/bg.jpg)`,
+            }}
+          />
+        </div>
+        {/* Strong blue over the top of bg.jpg — extra band + full-height wash (hidden in free falls). */}
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-x-0 top-0 h-[min(32vh,380px)] transition-opacity duration-700',
+            isFreeSpinActive ? 'opacity-0' : 'opacity-100',
+          )}
+          aria-hidden
           style={{
-            backgroundImage: `url(${ASSET_BASE}quest_raiders/bg.png)`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
+            background:
+              'linear-gradient(to bottom, rgba(2, 132, 199, 0.55) 0%, rgba(14, 165, 233, 0.38) 22%, rgba(56, 189, 248, 0.18) 55%, transparent 100%)',
+          }}
+        />
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-0 transition-opacity duration-700',
+            isFreeSpinActive ? 'opacity-0' : 'opacity-100',
+          )}
+          aria-hidden
+          style={{
+            background:
+              'linear-gradient(to bottom, rgba(56, 189, 248, 0.42) 0%, rgba(14, 165, 233, 0.26) 14%, rgba(37, 99, 235, 0.14) 34%, rgba(15, 23, 42, 0.05) 58%, transparent 86%)',
+          }}
+        />
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-0 mix-blend-soft-light transition-opacity duration-700',
+            isFreeSpinActive ? 'opacity-0' : 'opacity-100',
+          )}
+          aria-hidden
+          style={{
+            background:
+              'radial-gradient(ellipse 125% 95% at 50% 0%, rgba(186, 230, 253, 0.35) 0%, rgba(125, 211, 252, 0.12) 32%, transparent 64%), linear-gradient(to bottom, transparent 0%, transparent 42%, rgba(30, 58, 138, 0.08) 100%)',
           }}
         />
         <div
@@ -286,35 +277,45 @@ function QuestRaiderGame() {
             'absolute inset-0 mix-blend-soft-light',
             isFreeSpinActive
               ? 'bg-gradient-to-b from-transparent via-amber-950/14 to-stone-950/18'
-              : 'bg-gradient-to-b from-transparent via-emerald-950/10 to-violet-950/14',
+              : 'bg-gradient-to-b from-transparent via-cyan-950/12 to-slate-950/18',
           )}
         />
-        {/* Per-area grade only — no second `bg.png` here or `cover` won’t match the layer above (visible seam). */}
+        {/* Per-area grade only — no second `bg.jpg` here or `cover` won’t match the layer above (visible seam). */}
         <div
           className={cn(
             'absolute inset-0 mix-blend-overlay',
             isFreeSpinActive
               ? 'bg-gradient-to-b from-transparent via-amber-950/8 to-stone-900/14'
-              : 'bg-gradient-to-b from-transparent via-teal-950/6 to-[#12101a]/16',
+              : 'bg-gradient-to-b from-transparent via-teal-900/5 to-[#050a10]/18',
           )}
         />
-        {/* Bottom ramp — behind board only; lighter so frame + vignette overlay can breathe */}
+        {/* Bottom ramp — keep soft; heavy dark here read as a “letterbox” bar under the UI */}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[min(42vh,520px)]"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-[min(32vh,420px)]"
           style={{
             background: isFreeSpinActive
-              ? 'linear-gradient(to bottom, transparent 0%, rgba(32,18,10,0.28) 44%, rgba(18,10,6,0.58) 80%, rgba(10,6,4,0.72) 100%)'
-              : 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.28) 46%, rgba(0,0,0,0.52) 82%, rgba(0,0,0,0.68) 100%)',
+              ? 'linear-gradient(to bottom, transparent 0%, rgba(32,18,10,0.18) 50%, rgba(18,10,6,0.38) 85%, rgba(12,8,5,0.48) 100%)'
+              : 'linear-gradient(to bottom, transparent 0%, rgba(4,20,28,0.14) 48%, rgba(2,14,22,0.32) 88%, rgba(2,10,16,0.42) 100%)',
+          }}
+        />
+        {/* Screen-edge vignette — eased bottom so it doesn’t stack into a solid bar with the ramp */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden
+          style={{
+            background: isFreeSpinActive
+              ? 'radial-gradient(ellipse 118% 108% at 50% 46%, transparent 0%, transparent 40%, rgba(28,14,8,0.16) 76%, rgba(14,8,5,0.48) 100%)'
+              : 'radial-gradient(ellipse 118% 108% at 50% 44%, transparent 0%, transparent 38%, rgba(4,18,32,0.2) 72%, rgba(2,10,18,0.5) 100%)',
           }}
         />
       </div>
 
+      {/* Full-viewport board — header is overlaid (not flex `shrink-0`) so the canvas isn’t shortened by a top bar. */}
       <div className="absolute inset-0 z-10 min-h-0" onClick={(e) => e.stopPropagation()}>
-        <QuestRaiderCanvas
+        <AztecCanvas
           snapshot={snap}
           onDropComplete={onDropComplete}
           onCascadeStepComplete={onCascadeStepComplete}
-          onFrameLayout={setFrameRect}
           cameraShakeRef={cameraShakeRef}
           className="relative z-10 h-full w-full min-h-0"
         />
@@ -325,55 +326,8 @@ function QuestRaiderGame() {
           style={{
             background: isFreeSpinActive
               ? 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(48,28,16,0.12) 62%, rgba(22,12,8,0.34) 100%)'
-              : 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(0,0,0,0.1) 64%, rgba(0,0,0,0.3) 100%)',
+              : 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(6,40,48,0.08) 58%, rgba(0,12,20,0.28) 100%)',
           }}
-        />
-        {frameRect && isSpinning && (
-          <div
-            className="pointer-events-none absolute z-[25] transition-opacity duration-500 ease-[cubic-bezier(0.25,0.85,0.3,1)] motion-reduce:duration-100 motion-reduce:ease-linear"
-            aria-hidden
-            style={{
-              left: `${frameRect.x + frameRect.w * QR_FRAME_EMERALD.centerXFrac}px`,
-              top: `${frameRect.y + frameRect.h * QR_FRAME_EMERALD.centerYFrac}px`,
-              opacity: emeraldGlowOpacity,
-            }}
-          >
-            <div ref={emeraldGlowRef} className="qr-emerald-spin-glow pointer-events-none absolute left-0 top-0" />
-          </div>
-        )}
-        <img
-          src={`${ASSET_BASE}quest_raiders/logo.png`}
-          alt="Quest Raider"
-          className="pointer-events-none absolute z-40 w-auto object-contain [filter:drop-shadow(0_5px_20px_rgba(0,0,0,0.82))]"
-          style={
-            frameRect
-              ? (() => {
-                  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-                  const logoH = isMobile
-                    ? Math.max(72, frameRect.w * 0.22)
-                    : Math.max(64, frameRect.w * 0.18);
-                  const overlap = isMobile ? 0.42 : 0.32;
-                  const top = Math.max(0, frameRect.y + frameRect.h * QR_LOGO_ON_FRAME.topFrac - logoH * overlap);
-                  return {
-                    left: '50%',
-                    top: `${top}px`,
-                    height: `${logoH}px`,
-                    transform: 'translateX(-50%)',
-                    maxWidth: `min(100%, ${frameRect.w * QR_LOGO_ON_FRAME.widthFrac}px)`,
-                    opacity: 1,
-                  };
-                })()
-              : {
-                  left: '50%',
-                  top: 'max(0.5rem, env(safe-area-inset-top))',
-                  height: '4rem',
-                  transform: 'translateX(-50%)',
-                  maxWidth: 'min(100%, 36rem)',
-                  opacity: 0.35,
-                }
-          }
-          decoding="async"
-          draggable={false}
         />
 
         {isFreeSpinIntro && (
@@ -484,6 +438,20 @@ function QuestRaiderGame() {
         </div>
       </header>
 
+      {/* Bottom UI legibility: tall fade so it washes over the lower stone frame, not only under the HUD */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 bottom-0 z-[24] h-[min(52vh,620px)] max-h-[85vh]',
+          isFreeSpinActive ? 'opacity-[0.92]' : 'opacity-100',
+        )}
+        aria-hidden
+        style={{
+          background: isFreeSpinActive
+            ? 'linear-gradient(to bottom, transparent 0%, rgba(30,14,8,0.06) 18%, rgba(30,14,8,0.14) 38%, rgba(18,10,6,0.32) 68%, rgba(12,8,5,0.5) 100%)'
+            : 'linear-gradient(to bottom, transparent 0%, rgba(0,16,28,0.05) 16%, rgba(0,16,28,0.1) 32%, rgba(0,10,20,0.22) 58%, rgba(0,6,14,0.38) 100%)',
+        }}
+      />
+
       {!isFreeSpinActive && (
         <div className="pointer-events-none absolute bottom-[5.25rem] left-0 right-0 z-[35] flex justify-center lg:hidden">
           <button
@@ -509,12 +477,12 @@ function QuestRaiderGame() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-sm items-center justify-center gap-1.5">
-          <div className={cn(slotGlassPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
-            <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
+          <div className={cn(aztecFooterPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
+            <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/85">Win</span>
             <span
               className={cn(
                 'text-xs font-bold tabular-nums transition-colors duration-300',
-                showWin > 0 ? 'text-emerald-400' : 'text-white/40',
+                showWin > 0 ? 'text-emerald-300' : 'text-white/70',
               )}
             >
               {showWin > 0 ? formatMoney(showWin) : '—'}
@@ -524,14 +492,14 @@ function QuestRaiderGame() {
             type="button"
             onClick={() => !isSpinning && setStakeOpen(true)}
             disabled={isSpinning}
-            className={cn(slotGlassPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
+            className={cn(aztecFooterPill, 'flex flex-1 items-center px-2 py-1.5 disabled:opacity-40')}
           >
             <div className="flex flex-1 flex-col items-center">
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
+              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/85">Stake</span>
               <span className="text-xs font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
             </div>
-            <div className="flex size-5 items-center justify-center rounded bg-white/10">
-              <ChevronDown className="size-3 text-white/50" />
+            <div className="flex size-5 items-center justify-center rounded bg-white/15">
+              <ChevronDown className="size-3 text-white/80" />
             </div>
           </button>
         </div>
@@ -542,12 +510,12 @@ function QuestRaiderGame() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto flex max-w-xl items-end justify-center gap-3">
-          <div className={cn(slotGlassPill, 'flex min-w-[5.5rem] flex-col items-center px-3 py-2')}>
-            <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
+          <div className={cn(aztecFooterPill, 'flex min-w-[5.5rem] flex-col items-center px-3 py-2')}>
+            <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/85">Win</span>
             <span
               className={cn(
                 'text-sm font-bold tabular-nums transition-colors duration-300',
-                showWin > 0 ? 'text-emerald-400' : 'text-white/40',
+                showWin > 0 ? 'text-emerald-300' : 'text-white/70',
               )}
             >
               {showWin > 0 ? formatMoney(showWin) : '—'}
@@ -572,13 +540,13 @@ function QuestRaiderGame() {
             type="button"
             onClick={() => !isSpinning && setStakeOpen(true)}
             disabled={isSpinning}
-            className={cn(slotGlassPill, 'flex min-w-[5.5rem] items-center gap-1 px-3 py-2 disabled:opacity-40')}
+            className={cn(aztecFooterPill, 'flex min-w-[5.5rem] items-center gap-1 px-3 py-2 disabled:opacity-40')}
           >
             <div className="flex flex-1 flex-col items-center">
-              <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
+              <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/85">Stake</span>
               <span className="text-sm font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
             </div>
-            <ChevronDown className="size-3.5 text-white/45" />
+            <ChevronDown className="size-3.5 text-white/80" />
           </button>
         </div>
       </footer>
@@ -616,7 +584,7 @@ function QuestRaiderGame() {
         </div>
       )}
 
-      <QuestRaiderSettingsModal
+      <AztecSettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         sfxOn={sfxOn}
