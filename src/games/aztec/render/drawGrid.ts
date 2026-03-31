@@ -111,13 +111,14 @@ function symbolLabelOffsetY(minDim: number): number {
 /**
  * Scale factor so bitmap **covers** the cell (clips overflow). `Math.min` (contain) preserves
  * aspect ratio but letterboxes → dark strips between tiles read as gaps.
+ * Exported for Bandits-style reel strips (`aztecDrawReels`) to match settled grid sizing.
  */
-function symbolTextureCoverFit(maxW: number, maxH: number, texW: number, texH: number): number {
+export function symbolTextureCoverFit(maxW: number, maxH: number, texW: number, texH: number): number {
   return Math.max(maxW / texW, maxH / texH) * 1.015;
 }
 
 /** Vertical nudge for symbol art in cell (0 = geometric center; tweak if a PNG sits optically low). */
-function symbolTextureOpticalOffsetY(_minDim: number): number {
+export function symbolTextureOpticalOffsetY(_minDim: number): number {
   return 0;
 }
 
@@ -151,6 +152,8 @@ let reelClipMask: Graphics | null = null;
 let reelMaskSprite: Sprite | null = null;
 let reelShapeMaskLoaded = false;
 let symContainer: Container | null = null;
+/** Sibling of symContainer — Bandits-style reel strips during spin; same mask as symContainer. */
+let reelSpinOverlay: Container | null = null;
 /** Darkens the inner edges of the reel window so symbols read recessed (frame art is opaque, not an overlay). */
 let recessGfx: Graphics | null = null;
 let glowGfx: Graphics;
@@ -196,6 +199,11 @@ export function initGridScene(root: Container): void {
   /** Rect fallback first; swapped to `reelMaskSprite` when `mask.png` is processed. */
   symContainer.mask = reelClipMask;
   root.addChild(symContainer);
+
+  reelSpinOverlay = new Container();
+  reelSpinOverlay.mask = reelClipMask;
+  reelSpinOverlay.visible = false;
+  root.addChild(reelSpinOverlay);
 
   recessGfx = new Graphics();
   symContainer.addChild(recessGfx);
@@ -330,11 +338,25 @@ export function setAztecReelMaskTexture(tex: Texture): void {
   reelMaskSprite.texture = tex;
   reelMaskSprite.visible = true;
   symContainer.mask = reelMaskSprite;
+  if (reelSpinOverlay) reelSpinOverlay.mask = reelMaskSprite;
   reelShapeMaskLoaded = true;
   if (reelClipMask) {
     reelClipMask.destroy();
     reelClipMask = null;
   }
+}
+
+/** Hide slab grid while Bandits-style reel overlay runs. */
+export function setAztecGridLayerVisibleForBanditSpin(visible: boolean): void {
+  if (symContainer) symContainer.visible = visible;
+}
+
+export function setAztecReelSpinOverlayVisible(visible: boolean): void {
+  if (reelSpinOverlay) reelSpinOverlay.visible = visible;
+}
+
+export function getAztecReelSpinOverlay(): Container | null {
+  return reelSpinOverlay;
 }
 
 export function destroyGridScene(): void {
@@ -355,6 +377,10 @@ export function destroyGridScene(): void {
   if (reelClipMask) {
     reelClipMask.destroy();
     reelClipMask = null;
+  }
+  if (reelSpinOverlay) {
+    reelSpinOverlay.destroy({ children: true });
+    reelSpinOverlay = null;
   }
   if (reelMaskSprite) {
     reelMaskSprite.destroy({ texture: false });
@@ -451,6 +477,7 @@ export function updateGridScene(
       reelClipMask.roundRect(gridX, gridY, totalW, totalH, clipR);
       reelClipMask.fill({ color: 0xffffff });
       symContainer.mask = reelClipMask;
+      if (reelSpinOverlay) reelSpinOverlay.mask = reelClipMask;
     }
 
     if (recessGfx) {
@@ -470,6 +497,7 @@ export function updateGridScene(
 
   if (reelShapeMaskLoaded && reelMaskSprite && symContainer) {
     symContainer.mask = reelMaskSprite;
+    if (reelSpinOverlay) reelSpinOverlay.mask = reelMaskSprite;
     reelMaskSprite.position.set(stage.innerX, stage.innerY);
     reelMaskSprite.width = stage.innerW;
     reelMaskSprite.height = stage.innerH;

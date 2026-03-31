@@ -16,7 +16,12 @@ import {
   loadFrameAsset,
   type ReelLayout,
 } from './drawReels';
-import { createReelAnimator, type ReelAnimator } from './reelAnimation';
+import {
+  BANDITS_REEL_STOP_BASE_DELAY_MS,
+  BANDITS_REEL_STOP_STAGGER_MS,
+  createReelAnimator,
+  type ReelAnimator,
+} from './reelAnimation';
 
 function shakeCanvas(el: HTMLElement | null): void {
   if (!el) return;
@@ -387,10 +392,9 @@ export function ReelCanvas({
 
         // Schedule staggered stops per reel.
         // Base cascade is fast; scatter anticipation delays extend specific reels.
-        const baseDelay = 350;
         for (let r = 0; r < REELS; r++) {
           const extraDelay = snap.reelStopDelays[r] ?? 0;
-          const totalDelay = baseDelay + r * 180 + extraDelay;
+          const totalDelay = BANDITS_REEL_STOP_BASE_DELAY_MS + r * BANDITS_REEL_STOP_STAGGER_MS + extraDelay;
           scheduleTimer(() => {
             if (!reelStopScheduledRef.current[r]) {
               reelStopScheduledRef.current[r] = true;

@@ -401,9 +401,9 @@ export type FallMove = {
 export const AZTEC_SPIN_CLEAR_FALL_BASE_MS = 148;
 /** Trap-door strip — short base so tiles read fast; √(dist) still scales longer falls. */
 export const AZTEC_SPIN_STRIP_DROP_BASE_MS = 108;
-/** Fixed ms between opening each reel’s trap (overlap allowed). */
+/** Fixed ms between opening each reel’s trap (spin-clear timeline; cascades only if reused). */
 export const AZTEC_SPIN_STRIP_COL_OFFSET_MS = 38;
-/** L→R stagger for new symbols landing (row clicks / fall-in). */
+/** L→R stagger for fall-in timing estimates. */
 export const AZTEC_SPIN_REEL_COL_STAGGER_MS = 48;
 export const AZTEC_SPIN_CLEAR_FALL_TIMING: FallAnimTimingOptions = {
   colStaggerMs: 0,

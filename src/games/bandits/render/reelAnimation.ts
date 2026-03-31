@@ -51,6 +51,10 @@ interface InternalReel {
 
 const MAX_SPEED = 0.52;
 const ACCEL_DURATION = 180;
+/** Ms between reels entering decel — shared with Aztec reel spin. */
+export const BANDITS_REEL_STOP_STAGGER_MS = 180;
+/** First reel begins decel after this delay (matches Breaking Bandits `ReelCanvas`). */
+export const BANDITS_REEL_STOP_BASE_DELAY_MS = 350;
 const DECEL_RATE = 0.014;
 const LANDING_TRIGGER_SPEED = 0.2;
 const MIN_SPIN_CELLS = 6;

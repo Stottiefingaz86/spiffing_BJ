@@ -8,49 +8,50 @@ import type { Grid } from '../engine/grid';
 function cloneGridCells(grid: Grid): Grid {
   return grid.map((row) => row.map((cell) => ({ ...cell })));
 }
-import { REELS, ROWS } from '../engine/symbols';
+import { REELS, ROWS, type TempleSymbol } from '../engine/symbols';
 import {
   computeGridLayout,
   destroyGridScene,
+  getAztecReelSpinOverlay,
   initGridScene,
   loadAztecFrameTexture,
+  setAztecGridLayerVisibleForBanditSpin,
+  setAztecReelSpinOverlayVisible,
   updateGridScene,
   type GridLayout,
 } from './drawGrid';
 import { computeAztecStageLayout } from './aztecStageLayout';
 import { preloadAztecSymbolTextures } from './aztecSymbolTextures';
-import {
-  buildFallMovesForSpinIn,
-  buildFallMovesFromRemoval,
-  particleColorForCells,
-} from './cascadePhysics';
-import { buildSpinClearTimeline } from './spinClearTimeline';
+import { buildFallMovesFromRemoval, particleColorForCells } from './cascadePhysics';
 import {
   appendFallAnimations,
-  appendSpinExplodeDropOut,
   clearAllAnimations,
   clearAllAnimationsAndFloats,
   queueFallAnimations,
   queueHighlightAnimations,
   queuePopAnimations,
-  AZTEC_SPIN_CLEAR_FALL_BASE_MS,
-  AZTEC_SPIN_CLEAR_FALL_TIMING,
-  AZTEC_SPIN_FALL_IN_TIMING,
-  AZTEC_SPIN_REEL_COL_STAGGER_MS,
-  aztecSpinStripExplodeTiming,
   spawnFloatingWin,
   spawnBrickExplosion,
   tickAnimations,
   triggerCameraShake,
   getCameraShakeOffset,
 } from './gridAnimations';
+import {
+  BANDITS_REEL_STOP_BASE_DELAY_MS,
+  BANDITS_REEL_STOP_STAGGER_MS,
+  createReelAnimator,
+  type ReelAnimator,
+} from '../../bandits/render/reelAnimation';
+import {
+  computeAztecReelLayout,
+  destroyAztecReelScene,
+  gridToReelMajorSymbols,
+  initAztecReelScene,
+  prepareAztecReelLanding,
+  startAztecReelSpin,
+  updateAztecReelScene,
+} from './aztecDrawReels';
 import { playTF } from '../audio/aztecSfx';
-
-/** Spin fall-in: new symbols land reel-by-reel left → right as one stack per column. */
-const SPIN_REEL_COL_MS = 76;
-/** Minimum ms between trap-door column releases (reel L→R). */
-const SPIN_CLEAR_COLUMN_GAP_MS = 48;
-const SPIN_CLEAR_EXPLODE_MS = 162;
 
 export interface AztecFrameRect {
   x: number;
@@ -101,6 +102,13 @@ export function AztecCanvas({
   const cameraShakeSinkRef = useRef(cameraShakeRef);
   cameraShakeSinkRef.current = cameraShakeRef;
   const lastFrameKeyRef = useRef('');
+
+  const reelAnimatorRef = useRef<ReelAnimator | null>(null);
+  const banditSpinActiveRef = useRef(false);
+  const banditSpinTargetReelsRef = useRef<TempleSymbol[][] | null>(null);
+  const reelStopScheduledRef = useRef<boolean[]>([false, false, false, false, false]);
+  const reelLandedRef = useRef<boolean[]>([false, false, false, false, false]);
+  const reelSoundPlayedRef = useRef<boolean[]>([false, false, false, false, false]);
 
   const displayRef = useRef<{
     grid: Grid;
@@ -161,6 +169,7 @@ export function AztecCanvas({
         gameLayerRef.current = gameLayer;
 
         initGridScene(gameLayer);
+        if (!reelAnimatorRef.current) reelAnimatorRef.current = createReelAnimator();
         void (async () => {
           await loadAztecFrameTexture();
           await preloadAztecSymbolTextures();
@@ -179,6 +188,57 @@ export function AztecCanvas({
           tickAnimations(app.ticker.deltaMS);
           const gl = gameLayerRef.current;
           if (!gl) return;
+
+          const anim = reelAnimatorRef.current;
+          if (banditSpinActiveRef.current && anim) {
+            anim.tick(app.ticker.deltaMS);
+            const target = banditSpinTargetReelsRef.current;
+            const rl = computeAztecReelLayout(app.renderer.width, app.renderer.height);
+            if (target) {
+              for (let r = 0; r < REELS; r++) {
+                const st = anim.states[r];
+                if (st.prepareLanding && !reelLandedRef.current[r]) {
+                  const reelSyms: TempleSymbol[] = [
+                    target[r][0],
+                    target[r][1],
+                    target[r][2],
+                  ];
+                  if (prepareAztecReelLanding(r, reelSyms)) {
+                    reelLandedRef.current[r] = true;
+                    anim.confirmLanding(r);
+                  }
+                }
+              }
+              for (let r = 0; r < REELS; r++) {
+                const st = anim.states[r];
+                if (!st.spinning && reelLandedRef.current[r] && !reelSoundPlayedRef.current[r]) {
+                  reelSoundPlayedRef.current[r] = true;
+                  playTF('rowClick', 0.16);
+                }
+              }
+              updateAztecReelScene(target, rl, anim.states, snapRef.current.inFreeSpins);
+            }
+
+            if (anim.allStopped()) {
+              banditSpinActiveRef.current = false;
+              banditSpinTargetReelsRef.current = null;
+              destroyAztecReelScene();
+              setAztecGridLayerVisibleForBanditSpin(true);
+              setAztecReelSpinOverlayVisible(false);
+              for (let i = 0; i < REELS; i++) {
+                reelLandedRef.current[i] = false;
+                reelSoundPlayedRef.current[i] = false;
+                reelStopScheduledRef.current[i] = false;
+              }
+              playTF('reelEnd', 0.34);
+              onDropCompleteRef.current();
+              setTimeout(() => {
+                const g = snapRef.current.grid;
+                prevGridRef.current = g.map((row) => row.map((c) => ({ ...c })));
+              }, 0);
+            }
+          }
+
           const ph = snapRef.current.phase;
           const shake =
             ph === GamePhase.Dropping || ph === GamePhase.FreeSpinDropping
@@ -240,6 +300,7 @@ export function AztecCanvas({
     const gl = gameLayerRef.current;
     if (!app || !gl) return;
     if (snapshot.revision === lastRevRef.current) return;
+    const revisionBefore = lastRevRef.current;
     lastRevRef.current = snapshot.revision;
 
     const snap = snapshot;
@@ -251,98 +312,50 @@ export function AztecCanvas({
       clearAllAnimationsAndFloats();
       runningWinRef.current = 0;
 
-      const oldGrid = prevGridRef.current;
-      const newGrid = snap.grid;
-
-      const scheduleDropInSounds = () => {
-        const colStagger = AZTEC_SPIN_REEL_COL_STAGGER_MS;
-        for (let c = 0; c < REELS; c++) {
-          scheduleTimer(() => playTF('rowClick', 0.12), c * colStagger);
-        }
-      };
-
-      if (oldGrid) {
-        displayRef.current = { grid: oldGrid };
-        const clearScript = buildSpinClearTimeline(oldGrid);
-        let clearEndMs = 0;
-        for (const step of clearScript) {
-          clearEndMs = Math.max(clearEndMs, step.tMs + step.localMaxMs);
-          scheduleTimer(() => {
-            for (const rem of step.removals) {
-              const { delayMs, durationMs } = aztecSpinStripExplodeTiming(rem.removedRow);
-              appendSpinExplodeDropOut(
-                rem.removedId,
-                rem.removedRow,
-                rem.removedCol,
-                durationMs,
-                rem.removedSymbol,
-                delayMs,
-              );
-            }
-            if (step.fallMoves.length > 0) {
-              appendFallAnimations(
-                step.fallMoves,
-                AZTEC_SPIN_CLEAR_FALL_BASE_MS,
-                0,
-                AZTEC_SPIN_CLEAR_FALL_TIMING,
-                step.displayAfter,
-              );
-            }
-            displayRef.current = { grid: step.displayAfter };
-            draw(gl, app.renderer, step.displayAfter, layout);
-          }, step.tMs);
-        }
-        draw(gl, app.renderer, oldGrid, layout);
-
-        scheduleTimer(() => {
-          clearAllAnimations();
-          displayRef.current = { grid: newGrid };
-          const spinFallDur = queueFallAnimations(
-            buildFallMovesForSpinIn(newGrid),
-            AZTEC_SPIN_CLEAR_FALL_BASE_MS,
-            3,
-            AZTEC_SPIN_FALL_IN_TIMING,
-            newGrid,
-          );
-          draw(gl, app.renderer, newGrid, layout);
-          scheduleDropInSounds();
-
-          scheduleTimer(() => {
-            clearAllAnimations();
-            displayRef.current = null;
-            draw(gl, app.renderer, newGrid, layout);
-            playTF('reelEnd', 0.34);
-            onDropCompleteRef.current();
-            /** After session + React snapshot update — avoid stale closure grid vs canonical `snap.grid`. */
-            setTimeout(() => {
-              const g = snapRef.current.grid;
-              prevGridRef.current = g.map((row) => row.map((c) => ({ ...c })));
-            }, 0);
-          }, spinFallDur + 56);
-        }, clearEndMs + 14);
-      } else {
-        displayRef.current = { grid: newGrid };
-        const spinFallDur = queueFallAnimations(
-          buildFallMovesForSpinIn(newGrid),
-          AZTEC_SPIN_CLEAR_FALL_BASE_MS,
-          0,
-          AZTEC_SPIN_FALL_IN_TIMING,
-          newGrid,
-        );
-        draw(gl, app.renderer, newGrid, layout);
-        scheduleDropInSounds();
-
-        scheduleTimer(() => {
-          clearAllAnimations();
-          displayRef.current = null;
-          draw(gl, app.renderer, newGrid, layout);
-          onDropCompleteRef.current();
-          setTimeout(() => {
-            const g = snapRef.current.grid;
-            prevGridRef.current = g.map((row) => row.map((c) => ({ ...c })));
-          }, 0);
-        }, spinFallDur + 56);
+      let anim = reelAnimatorRef.current;
+      if (!anim) {
+        anim = createReelAnimator();
+        reelAnimatorRef.current = anim;
       }
+      const overlay = getAztecReelSpinOverlay();
+      if (!overlay) {
+        lastRevRef.current = revisionBefore;
+        return;
+      }
+
+      const oldGrid = prevGridRef.current ?? snap.grid;
+      const newGrid = snap.grid;
+      const reelLayout = computeAztecReelLayout(app.renderer.width, app.renderer.height);
+
+      displayRef.current = { grid: newGrid };
+      destroyAztecReelScene();
+      initAztecReelScene(overlay, gridToReelMajorSymbols(oldGrid), reelLayout, snap.inFreeSpins);
+      startAztecReelSpin();
+      anim.startSpin();
+
+      for (let i = 0; i < REELS; i++) {
+        reelStopScheduledRef.current[i] = false;
+        reelLandedRef.current[i] = false;
+        reelSoundPlayedRef.current[i] = false;
+      }
+
+      setAztecGridLayerVisibleForBanditSpin(false);
+      setAztecReelSpinOverlayVisible(true);
+      banditSpinTargetReelsRef.current = gridToReelMajorSymbols(newGrid);
+      banditSpinActiveRef.current = true;
+
+      for (let r = 0; r < REELS; r++) {
+        const reelIdx = r;
+        const totalDelay = BANDITS_REEL_STOP_BASE_DELAY_MS + reelIdx * BANDITS_REEL_STOP_STAGGER_MS;
+        scheduleTimer(() => {
+          if (!reelStopScheduledRef.current[reelIdx]) {
+            reelStopScheduledRef.current[reelIdx] = true;
+            anim.stopReel(reelIdx);
+          }
+        }, totalDelay);
+      }
+
+      draw(gl, app.renderer, newGrid, layout);
       return;
     }
 
