@@ -262,28 +262,6 @@
   animation: delta-popup 1.4s ease-out forwards;
 }
 
-/** Quest Raider — pulse on the gem (opacity is on parent for fade in/out on spin vs win) */
-@keyframes qr-emerald-spin-glow {
-  0%,
-  100% {
-    filter: brightness(1.05);
-  }
-  50% {
-    filter: brightness(1.35);
-  }
-}
-
-.qr-emerald-spin-glow {
-  animation: qr-emerald-spin-glow 1.6s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .qr-emerald-spin-glow {
-    animation: none;
-    filter: brightness(1.2);
-  }
-}
-
 @keyframes result-drop-fade {
   0% {
     opacity: 1;

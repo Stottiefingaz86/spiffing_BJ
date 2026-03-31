@@ -33,6 +33,9 @@ const FRAME_ASPECT = QR_FRAME.w / QR_FRAME.h;
  */
 const QR_PLAYFIELD_OFFSET_Y_CSS = 46;
 
+/** Extra nudge so tiles + mask track the stone opening (CSS px). */
+const QR_REEL_FINE_NUDGE_Y_PX = 6;
+
 /**
  * Pixi v8 `renderer.width` / `height` with `resizeTo` are **logical (CSS) pixels**, not backing-store pixels.
  * Do not divide by `devicePixelRatio` here — that broke breakpoints, inner Y nudge, mask vs grid, and HTML overlays.
@@ -80,7 +83,7 @@ export function computeQuestRaiderStageLayout(canvasW: number, canvasH: number):
       ? Math.min(QR_PLAYFIELD_OFFSET_Y_CSS, 18)
       : QR_PLAYFIELD_OFFSET_Y_CSS
     : QR_PLAYFIELD_OFFSET_Y_CSS;
-  const innerY = frameY + frameH * INNER_Y + yNudgeCss;
+  const innerY = frameY + frameH * INNER_Y + yNudgeCss + QR_REEL_FINE_NUDGE_Y_PX;
   const innerPxW = frameW * INNER_W;
   const innerPxH = frameH * INNER_H;
 

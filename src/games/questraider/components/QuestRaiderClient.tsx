@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, Home, Music, RefreshCw, Settings, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
@@ -10,7 +10,7 @@ import {
 
 import { QuestRaiderSession, GamePhase } from '../engine/session';
 import { QuestRaiderCanvas, type QuestRaiderFrameRect } from '../render/QuestRaiderCanvas';
-import { QR_FRAME_EMERALD, QR_LOGO_ON_FRAME } from '../render/questRaiderLayout';
+import { QR_LOGO_ON_FRAME } from '../render/questRaiderLayout';
 import { QuestRaiderSettingsModal } from './QuestRaiderSettingsModal';
 import {
   preloadTFSfx,
@@ -46,9 +46,7 @@ function QuestRaiderGame() {
   const targetWinRef = useRef(0);
   const lastSpinWinRef = useRef(0);
   const rafRef = useRef(0);
-  /** Mirrored from Pixi gameLayer each tick — emerald HTML overlay follows the same shake. */
   const cameraShakeRef = useRef({ x: 0, y: 0 });
-  const emeraldGlowRef = useRef<HTMLDivElement | null>(null);
 
   const refresh = useCallback(() => {
     setSnap(session.getSnapshot());
@@ -208,53 +206,6 @@ function QuestRaiderGame() {
   const canSpin = snap.phase === GamePhase.Idle && snap.balance >= snap.bet;
   const showWin = Math.round(displayedWin);
 
-  /** Lit during trap-door / fall-in only; fades out for cascades, win banner, free-spin intro, etc. */
-  const emeraldGlowLit =
-    snap.phase === GamePhase.Dropping || snap.phase === GamePhase.FreeSpinDropping;
-  const [emeraldGlowOpacity, setEmeraldGlowOpacity] = useState(0);
-
-  useEffect(() => {
-    if (!emeraldGlowLit) {
-      setEmeraldGlowOpacity(0);
-      return;
-    }
-    setEmeraldGlowOpacity(0);
-    let innerRaf = 0;
-    const outerRaf = requestAnimationFrame(() => {
-      innerRaf = requestAnimationFrame(() => setEmeraldGlowOpacity(1));
-    });
-    return () => {
-      cancelAnimationFrame(outerRaf);
-      cancelAnimationFrame(innerRaf);
-    };
-  }, [emeraldGlowLit]);
-
-  useLayoutEffect(() => {
-    if (!frameRect || !isSpinning) return;
-    const el = emeraldGlowRef.current;
-    if (!el) return;
-    const w = frameRect.w * QR_FRAME_EMERALD.glowDiameterFrac;
-    el.style.width = `${w}px`;
-    el.style.height = `${w}px`;
-    el.style.borderRadius = '50%';
-    el.style.background =
-      'radial-gradient(circle closest-side, rgba(220,255,230,0.78) 0%, rgba(110,231,183,0.52) 38%, rgba(52,211,153,0.22) 62%, rgba(16,185,129,0.08) 82%, transparent 100%)';
-    el.style.boxShadow =
-      '0 0 12px 5px rgba(167,243,208,0.55), 0 0 26px 12px rgba(52,211,153,0.38), 0 0 44px 18px rgba(16,185,129,0.2)';
-
-    let id = 0;
-    const tick = () => {
-      const node = emeraldGlowRef.current;
-      if (node) {
-        const { x, y } = cameraShakeRef.current;
-        node.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-      }
-      id = requestAnimationFrame(tick);
-    };
-    id = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(id);
-  }, [frameRect, isSpinning]);
-
   return (
     <div
       className={cn(
@@ -328,19 +279,6 @@ function QuestRaiderGame() {
               : 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(0,0,0,0.1) 64%, rgba(0,0,0,0.3) 100%)',
           }}
         />
-        {frameRect && isSpinning && (
-          <div
-            className="pointer-events-none absolute z-[25] transition-opacity duration-500 ease-[cubic-bezier(0.25,0.85,0.3,1)] motion-reduce:duration-100 motion-reduce:ease-linear"
-            aria-hidden
-            style={{
-              left: `${frameRect.x + frameRect.w * QR_FRAME_EMERALD.centerXFrac}px`,
-              top: `${frameRect.y + frameRect.h * QR_FRAME_EMERALD.centerYFrac}px`,
-              opacity: emeraldGlowOpacity,
-            }}
-          >
-            <div ref={emeraldGlowRef} className="qr-emerald-spin-glow pointer-events-none absolute left-0 top-0" />
-          </div>
-        )}
         <img
           src={`${ASSET_BASE}quest_raiders/logo.png`}
           alt="Quest Raider"
@@ -353,7 +291,8 @@ function QuestRaiderGame() {
                     ? Math.max(72, frameRect.w * 0.22)
                     : Math.max(64, frameRect.w * 0.18);
                   const overlap = isMobile ? 0.42 : 0.32;
-                  const top = Math.max(0, frameRect.y + frameRect.h * QR_LOGO_ON_FRAME.topFrac - logoH * overlap);
+                  const top =
+                    Math.max(0, frameRect.y + frameRect.h * QR_LOGO_ON_FRAME.topFrac - logoH * overlap) + 5;
                   return {
                     left: '50%',
                     top: `${top}px`,
@@ -365,7 +304,7 @@ function QuestRaiderGame() {
                 })()
               : {
                   left: '50%',
-                  top: 'max(0.5rem, env(safe-area-inset-top))',
+                  top: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5px)',
                   height: '4rem',
                   transform: 'translateX(-50%)',
                   maxWidth: 'min(100%, 36rem)',
@@ -483,6 +422,20 @@ function QuestRaiderGame() {
           </span>
         </div>
       </header>
+
+      {/* Dark wash over lower frame + UI (tall: must reach up over frame ledge; z above canvas z-10, below footers z-32+) */}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 bottom-0 z-[24] h-[min(72vh,820px)] max-h-[92vh]',
+          isFreeSpinActive ? 'opacity-[0.94]' : 'opacity-100',
+        )}
+        aria-hidden
+        style={{
+          background: isFreeSpinActive
+            ? 'linear-gradient(to bottom, rgba(30,14,8,0.03) 0%, rgba(30,14,8,0.1) 10%, rgba(30,14,8,0.18) 24%, rgba(22,12,8,0.3) 42%, rgba(18,10,6,0.42) 62%, rgba(14,9,6,0.52) 82%, rgba(12,8,5,0.6) 100%)'
+            : 'linear-gradient(to bottom, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.09) 10%, rgba(0,0,0,0.17) 24%, rgba(0,0,0,0.28) 42%, rgba(0,0,0,0.4) 62%, rgba(0,0,0,0.5) 82%, rgba(0,0,0,0.58) 100%)',
+        }}
+      />
 
       {!isFreeSpinActive && (
         <div className="pointer-events-none absolute bottom-[5.25rem] left-0 right-0 z-[35] flex justify-center lg:hidden">
