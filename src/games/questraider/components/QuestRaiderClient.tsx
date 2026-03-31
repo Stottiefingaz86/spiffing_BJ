@@ -258,6 +258,16 @@ function QuestRaiderGame() {
               : 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.28) 46%, rgba(0,0,0,0.52) 82%, rgba(0,0,0,0.68) 100%)',
           }}
         />
+        {/* Full-viewport edge vignette on bg (behind reels) */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden
+          style={{
+            background: isFreeSpinActive
+              ? 'radial-gradient(ellipse 105% 95% at 50% 48%, transparent 0%, transparent 40%, rgba(36,18,10,0.22) 72%, rgba(14,8,5,0.55) 100%)'
+              : 'radial-gradient(ellipse 105% 95% at 50% 48%, transparent 0%, transparent 40%, rgba(0,0,0,0.2) 72%, rgba(0,0,0,0.52) 100%)',
+          }}
+        />
       </div>
 
       <div className="absolute inset-0 z-10 min-h-0" onClick={(e) => e.stopPropagation()}>
@@ -423,17 +433,17 @@ function QuestRaiderGame() {
         </div>
       </header>
 
-      {/* Dark wash over lower frame + UI (tall: must reach up over frame ledge; z above canvas z-10, below footers z-32+) */}
+      {/* Dark wash: lower frame + UI; shorter + late stops so reel symbols stay clear */}
       <div
         className={cn(
-          'pointer-events-none absolute inset-x-0 bottom-0 z-[24] h-[min(72vh,820px)] max-h-[92vh]',
+          'pointer-events-none absolute inset-x-0 bottom-0 z-[24] h-[min(58vh,660px)] max-h-[82vh]',
           isFreeSpinActive ? 'opacity-[0.94]' : 'opacity-100',
         )}
         aria-hidden
         style={{
           background: isFreeSpinActive
-            ? 'linear-gradient(to bottom, rgba(30,14,8,0.03) 0%, rgba(30,14,8,0.1) 10%, rgba(30,14,8,0.18) 24%, rgba(22,12,8,0.3) 42%, rgba(18,10,6,0.42) 62%, rgba(14,9,6,0.52) 82%, rgba(12,8,5,0.6) 100%)'
-            : 'linear-gradient(to bottom, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.09) 10%, rgba(0,0,0,0.17) 24%, rgba(0,0,0,0.28) 42%, rgba(0,0,0,0.4) 62%, rgba(0,0,0,0.5) 82%, rgba(0,0,0,0.58) 100%)',
+            ? 'linear-gradient(to bottom, transparent 0%, transparent 22%, rgba(30,14,8,0.11) 36%, rgba(22,12,8,0.28) 52%, rgba(18,10,6,0.42) 68%, rgba(14,9,6,0.54) 86%, rgba(12,8,5,0.64) 100%)'
+            : 'linear-gradient(to bottom, transparent 0%, transparent 22%, rgba(0,0,0,0.1) 36%, rgba(0,0,0,0.26) 52%, rgba(0,0,0,0.4) 68%, rgba(0,0,0,0.52) 86%, rgba(0,0,0,0.62) 100%)',
         }}
       />
 
