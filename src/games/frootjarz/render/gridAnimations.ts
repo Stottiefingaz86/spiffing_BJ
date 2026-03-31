@@ -6,7 +6,8 @@
  * The canvas drives sequencing via timers, NOT completion polling.
  */
 
-import { GRID_COLS, GRID_ROWS } from '../engine/symbols';
+import { GRID_COLS, GRID_ROWS, JAR_WILD } from '../engine/symbols';
+import type { Grid } from '../engine/grid';
 
 // ===================== Drop-OUT animation (old grid exits) =====================
 
@@ -241,8 +242,18 @@ interface FallAnim {
 }
 
 const fallMap = new Map<number, FallAnim>();
+/** Jar falls: vertical only — no fruit-style stretch/squash (reads like the jar is “becoming” another symbol). */
+const fallRigidCellIds = new Set<number>();
 
-function cellStateFromFall(f: FallAnim): CellRenderState {
+function cellStateFromFall(f: FallAnim, rigid: boolean): CellRenderState {
+  if (rigid) {
+    if (f.delayMs > 0) return { yOffset: f.fromRow - f.toRow, scale: 1, scaleX: 1, scaleY: 1, alpha: 1 };
+    const t = Math.min(1, f.elapsedMs / f.durationMs);
+    const rowDelta = f.fromRow - f.toRow;
+    const e = easeOutCubic(t);
+    const yOffset = rowDelta * (1 - e);
+    return { yOffset, scale: 1, scaleX: 1, scaleY: 1, alpha: 1 };
+  }
   if (f.delayMs > 0) return { yOffset: f.fromRow - f.toRow, scale: 1, scaleX: 0.96, scaleY: 1.04, alpha: 1 };
   const t = Math.min(1, f.elapsedMs / f.durationMs);
   const rowDelta = f.fromRow - f.toRow;
@@ -263,13 +274,24 @@ function cellStateFromFall(f: FallAnim): CellRenderState {
 
 /**
  * Queue fall animations. Returns total animation duration in ms.
+ * Pass `settledGrid` (post-cascade grid) so jar cells get rigid motion only.
  */
 export function queueFallAnimations(
   moves: { cellId: number; fromRow: number; toRow: number; col: number }[],
   durationMs = 180,
   staggerMs = 5,
+  settledGrid?: Grid,
 ): number {
   fallMap.clear();
+  fallRigidCellIds.clear();
+  if (settledGrid) {
+    for (const m of moves) {
+      const cell = settledGrid[m.toRow]?.[m.col];
+      if (cell && cell.id === m.cellId && cell.symbol === JAR_WILD) {
+        fallRigidCellIds.add(m.cellId);
+      }
+    }
+  }
   let maxEnd = 0;
   for (let i = 0; i < moves.length; i++) {
     const m = moves[i];
@@ -285,7 +307,7 @@ export function queueFallAnimations(
 export function getCellFallState(cellId: number): CellRenderState | null {
   const f = fallMap.get(cellId);
   if (!f) return null;
-  return cellStateFromFall(f);
+  return cellStateFromFall(f, fallRigidCellIds.has(cellId));
 }
 
 function cellRenderStateToCombined(s: CellRenderState): { xOffset: number; yOffset: number; scaleX: number; scaleY: number; alpha: number } {
@@ -316,7 +338,7 @@ export function getCellAnimState(cellId: number): { xOffset: number; yOffset: nu
   const jm = jarMoveMap.get(cellId);
   if (jm) return cellRenderStateToCombined(cellStateFromJarMove(jm));
   const fall = fallMap.get(cellId);
-  if (fall) return cellRenderStateToCombined(cellStateFromFall(fall));
+  if (fall) return cellRenderStateToCombined(cellStateFromFall(fall, fallRigidCellIds.has(cellId)));
   return null;
 }
 
@@ -717,6 +739,7 @@ export function clearAllAnimations(): void {
   suckMap.clear();
   jarMoveMap.clear();
   fallMap.clear();
+  fallRigidCellIds.clear();
   activeParticles.length = 0;
   winFlashActive = false;
   shakeActive = false;

@@ -9,6 +9,21 @@ import {
 } from './grid';
 import { evaluatePaylines, type PaylineWin } from './paylines';
 
+/** Deep copy for UI snapshots — prevents any shared grid refs from mutating step data mid-animation. */
+export function cloneAvalancheStepForSnapshot(s: AvalancheStep): AvalancheStep {
+  return {
+    ...s,
+    gridBefore: cloneGrid(s.gridBefore),
+    gridAfterRemoval: cloneNullable(s.gridAfterRemoval),
+    gridAfter: cloneGrid(s.gridAfter),
+    winningCells: s.winningCells.map((w) => ({ ...w })),
+    lineWins: s.lineWins.map((w) => ({
+      ...w,
+      positions: w.positions.map((p) => ({ ...p })),
+    })),
+  };
+}
+
 export interface AvalancheStep {
   /** Full grid before removing this step's wins. */
   gridBefore: Grid;
@@ -56,8 +71,8 @@ function avalancheMultiplier(stepIndex: number, inFreeFall: boolean): number {
 const MAX_STEPS = 24;
 
 /**
- * Mutates a full `Grid` copy into the final post-cascade state.
- * Returns per-step snapshots for animation.
+ * Simulates avalanches on a clone of `grid` (the argument is not updated).
+ * Returns per-step snapshots; the final board is `steps[steps.length - 1].gridAfter` when non-empty.
  */
 export function runAvalancheLoop(
   grid: Grid,

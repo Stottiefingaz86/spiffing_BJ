@@ -4,6 +4,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { QuestRaiderSnapshot } from '../engine/session';
 import { GamePhase } from '../engine/session';
 import type { Grid } from '../engine/grid';
+
+function cloneGridCells(grid: Grid): Grid {
+  return grid.map((row) => row.map((cell) => ({ ...cell })));
+}
 import { REELS, ROWS, TempleSymbol } from '../engine/symbols';
 import {
   computeGridLayout,
@@ -154,6 +158,11 @@ export function QuestRaiderCanvas({
         void (async () => {
           await loadQuestRaiderFrameTexture();
           await preloadQuestRaiderSymbolTextures();
+          if (destroyed || !gameLayerRef.current || !appRef.current) return;
+          const l = getLayout(appRef.current.renderer.width, appRef.current.renderer.height);
+          const s = snapRef.current;
+          const d = displayRef.current;
+          draw(gameLayerRef.current, appRef.current.renderer, d?.grid ?? s.grid, l, d?.winCells, d?.multLabel);
         })();
         void loadQuestRaiderGridMaskTexture().then((tex) => {
           if (destroyed || !tex) return;
@@ -280,6 +289,7 @@ export function QuestRaiderCanvas({
                 QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS,
                 0,
                 QUEST_RAIDER_SPIN_CLEAR_FALL_TIMING,
+                step.displayAfter,
               );
             }
             displayRef.current = { grid: step.displayAfter };
@@ -296,6 +306,7 @@ export function QuestRaiderCanvas({
             QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS,
             3,
             QUEST_RAIDER_SPIN_FALL_IN_TIMING,
+            newGrid,
           );
           draw(gl, app.renderer, newGrid, layout);
           scheduleDropInSounds();
@@ -320,6 +331,7 @@ export function QuestRaiderCanvas({
           QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS,
           0,
           QUEST_RAIDER_SPIN_FALL_IN_TIMING,
+          newGrid,
         );
         draw(gl, app.renderer, newGrid, layout);
         scheduleDropInSounds();
@@ -371,16 +383,19 @@ export function QuestRaiderCanvas({
       const highlightMs = 400;
       const popMs = 300;
 
+      /** Own copy for this step so displayRef never aliases snapshot grids across React updates. */
+      const gridBeforeClone = cloneGridCells(step.gridBefore);
+
       scheduleTimer(() => {
         clearAllAnimations();
         if (hasWins) queueHighlightAnimations([...winIds], highlightMs);
         if (hasWins) playTF('tick', 0.35);
         displayRef.current = {
-          grid: step.gridBefore,
+          grid: gridBeforeClone,
           winCells: hasWins ? winIds : undefined,
           multLabel,
         };
-        draw(gl, app.renderer, step.gridBefore, layout, hasWins ? winIds : undefined, multLabel);
+        draw(gl, app.renderer, gridBeforeClone, layout, hasWins ? winIds : undefined, multLabel);
       }, 0);
 
       scheduleTimer(() => {
@@ -406,30 +421,33 @@ export function QuestRaiderCanvas({
         }
 
         displayRef.current = {
-          grid: step.gridBefore,
+          grid: gridBeforeClone,
           winCells: hasWins ? winIds : undefined,
           multLabel,
         };
-        draw(gl, app.renderer, step.gridBefore, layout, hasWins ? winIds : undefined, multLabel);
+        draw(gl, app.renderer, gridBeforeClone, layout, hasWins ? winIds : undefined, multLabel);
       }, highlightMs + 20);
 
       const fallStart = highlightMs + 20 + popMs + 40;
       scheduleTimer(() => {
         clearAllAnimations();
         const moves = buildFallMovesFromRemoval(step.gridAfterRemoval, step.gridAfter);
-        const fallDur = queueFallAnimations(moves, 195, 5);
+        const fallDur = queueFallAnimations(moves, 195, 5, undefined, step.gridAfter, true);
 
+        const gridAfterFrozen = cloneGridCells(step.gridAfter);
         displayRef.current = {
-          grid: step.gridAfter,
+          grid: gridAfterFrozen,
           multLabel,
         };
-        draw(gl, app.renderer, step.gridAfter, layout, undefined, multLabel);
+        draw(gl, app.renderer, gridAfterFrozen, layout, undefined, multLabel);
 
         scheduleTimer(() => {
           clearAllAnimations();
-          displayRef.current = null;
-          prevGridRef.current = step.gridAfter.map((row) => row.map((c) => ({ ...c })));
-          draw(gl, app.renderer, step.gridAfter, layout);
+          // Cascading snapshot.grid is still gridBefore; keep showing gridAfter until the effect advances.
+          const settled = cloneGridCells(step.gridAfter);
+          displayRef.current = { grid: settled, multLabel };
+          prevGridRef.current = settled.map((row) => row.map((c) => ({ ...c })));
+          draw(gl, app.renderer, settled, layout, undefined, multLabel);
           playTF('reelEnd', 0.32);
           onCascadeRef.current();
         }, fallDur + 120);

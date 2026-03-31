@@ -3,7 +3,18 @@
  * Flush wall + heavy stone motion (Gonzo-style): full-cell slabs, tilt while falling, snap square on land.
  */
 
-import { REELS, ROWS, type TempleSymbol } from '../engine/symbols';
+import type { Grid } from '../engine/grid';
+import { REELS, ROWS, TempleSymbol } from '../engine/symbols';
+
+function symbolForCellIdInGrid(grid: Grid, cellId: number): TempleSymbol | undefined {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < REELS; c++) {
+      const cell = grid[r]?.[c];
+      if (cell && cell.id === cellId) return cell.symbol;
+    }
+  }
+  return undefined;
+}
 
 function easeInQuad(t: number): number {
   return t * t;
@@ -303,7 +314,7 @@ export function queuePopAnimations(cellIds: number[], durationMs = 320): void {
 }
 
 // --- fall ---
-interface FallAnim {
+export interface FallAnim {
   cellId: number;
   fromRow: number;
   toRow: number;
@@ -313,8 +324,15 @@ interface FallAnim {
   durationMs: number;
   /** Spin fall-in / spin clear: level slabs, smooth curve, no air rotation. */
   fluid?: boolean;
+  /** Locked at queue time so texture matches the moving tile even if grid refs mutate mid-anim. */
+  symbol?: TempleSymbol;
 }
 const fallMap = new Map<number, FallAnim>();
+/**
+ * Cascade falls only: staggered `fallMap` entries delete as each tile lands; without this, draw briefly
+ * falls back to `gridCell.symbol` and textures can pop. Held until `clearAllAnimations`.
+ */
+const cascadeFallTileSymbolById = new Map<number, TempleSymbol>();
 
 function cellStateFromFall(f: FallAnim): CellRenderState {
   if (f.delayMs > 0) {
@@ -368,7 +386,14 @@ export interface FallAnimTimingOptions {
   fluidFall?: boolean;
 }
 
-export type FallMove = { cellId: number; fromRow: number; toRow: number; col: number };
+export type FallMove = {
+  cellId: number;
+  fromRow: number;
+  toRow: number;
+  col: number;
+  /** Prefer this for rendering — tied to the moving cell at queue time (avoids texture vs slot mismatches). */
+  symbol?: TempleSymbol;
+};
 
 /**
  * Fluid fall-in + survivor refills — snappy but still √-distance weighted.
@@ -474,8 +499,16 @@ export function queueFallAnimations(
   durationMs = 212,
   staggerMs = 5,
   timing?: FallAnimTimingOptions,
+  /** If set, each fall uses the symbol from this grid for that `cellId` for the whole animation. */
+  symbolSnapshotGrid?: Grid,
+  /**
+   * Line-pay cascades: keep one art per `cellId` until `clearAllAnimations`, so staggered landings
+   * don’t briefly read `cell.symbol` after `fallMap` deletes that id.
+   */
+  holdCascadeTileSymbols = false,
 ): number {
   fallMap.clear();
+  if (holdCascadeTileSymbols) cascadeFallTileSymbolById.clear();
   let maxEnd = 0;
   for (let i = 0; i < moves.length; i++) {
     const m = moves[i];
@@ -486,7 +519,12 @@ export function queueFallAnimations(
       staggerMs,
       timing,
     );
-    fallMap.set(m.cellId, { ...m, delayMs, elapsedMs: 0, durationMs: dur, fluid });
+    const symbol: TempleSymbol =
+      m.symbol ??
+      (symbolSnapshotGrid !== undefined ? symbolForCellIdInGrid(symbolSnapshotGrid, m.cellId) : undefined) ??
+      TempleSymbol.BirdBlue;
+    if (holdCascadeTileSymbols) cascadeFallTileSymbolById.set(m.cellId, symbol);
+    fallMap.set(m.cellId, { ...m, delayMs, elapsedMs: 0, durationMs: dur, fluid, symbol });
     maxEnd = Math.max(maxEnd, delayMs + dur);
   }
   return maxEnd;
@@ -498,6 +536,7 @@ export function appendFallAnimations(
   durationMs = 212,
   staggerMs = 5,
   timing?: FallAnimTimingOptions,
+  symbolSnapshotGrid?: Grid,
 ): number {
   let batchMax = 0;
   for (let i = 0; i < moves.length; i++) {
@@ -509,10 +548,29 @@ export function appendFallAnimations(
       staggerMs,
       timing,
     );
-    fallMap.set(m.cellId, { ...m, delayMs, elapsedMs: 0, durationMs: dur, fluid });
+    const symbol: TempleSymbol =
+      m.symbol ??
+      (symbolSnapshotGrid !== undefined ? symbolForCellIdInGrid(symbolSnapshotGrid, m.cellId) : undefined) ??
+      TempleSymbol.BirdBlue;
+    fallMap.set(m.cellId, { ...m, delayMs, elapsedMs: 0, durationMs: dur, fluid, symbol });
     batchMax = Math.max(batchMax, delayMs + dur);
   }
   return batchMax;
+}
+
+/** Cascade fall: locked tile art for `cellId` until next `clearAllAnimations`. */
+export function getCascadeFallTileSymbol(cellId: number): TempleSymbol | undefined {
+  return cascadeFallTileSymbolById.get(cellId);
+}
+
+/** Fall record for a cell (read-only) — use `symbol` for art while falling. */
+export function getFallAnimForCell(cellId: number): FallAnim | undefined {
+  return fallMap.get(cellId);
+}
+
+/** While a cell is in `fallMap`, use this for its art (falls back to grid cell if unset). */
+export function getFallAnimSymbolSnapshot(cellId: number): TempleSymbol | undefined {
+  return fallMap.get(cellId)?.symbol;
 }
 
 export function getSpinExplodeOrphans(grid: { id: number }[][]): {
@@ -822,6 +880,7 @@ export function clearAllAnimations(): void {
   highlightMap.clear();
   popMap.clear();
   fallMap.clear();
+  cascadeFallTileSymbolById.clear();
   activeParticles.length = 0;
   shakeActive = false;
 }

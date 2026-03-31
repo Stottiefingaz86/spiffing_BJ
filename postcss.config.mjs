@@ -1,6 +1,6 @@
-/** Tailwind v4 via PostCSS — avoids @tailwindcss/vite transform hooks conflicting with Astro + Vite 7. */
+import tailwindcss from '@tailwindcss/postcss';
+
+/** Tailwind v4 — use the plugin factory so Vite always gets a real transform (object shorthand can be undefined). */
 export default {
-  plugins: {
-    '@tailwindcss/postcss': {},
-  },
+  plugins: [tailwindcss()],
 };

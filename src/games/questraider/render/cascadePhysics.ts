@@ -15,10 +15,11 @@ export function buildFallMovesGravityOnly(holesGrid: NullableGrid): {
   fromRow: number;
   toRow: number;
   col: number;
+  symbol: TempleSymbol;
 }[] {
   const compacted = cloneNullable(holesGrid);
   applyGravityNoFill(compacted);
-  const moves: { cellId: number; fromRow: number; toRow: number; col: number }[] = [];
+  const moves: { cellId: number; fromRow: number; toRow: number; col: number; symbol: TempleSymbol }[] = [];
   for (let c = 0; c < REELS; c++) {
     for (let tr = 0; tr < ROWS; tr++) {
       const cell = compacted[tr][c];
@@ -32,7 +33,13 @@ export function buildFallMovesGravityOnly(holesGrid: NullableGrid): {
         }
       }
       if (fromRow >= 0 && fromRow !== tr) {
-        moves.push({ cellId: cell.id, fromRow, toRow: tr, col: c });
+        moves.push({
+          cellId: cell.id,
+          fromRow,
+          toRow: tr,
+          col: c,
+          symbol: cell.symbol as TempleSymbol,
+        });
       }
     }
   }
@@ -44,6 +51,7 @@ export function buildFallMovesForSpinIn(targetGrid: Grid): {
   fromRow: number;
   toRow: number;
   col: number;
+  symbol: TempleSymbol;
 }[] {
   const empty: NullableGrid = Array.from({ length: ROWS }, () =>
     Array.from({ length: REELS }, () => null),
@@ -57,8 +65,8 @@ export function buildFallMovesForSpinIn(targetGrid: Grid): {
 export function buildFallMovesFromRemoval(
   gridAfterRemoval: NullableGrid,
   gridAfterFill: Grid,
-): { cellId: number; fromRow: number; toRow: number; col: number }[] {
-  const moves: { cellId: number; fromRow: number; toRow: number; col: number }[] = [];
+): { cellId: number; fromRow: number; toRow: number; col: number; symbol: TempleSymbol }[] {
+  const moves: { cellId: number; fromRow: number; toRow: number; col: number; symbol: TempleSymbol }[] = [];
 
   for (let c = 0; c < REELS; c++) {
     let newCellCount = 0;
@@ -96,7 +104,13 @@ export function buildFallMovesFromRemoval(
         newIdx++;
       }
       if (fromRow !== r) {
-        moves.push({ cellId: cell.id, fromRow, toRow: r, col: c });
+        moves.push({
+          cellId: cell.id,
+          fromRow,
+          toRow: r,
+          col: c,
+          symbol: cell.symbol as TempleSymbol,
+        });
       }
     }
   }

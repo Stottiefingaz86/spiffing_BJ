@@ -290,7 +290,10 @@ export function FrootJarzCanvas({
         const highlightDelay = clusterDelay;
         scheduleTimer(() => {
           clearAllAnimations();
-          queueHighlightAnimations([...cellIds], 400);
+          const highlightIds = hasJar
+            ? fruitCellData.map((f) => f.cellId)
+            : [...cellIds];
+          queueHighlightAnimations(highlightIds, 400);
           playFJPitched('rowClick', 1.0 + winCountRef.current * 0.12, 0.6);
 
           const previewWin = runningWinRef.current + cWin;
@@ -391,11 +394,20 @@ export function FrootJarzCanvas({
 
           displayRef.current = {
             grid: step.gridAfterRemoval,
-            jars: step.jarStates,
+            jars: step.jarStatesAfterRemoval,
             totalWin: runningWinRef.current,
             bet: snap.bet,
           };
-          draw(gl, app.renderer, step.gridAfterRemoval, step.jarStates, layout, undefined, runningWinRef.current, snap.bet);
+          draw(
+            gl,
+            app.renderer,
+            step.gridAfterRemoval,
+            step.jarStatesAfterRemoval,
+            layout,
+            undefined,
+            runningWinRef.current,
+            snap.bet,
+          );
         }, jarHopDelay);
       }
 
@@ -439,7 +451,7 @@ export function FrootJarzCanvas({
           }
         }
 
-        const fallDur = queueFallAnimations(moves, 180, 5);
+        const fallDur = queueFallAnimations(moves, 180, 5, gridAfterFill);
 
         displayRef.current = {
           grid: gridAfterFill,

@@ -1,6 +1,6 @@
 import { GRID_COLS, GRID_ROWS, JAR_WILD, randomFruit } from './symbols';
 import { detectClusters, makeCell, type Cluster, type Grid } from './grid';
-import { processJarWins, moveJars, type JarState, type JarMove } from './jarWild';
+import { processJarWins, type JarState, type JarMove } from './jarWild';
 import { getPayoutMultiplier } from './symbols';
 
 export interface CascadeStep {
@@ -13,9 +13,14 @@ export interface CascadeStep {
   gridAfterFill: Grid;
   /** Jar states after multiplier bump but BEFORE removal — for display during highlight. */
   jarStatesBefore: JarState[];
-  /** Jar states after removal + gravity — surviving jars. */
+  /** Jar states after removal + gravity — surviving jars (matches `gridAfterFill`). */
   jarStates: JarState[];
-  /** Jar movements that occurred this step (for animation). */
+  /**
+   * Jar row/col after cluster removal, **before** `applyGravity`.
+   * Must pair with `gridAfterRemoval` for rendering — `jarStates` alone is post-gravity and mismatches that grid.
+   */
+  jarStatesAfterRemoval: JarState[];
+  /** Reserved; jars no longer take a random adjacency hop after wins (only gravity moves them). */
   jarMoves: JarMove[];
 }
 
@@ -94,10 +99,11 @@ export function runCascadeLoop(grid: Grid, jarStates: JarState[]): CascadeStep[]
       }
     }
 
-    // Move jars to random adjacent positions after each win
-    const jarMoveData = moveJars(grid, jarStates);
+    // Jars keep their re-placed cell until gravity — no random slide to a neighbour (felt like wrong-tile / RNG bugs).
+    const jarMoveData: JarMove[] = [];
 
     const gridAfterRemoval = cloneGrid(grid);
+    const jarStatesAfterRemoval = jarStates.map((j) => ({ ...j }));
 
     // Map cell IDs to jar states before gravity shifts positions
     const cellIdToJar = new Map<number, JarState>();
@@ -136,6 +142,7 @@ export function runCascadeLoop(grid: Grid, jarStates: JarState[]): CascadeStep[]
       gridAfterFill,
       jarStatesBefore,
       jarStates: jarStates.map((j) => ({ ...j })),
+      jarStatesAfterRemoval,
       jarMoves: jarMoveData,
     });
   }

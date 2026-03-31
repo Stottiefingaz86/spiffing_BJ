@@ -1,6 +1,12 @@
 import { createGrid, cloneGrid, type Grid } from './grid';
-import { runAvalancheLoop, type AvalancheStep } from './avalanche';
+import { runAvalancheLoop, cloneAvalancheStepForSnapshot, type AvalancheStep } from './avalanche';
 import { countFreeFallTriggerLines, freeFallsAwardedForLineTriggers } from './paylines';
+
+/** `runAvalancheLoop` advances an internal copy; play grid is unchanged — use last step's settled board. */
+function gridAfterCascadeOrPlayGrid(steps: AvalancheStep[], playGrid: Grid): Grid {
+  if (steps.length === 0) return playGrid;
+  return cloneGrid(steps[steps.length - 1].gridAfter);
+}
 
 export enum GamePhase {
   Idle = 'Idle',
@@ -94,7 +100,7 @@ export class QuestRaiderSession {
       balance: this.balance,
       bet: this.inFreeSpins ? this.freeSpinBet : this.bet,
       spinWin: this.spinWin,
-      cascadeSteps: this.cascadeSteps,
+      cascadeSteps: this.cascadeSteps.map(cloneAvalancheStepForSnapshot),
       currentCascadeIndex: this.currentCascadeIndex,
       revision: this.revision,
       freeSpinsRemaining: this.freeSpinsRemaining,
@@ -141,7 +147,7 @@ export class QuestRaiderSession {
 
     const playGrid = cloneGrid(this.grid);
     this.cascadeSteps = runAvalancheLoop(playGrid, this.bet, false);
-    this.grid = playGrid;
+    this.grid = gridAfterCascadeOrPlayGrid(this.cascadeSteps, playGrid);
 
     let total = 0;
     for (const st of this.cascadeSteps) total += st.payoutCents;
@@ -228,7 +234,7 @@ export class QuestRaiderSession {
 
     const playGrid = cloneGrid(this.grid);
     this.cascadeSteps = runAvalancheLoop(playGrid, this.freeSpinBet, true);
-    this.grid = playGrid;
+    this.grid = gridAfterCascadeOrPlayGrid(this.cascadeSteps, playGrid);
 
     let total = 0;
     for (const st of this.cascadeSteps) total += st.payoutCents;

@@ -1,3 +1,9 @@
+import {
+  getParLinePayout,
+  isQuestParMathEnabled,
+  parRandomStripSymbol,
+} from '../math/parMath';
+
 export const REELS = 5;
 export const ROWS = 3;
 
@@ -72,6 +78,7 @@ export const PAYTABLE: Partial<Record<TempleSymbol, PaytableEntry>> = {
 };
 
 export function getLinePayout(symbol: TempleSymbol, count: number): number {
+  if (isQuestParMathEnabled()) return getParLinePayout(symbol, count);
   if (count < 3) return 0;
   const entry = PAYTABLE[symbol];
   if (!entry) return 0;
@@ -110,6 +117,7 @@ function randomPaying(): TempleSymbol {
 
 /** New symbol for column `col` (wild only on middle reels). */
 export function randomSymbolForColumn(col: number): TempleSymbol {
+  if (isQuestParMathEnabled()) return parRandomStripSymbol(col);
   const r = Math.random();
   if (col >= WILD_MIN_COL && col <= WILD_MAX_COL && r < 0.055) {
     return TempleSymbol.Wild;

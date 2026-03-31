@@ -11,7 +11,14 @@ import {
 import { REELS, ROWS, SYMBOL_COLORS, SYMBOL_LABELS, TempleSymbol } from '../engine/symbols';
 import type { Grid } from '../engine/grid';
 import { isSpinPaddingCell } from '../engine/grid';
-import { getCellAnimState, getParticles, getFloatingWins, getSpinExplodeOrphans } from './gridAnimations';
+import {
+  getCascadeFallTileSymbol,
+  getCellAnimState,
+  getFallAnimForCell,
+  getParticles,
+  getFloatingWins,
+  getSpinExplodeOrphans,
+} from './gridAnimations';
 import { getQuestRaiderSymbolTexture } from './questRaiderSymbolTextures';
 import { QR_DEBUG_SHOW_REEL_MASK } from './questRaiderLayout';
 import {
@@ -477,7 +484,13 @@ export function updateGridScene(
       const cx = left + w / 2;
       const cy = bottom - h / 2;
 
-      const symTex = getQuestRaiderSymbolTexture(cell.symbol as TempleSymbol);
+      const fallRec = getFallAnimForCell(cell.id);
+      const displaySymbol = (
+        getCascadeFallTileSymbol(cell.id) ??
+        (fallRec && fallRec.symbol !== undefined ? fallRec.symbol : undefined) ??
+        cell.symbol
+      ) as TempleSymbol;
+      const symTex = getQuestRaiderSymbolTexture(displaySymbol);
       const hasSymbolTex = Boolean(symTex && symTex.width > 0);
       const symY = hasSymbolTex ? cy : cy + symbolLabelOffsetY(minDim);
 
@@ -485,7 +498,7 @@ export function updateGridScene(
       gfx.position.set(left, bottom);
       gfx.rotation = rot;
       gfx.roundRect(0, -h, w, h, cornerR * Math.min(sx, sy));
-      const col = SYMBOL_COLORS[cell.symbol as TempleSymbol] ?? 0x888888;
+      const col = SYMBOL_COLORS[displaySymbol] ?? 0x888888;
       const seamW = Math.max(0.65, minDim * 0.009);
       if (!hasSymbolTex) {
         gfx.fill({ color: col, alpha: alpha * 0.98 });
@@ -514,7 +527,7 @@ export function updateGridScene(
       } else {
         symSprite.visible = false;
         lb.visible = true;
-        lb.text = SYMBOL_LABELS[cell.symbol as TempleSymbol] ?? '?';
+        lb.text = SYMBOL_LABELS[displaySymbol] ?? '?';
         lb.position.set(cx, symY);
         lb.rotation = rot;
         lb.scale.set(sx, sy);

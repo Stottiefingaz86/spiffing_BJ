@@ -28,7 +28,7 @@ export interface SpinClearTimelineStep {
   tMs: number;
   /** Whole reel: every real symbol in this column drops together (trap door). */
   removals: SpinClearRemoval[];
-  fallMoves: { cellId: number; fromRow: number; toRow: number; col: number }[];
+  fallMoves: { cellId: number; fromRow: number; toRow: number; col: number; symbol: TempleSymbol }[];
   displayAfter: Grid;
   /** Use when scheduling the next spin phase after all clears */
   localMaxMs: number;
