@@ -7,9 +7,12 @@ import {
 export const REELS = 5;
 export const ROWS = 3;
 
-/** Wild may only be placed on middle three reels (0-based cols 1–3). */
-export const WILD_MIN_COL = 1;
-export const WILD_MAX_COL = 3;
+/**
+ * Wild can land on any reel. (Middle-reels-only was used when a separate free-fall/scatter existed on outer reels;
+ * PAR strips have no scatter, so wilds must be able to hit reel 1 for “3+ from the left” free falls.)
+ */
+export const WILD_MIN_COL = 0;
+export const WILD_MAX_COL = 4;
 
 export enum TempleSymbol {
   Wild = 'wild',
@@ -115,13 +118,12 @@ function randomPaying(): TempleSymbol {
   return TempleSymbol.BirdBlue;
 }
 
-/** New symbol for column `col` (wild only on middle reels). Scatter/wild same odds with or without PAR strips. */
+/** New symbol for column `col` (wild only on middle reels). No scatter — not on PAR strips. */
 export function randomSymbolForColumn(col: number): TempleSymbol {
   const r = Math.random();
   if (col >= WILD_MIN_COL && col <= WILD_MAX_COL && r < 0.055) {
     return TempleSymbol.Wild;
   }
-  if (r < 0.06) return TempleSymbol.Scatter;
   if (isQuestParMathEnabled()) return parRandomStripSymbol(col);
   return randomPaying();
 }

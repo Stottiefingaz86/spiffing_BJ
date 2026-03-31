@@ -16,8 +16,9 @@ export const QUEST_RAIDER_SYMBOL_TEXTURES: Partial<Record<TempleSymbol, string>>
   [TempleSymbol.CreatureTan]: `${BASE}quest_raiders/symbol3.png`,
   [TempleSymbol.MaskPurple]: `${BASE}quest_raiders/symbol4.png`,
   [TempleSymbol.MaskGold]: `${BASE}quest_raiders/symbol5.png`,
+  [TempleSymbol.MaskGreen]: `${BASE}quest_raiders/symbol6.png`,
+  [TempleSymbol.MaskSilver]: `${BASE}quest_raiders/symbol7.png`,
   [TempleSymbol.Wild]: `${BASE}quest_raiders/wild.png`,
-  [TempleSymbol.Scatter]: `${BASE}quest_raiders/scatter.png`,
 };
 
 /**

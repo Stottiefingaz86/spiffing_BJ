@@ -6,6 +6,38 @@ import {
   isQuestParMathEnabled,
   setQuestRaiderParMathDevOverride,
 } from '../math/parMath';
+import { PAYING_SYMBOLS, TempleSymbol, getLinePayout } from '../engine/symbols';
+import {
+  QUEST_RAIDER_SYMBOL1_STANDIN,
+  QUEST_RAIDER_SYMBOL_TEXTURES,
+} from '../render/questRaiderSymbolTextures';
+
+const PAYTABLE_ROW_ORDER: TempleSymbol[] = [TempleSymbol.Wild, ...PAYING_SYMBOLS];
+
+const SYMBOL_HELP_NAME: Record<TempleSymbol, string> = {
+  [TempleSymbol.Wild]: 'Wild',
+  [TempleSymbol.Scatter]: 'Scatter',
+  [TempleSymbol.MaskSilver]: 'Silver mask',
+  [TempleSymbol.MaskGreen]: 'Green mask',
+  [TempleSymbol.MaskGold]: 'Gold mask',
+  [TempleSymbol.MaskPurple]: 'Purple mask',
+  [TempleSymbol.CreatureTan]: 'Stone carving',
+  [TempleSymbol.BirdRed]: 'Red bird',
+  [TempleSymbol.BirdBlue]: 'Blue bird',
+};
+
+function symbolTextureSrc(sym: TempleSymbol): string {
+  return (
+    QUEST_RAIDER_SYMBOL_TEXTURES[sym] ??
+    QUEST_RAIDER_SYMBOL_TEXTURES[QUEST_RAIDER_SYMBOL1_STANDIN]!
+  );
+}
+
+function formatLineCoins(sym: TempleSymbol, n: 3 | 4 | 5): string {
+  const v = getLinePayout(sym, n);
+  if (v <= 0) return '—';
+  return String(v);
+}
 
 interface QuestRaiderSettingsModalProps {
   open: boolean;
@@ -104,6 +136,69 @@ export function QuestRaiderSettingsModal({
             )}
           >
             <div className="space-y-4 pb-1">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-amber-200/90">Paytable</h3>
+                <p className="mt-1 text-[11px] leading-snug text-white/45">
+                  Line wins: coin amounts × your line bet (same rules as the reels
+                  {isDev ? (parMathOn ? '; PAR sheet paytable' : '; classic paytable') : ''}).
+                </p>
+                <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/25">
+                  <div className="grid grid-cols-[minmax(0,1.35fr)_repeat(3,minmax(0,0.85fr))] gap-x-1 border-b border-white/10 px-2 py-2 sm:px-3">
+                    <span className="pl-1 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                      Symbol
+                    </span>
+                    <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                      ×3
+                    </span>
+                    <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                      ×4
+                    </span>
+                    <span className="text-center text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                      ×5
+                    </span>
+                  </div>
+                  {PAYTABLE_ROW_ORDER.map((sym) => {
+                    const p3 = getLinePayout(sym, 3);
+                    const p4 = getLinePayout(sym, 4);
+                    const p5 = getLinePayout(sym, 5);
+                    const noDirectPay = p3 <= 0 && p4 <= 0 && p5 <= 0;
+                    return (
+                      <div
+                        key={sym}
+                        className="grid grid-cols-[minmax(0,1.35fr)_repeat(3,minmax(0,0.85fr))] items-center gap-x-1 border-b border-white/[0.06] px-2 py-2 last:border-b-0 sm:px-3"
+                      >
+                        <div className="flex min-w-0 items-center gap-2 pl-0.5">
+                          <img
+                            src={symbolTextureSrc(sym)}
+                            alt=""
+                            className="size-9 shrink-0 rounded-md bg-black/40 object-contain p-0.5 ring-1 ring-white/10 sm:size-10"
+                            draggable={false}
+                          />
+                          <span className="truncate text-xs font-medium text-white/85">
+                            {SYMBOL_HELP_NAME[sym]}
+                          </span>
+                        </div>
+                        <span className="text-center text-xs font-bold tabular-nums text-amber-100/95">
+                          {formatLineCoins(sym, 3)}
+                        </span>
+                        <span className="text-center text-xs font-bold tabular-nums text-amber-100/95">
+                          {formatLineCoins(sym, 4)}
+                        </span>
+                        <span className="text-center text-xs font-bold tabular-nums text-amber-100/95">
+                          {formatLineCoins(sym, 5)}
+                        </span>
+                        {noDirectPay && sym === TempleSymbol.Wild ? (
+                          <p className="col-span-4 -mt-0.5 px-1 pb-1 text-[10px] leading-snug text-white/35">
+                            Substitutes for paying symbols. Three or more wilds on a line from the left trigger free falls.
+                            No separate wild coin row on the PAR sheet.
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <p>
                 <strong className="text-amber-200/90">5×3</strong>,{' '}
                 <strong className="text-amber-200/90">20 fixed bet lines</strong>. Wins need at least one symbol on reel 1
@@ -116,15 +211,14 @@ export function QuestRaiderSettingsModal({
                 falls), with higher steps using the max after that.
               </p>
               <p>
-                <strong className="text-amber-200/90">Free falls:</strong> <strong className="text-white">3+</strong> Free
-                Fall symbols <strong className="text-white">in a row on a bet line from the left</strong> award{' '}
+                <strong className="text-amber-200/90">Free falls:</strong> <strong className="text-white">3+ wilds</strong>{' '}
+                <strong className="text-white">in a row on a bet line from the left</strong> award{' '}
                 <strong className="text-white">10</strong> free falls per qualifying line (e.g. two lines → 20). Retriggers
-                add the same way during the feature.
+                add the same way during the feature. There is no separate scatter / free-fall symbol on the PAR strips.
               </p>
               <p>
-                <strong className="text-amber-200/90">Wild</strong> appears on reels 2–4 only; it substitutes for paying
-                symbols and can stand in for <strong className="text-amber-200/90">Free Fall</strong> symbols on a line per
-                the official game sheet.{' '}
+                <strong className="text-amber-200/90">Wild</strong> can land on any reel and substitutes for paying symbols
+                on lines.{' '}
                 <em className="text-white/50">RTP ~95.97% is a design reference; this demo math is not certified.</em>
               </p>
             </div>

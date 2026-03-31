@@ -90,15 +90,14 @@ export function evaluatePaylines(grid: Grid, bet: number): PaylineWin[] {
   return wins;
 }
 
-/** True if this symbol counts toward a Free Fall trigger on a line (scatter, or wild standing in for it). */
+/** Free falls: PAR build has no scatter on strips — only wild counts along the line (three+ from reel 1). */
 function countsAsFreeFallAlongLine(sym: TempleSymbol): boolean {
-  return isScatter(sym) || isWild(sym);
+  return isWild(sym);
 }
 
 /**
- * NetEnt Gonzo's Quest™ rules (Game Sheet v1.0): 3+ Free Fall symbols **in succession on a bet line,
- * starting from the leftmost reel**. Wild substitutes for Free Fall symbols on bet lines.
- * Each qualifying line awards 10 Free Falls (e.g. two lines → 20).
+ * 3+ **wild** symbols in succession on a bet line from the left trigger free falls (10 per qualifying line).
+ * This build matches PAR strips (no dedicated free-fall / scatter tile).
  */
 export function countFreeFallTriggerLines(grid: Grid): number {
   let qualifyingLines = 0;
@@ -120,14 +119,4 @@ export function countFreeFallTriggerLines(grid: Grid): number {
 export function freeFallsAwardedForLineTriggers(triggerLineCount: number): number {
   if (triggerLineCount <= 0) return 0;
   return 10 * triggerLineCount;
-}
-
-export function countScatters(grid: Grid): number {
-  let n = 0;
-  for (let r = 0; r < grid.length; r++) {
-    for (let c = 0; c < grid[r].length; c++) {
-      if (isScatter(grid[r][c].symbol)) n++;
-    }
-  }
-  return n;
 }

@@ -8,7 +8,7 @@ import type { Grid } from '../engine/grid';
 function cloneGridCells(grid: Grid): Grid {
   return grid.map((row) => row.map((cell) => ({ ...cell })));
 }
-import { REELS, ROWS, TempleSymbol } from '../engine/symbols';
+import { REELS, ROWS } from '../engine/symbols';
 import {
   computeGridLayout,
   destroyGridScene,
@@ -268,13 +268,6 @@ export function QuestRaiderCanvas({
         const colStagger = QUEST_RAIDER_SPIN_REEL_COL_STAGGER_MS;
         for (let c = 0; c < REELS; c++) {
           scheduleTimer(() => playTF('rowClick', 0.12), c * colStagger);
-          for (let r = 0; r < ROWS; r++) {
-            const cell = newGrid[r]?.[c];
-            if (cell?.symbol === TempleSymbol.Scatter) {
-              scheduleTimer(() => playTF('chime', 0.2), c * colStagger + 50);
-              break;
-            }
-          }
         }
       };
 
