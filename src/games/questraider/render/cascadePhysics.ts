@@ -1,6 +1,55 @@
 import type { Grid } from '../engine/grid';
 import type { NullableGrid } from '../engine/grid';
+import { applyGravityNoFill, cloneNullable } from '../engine/grid';
 import { REELS, ROWS, SYMBOL_COLORS, type TempleSymbol } from '../engine/symbols';
+
+/**
+ * Spin / free-spin drop: same fall paths as cascade refills — symbols enter from above each column.
+ */
+/**
+ * After a hole appears (no refill), how each surviving cell moves when columns compact.
+ * Same move semantics as cascade `queueFallAnimations`.
+ */
+export function buildFallMovesGravityOnly(holesGrid: NullableGrid): {
+  cellId: number;
+  fromRow: number;
+  toRow: number;
+  col: number;
+}[] {
+  const compacted = cloneNullable(holesGrid);
+  applyGravityNoFill(compacted);
+  const moves: { cellId: number; fromRow: number; toRow: number; col: number }[] = [];
+  for (let c = 0; c < REELS; c++) {
+    for (let tr = 0; tr < ROWS; tr++) {
+      const cell = compacted[tr][c];
+      if (!cell) continue;
+      let fromRow = -1;
+      for (let fr = 0; fr < ROWS; fr++) {
+        const oc = holesGrid[fr][c];
+        if (oc && oc.id === cell.id) {
+          fromRow = fr;
+          break;
+        }
+      }
+      if (fromRow >= 0 && fromRow !== tr) {
+        moves.push({ cellId: cell.id, fromRow, toRow: tr, col: c });
+      }
+    }
+  }
+  return moves;
+}
+
+export function buildFallMovesForSpinIn(targetGrid: Grid): {
+  cellId: number;
+  fromRow: number;
+  toRow: number;
+  col: number;
+}[] {
+  const empty: NullableGrid = Array.from({ length: ROWS }, () =>
+    Array.from({ length: REELS }, () => null),
+  );
+  return buildFallMovesFromRemoval(empty, targetGrid);
+}
 
 /**
  * Build fall moves from post-removal holes to final filled grid (Hot Fiesta–style).

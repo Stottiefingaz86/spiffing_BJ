@@ -3,7 +3,7 @@
  * Flush wall + heavy stone motion (Gonzo-style): full-cell slabs, tilt while falling, snap square on land.
  */
 
-import { REELS, ROWS } from '../engine/symbols';
+import { REELS, ROWS, type TempleSymbol } from '../engine/symbols';
 
 function easeInQuad(t: number): number {
   return t * t;
@@ -35,6 +35,29 @@ function brickShortFallTravel(t: number): number {
   return 0.86 + 0.14 * (1 - Math.pow(1 - u, 2.4));
 }
 
+/**
+ * Spin / fluid fall: mostly t² (acceleration from rest), then a short ease-out so velocity → 0 at landing.
+ * Raw t² ends with non-zero speed and reads as a snap/bounce; no overshoot here (not a spring).
+ */
+function gravitySpinFallTravel(t: number): number {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
+  const knee = 0.84;
+  const atKnee = 0.885;
+  if (t < knee) {
+    const u = t / knee;
+    return atKnee * u * u;
+  }
+  const u = (t - knee) / (1 - knee);
+  return atKnee + (1 - atKnee) * (1 - Math.pow(1 - u, 3));
+}
+
+/** Time to fall `dist` rows under constant g from rest scales ~√dist; keeps long drops from feeling “snapped”. */
+function fluidFallDurationMs(baseMs: number, rowDist: number): number {
+  const d = Math.max(1, rowDist);
+  return Math.round(baseMs * Math.sqrt(d));
+}
+
 /** Stable pseudo-random in [-1, 1] per cell id — used for tilt/sway so each stone feels distinct */
 function stoneTiltUnit(cellId: number): number {
   const s = Math.sin(cellId * 12.9898) * 43758.5453;
@@ -63,34 +86,52 @@ interface DropOutAnim {
   delayMs: number;
   elapsedMs: number;
   durationMs: number;
+  /** Spin: each tile pops loose then falls — not one moving slab. */
+  spinExplode?: boolean;
+  /** When the cell is no longer in `grid`, draw uses this at (row,col). */
+  symbol?: TempleSymbol;
 }
 const dropOutMap = new Map<number, DropOutAnim>();
 
 function cellStateFromDropOut(d: DropOutAnim): CellRenderState {
   if (d.delayMs > 0) return { xOffset: 0, yOffset: 0, scaleX: 1, scaleY: 1, alpha: 1, rotation: 0 };
   const t = Math.min(1, d.elapsedMs / d.durationMs);
-  const e = brickDropTravel(t);
-  const fallDist = ROWS - d.row + 1;
-  const tilt = stoneTiltRad(d.cellId, 9);
-  const centerCol = (REELS - 1) / 2;
-  /** Wall breaks: reels peel slightly away from center as they drop */
-  const peel = (d.col - centerCol) * 0.036 * e + stoneTiltUnit(d.cellId + 2) * 0.018 * e;
+  const fallDist = ROWS - d.row + 1.2;
+
+  if (!d.spinExplode) {
+    const e = brickDropTravel(t);
+    const tilt = stoneTiltRad(d.cellId, 11);
+    const wobble = stoneTiltUnit(d.cellId + d.row * 13) * 0.034 * e;
+    const colNudge = stoneTiltUnit(d.cellId + d.col * 3) * 0.015 * e;
+    return {
+      xOffset: wobble + colNudge,
+      yOffset: fallDist * e,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      rotation: tilt * e,
+    };
+  }
+
+  /** Spin clear: straight vertical gravity drop. */
+  const se = gravitySpinFallTravel(t);
   return {
-    xOffset: peel,
-    yOffset: fallDist * e,
+    xOffset: 0,
+    yOffset: fallDist * se,
     scaleX: 1,
     scaleY: 1,
     alpha: 1,
-    rotation: tilt * e,
+    rotation: 0,
   };
 }
 
 export function queueDropOutAnimations(
   grid: { id: number }[][],
-  durationMs = 165,
-  /** Tight stagger so the wall releases almost as one piece */
-  colStaggerMs = 26,
-  rowStaggerMs = 9,
+  durationMs = 172,
+  /** Left → right: each “reel” column releases after the previous (ms). */
+  colStaggerMs = 76,
+  /** Within a column, bottom row leads slightly (strip falling away). */
+  rowStaggerMs = 11,
 ): number {
   dropOutMap.clear();
   let maxEnd = 0;
@@ -104,6 +145,27 @@ export function queueDropOutAnimations(
     }
   }
   return maxEnd;
+}
+
+/** One exploding tile leaving the grid (spin clear); does not clear other animations. */
+export function appendSpinExplodeDropOut(
+  cellId: number,
+  row: number,
+  col: number,
+  durationMs: number,
+  symbol: TempleSymbol,
+  delayMs = 0,
+): void {
+  dropOutMap.set(cellId, {
+    cellId,
+    row,
+    col,
+    delayMs: Math.max(0, delayMs),
+    elapsedMs: 0,
+    durationMs,
+    spinExplode: true,
+    symbol,
+  });
 }
 
 // --- drop in (slab falls straight down its column, gravity + landing thud) ---
@@ -249,11 +311,12 @@ interface FallAnim {
   delayMs: number;
   elapsedMs: number;
   durationMs: number;
+  /** Spin fall-in / spin clear: level slabs, smooth curve, no air rotation. */
+  fluid?: boolean;
 }
 const fallMap = new Map<number, FallAnim>();
 
 function cellStateFromFall(f: FallAnim): CellRenderState {
-  const tiltMax = stoneTiltRad(f.cellId, 7);
   if (f.delayMs > 0) {
     return {
       xOffset: 0,
@@ -261,13 +324,20 @@ function cellStateFromFall(f: FallAnim): CellRenderState {
       scaleX: 1,
       scaleY: 1,
       alpha: 1,
-      rotation: tiltMax * 0.45,
+      rotation: 0,
     };
   }
   const t = Math.min(1, f.elapsedMs / f.durationMs);
   const rowDelta = f.fromRow - f.toRow;
-  const e = brickShortFallTravel(t);
+  const e = f.fluid ? gravitySpinFallTravel(t) : brickShortFallTravel(t);
   const yOffset = rowDelta * (1 - e);
+  if (t >= 1) {
+    return { xOffset: 0, yOffset: 0, scaleX: 1, scaleY: 1, alpha: 1, rotation: 0 };
+  }
+  if (f.fluid) {
+    return { xOffset: 0, yOffset, scaleX: 1, scaleY: 1, alpha: 1, rotation: 0 };
+  }
+  const tiltMax = stoneTiltRad(f.cellId, 7);
   const airPhase = t < 0.82 ? Math.sin(t * Math.PI) : 0;
   let rot = airPhase * tiltMax;
   if (t > 0.82) {
@@ -277,23 +347,194 @@ function cellStateFromFall(f: FallAnim): CellRenderState {
   return { xOffset: 0, yOffset, scaleX: 1, scaleY: 1, alpha: 1, rotation: rot };
 }
 
+/** Optional timing for `queueFallAnimations` (cascade uses defaults). */
+export interface FallAnimTimingOptions {
+  colStaggerMs?: number;
+  rowStaggerMs?: number;
+  indexStaggerMs?: number;
+  /**
+   * Spin / reel strip: same start time for every cell in a column so the stack stays physically
+   * contiguous (no “top brick seated while air below”). Left→right still uses `colStaggerMs`.
+   */
+  columnStrip?: boolean;
+  /**
+   * Spin fall-in: bottom row of each column starts first, then up — blocks stack instead of one slab.
+   * Uses `rowStaggerMs` with `(ROWS - 1 - toRow)` (ignored when `columnStrip` is true).
+   */
+  stackBottomFirst?: boolean;
+  /** No per-cell ms jitter on delays (spin = steady rhythm). */
+  suppressDelayJitter?: boolean;
+  /** Smooth vertical ease + zero rotation (pair with stackBottomFirst for spin fall-in). */
+  fluidFall?: boolean;
+}
+
+export type FallMove = { cellId: number; fromRow: number; toRow: number; col: number };
+
+/**
+ * Fluid fall-in + survivor refills — snappy but still √-distance weighted.
+ */
+export const QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS = 148;
+/** Trap-door strip — short base so tiles read fast; √(dist) still scales longer falls. */
+export const QUEST_RAIDER_SPIN_STRIP_DROP_BASE_MS = 108;
+/** Fixed ms between opening each reel’s trap (overlap allowed). */
+export const QUEST_RAIDER_SPIN_STRIP_COL_OFFSET_MS = 38;
+/** L→R stagger for new symbols landing (row clicks / fall-in). */
+export const QUEST_RAIDER_SPIN_REEL_COL_STAGGER_MS = 48;
+export const QUEST_RAIDER_SPIN_CLEAR_FALL_TIMING: FallAnimTimingOptions = {
+  colStaggerMs: 0,
+  rowStaggerMs: 3,
+  stackBottomFirst: true,
+  suppressDelayJitter: true,
+  fluidFall: true,
+  indexStaggerMs: 0,
+};
+/** Spin fall-in: bottom-first stack per reel, fluid gravity curve. */
+export const QUEST_RAIDER_SPIN_FALL_IN_TIMING: FallAnimTimingOptions = {
+  colStaggerMs: QUEST_RAIDER_SPIN_REEL_COL_STAGGER_MS,
+  rowStaggerMs: 2,
+  indexStaggerMs: 0,
+  stackBottomFirst: true,
+  suppressDelayJitter: true,
+  fluidFall: true,
+};
+
+/**
+ * Strip trap-door: whole column releases as one beat — no row stagger (reads as a single drop).
+ * Shorter base ms than fall-in so the clear pass feels quick while motion curve matches.
+ */
+export function questRaiderSpinStripExplodeTiming(row: number): { delayMs: number; durationMs: number } {
+  const delayMs = 0;
+  const fallDistCells = ROWS - row + 1.2;
+  const dist = Math.max(1, Math.round(fallDistCells));
+  const durationMs = fluidFallDurationMs(QUEST_RAIDER_SPIN_STRIP_DROP_BASE_MS, dist);
+  return { delayMs, durationMs };
+}
+
+export function estimateSpinClearColumnExplodeMaxEndMs(removals: { removedRow: number }[]): number {
+  let maxEnd = 0;
+  for (const rem of removals) {
+    const { delayMs, durationMs } = questRaiderSpinStripExplodeTiming(rem.removedRow);
+    maxEnd = Math.max(maxEnd, delayMs + durationMs);
+  }
+  return maxEnd;
+}
+
+function fallMoveDelayDurationAndFluid(
+  m: FallMove,
+  index: number,
+  durationMs: number,
+  staggerMs: number,
+  timing?: FallAnimTimingOptions,
+): { delayMs: number; durationMs: number; fluid: boolean } {
+  const colS = timing?.colStaggerMs ?? 10;
+  const rowS = timing?.rowStaggerMs ?? 4;
+  const idxS = timing?.indexStaggerMs ?? staggerMs;
+  const strip = timing?.columnStrip === true;
+  const dist = Math.abs(m.toRow - m.fromRow);
+  const fluid = timing?.fluidFall === true;
+  const dur = fluid ? fluidFallDurationMs(durationMs, dist) : durationMs + dist * 26;
+  let delay: number;
+  if (strip) {
+    delay = m.col * colS;
+  } else {
+    const jitter =
+      timing?.suppressDelayJitter === true
+        ? 0
+        : Math.round(stoneTiltUnit(m.cellId + m.col * 17) * 7);
+    const rowTerm =
+      timing?.stackBottomFirst === true ? (ROWS - 1 - m.toRow) * rowS : m.toRow * rowS;
+    delay = m.col * colS + rowTerm + index * idxS + jitter;
+  }
+  return { delayMs: Math.max(0, delay), durationMs: dur, fluid };
+}
+
+/** Max `delay + duration` for a batch — must match `queueFallAnimations` / `appendFallAnimations`. */
+export function estimateFallAnimBatchMaxEndMs(
+  moves: FallMove[],
+  durationMs: number,
+  staggerMs = 5,
+  timing?: FallAnimTimingOptions,
+): number {
+  let maxEnd = 0;
+  for (let i = 0; i < moves.length; i++) {
+    const { delayMs, durationMs: dur } = fallMoveDelayDurationAndFluid(
+      moves[i],
+      i,
+      durationMs,
+      staggerMs,
+      timing,
+    );
+    maxEnd = Math.max(maxEnd, delayMs + dur);
+  }
+  return maxEnd;
+}
+
 export function queueFallAnimations(
-  moves: { cellId: number; fromRow: number; toRow: number; col: number }[],
+  moves: FallMove[],
   durationMs = 212,
   staggerMs = 5,
+  timing?: FallAnimTimingOptions,
 ): number {
   fallMap.clear();
   let maxEnd = 0;
   for (let i = 0; i < moves.length; i++) {
     const m = moves[i];
-    const dist = Math.abs(m.toRow - m.fromRow);
-    const dur = durationMs + dist * 26;
-    const jitter = Math.round(stoneTiltUnit(m.cellId + m.col * 17) * 7);
-    const delay = m.col * 10 + m.toRow * 4 + i * staggerMs + jitter;
-    fallMap.set(m.cellId, { ...m, delayMs: Math.max(0, delay), elapsedMs: 0, durationMs: dur });
-    maxEnd = Math.max(maxEnd, delay + dur);
+    const { delayMs, durationMs: dur, fluid } = fallMoveDelayDurationAndFluid(
+      m,
+      i,
+      durationMs,
+      staggerMs,
+      timing,
+    );
+    fallMap.set(m.cellId, { ...m, delayMs, elapsedMs: 0, durationMs: dur, fluid });
+    maxEnd = Math.max(maxEnd, delayMs + dur);
   }
   return maxEnd;
+}
+
+/** Add fall moves without clearing existing falls / drop-outs (spin clear waves). */
+export function appendFallAnimations(
+  moves: FallMove[],
+  durationMs = 212,
+  staggerMs = 5,
+  timing?: FallAnimTimingOptions,
+): number {
+  let batchMax = 0;
+  for (let i = 0; i < moves.length; i++) {
+    const m = moves[i];
+    const { delayMs, durationMs: dur, fluid } = fallMoveDelayDurationAndFluid(
+      m,
+      i,
+      durationMs,
+      staggerMs,
+      timing,
+    );
+    fallMap.set(m.cellId, { ...m, delayMs, elapsedMs: 0, durationMs: dur, fluid });
+    batchMax = Math.max(batchMax, delayMs + dur);
+  }
+  return batchMax;
+}
+
+export function getSpinExplodeOrphans(grid: { id: number }[][]): {
+  cellId: number;
+  row: number;
+  col: number;
+  symbol: TempleSymbol;
+}[] {
+  const inGrid = new Set<number>();
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < REELS; c++) {
+      inGrid.add(grid[r][c].id);
+    }
+  }
+  const out: { cellId: number; row: number; col: number; symbol: TempleSymbol }[] = [];
+  for (const d of dropOutMap.values()) {
+    if (!d.spinExplode || d.symbol === undefined) continue;
+    if (inGrid.has(d.cellId)) continue;
+    out.push({ cellId: d.cellId, row: d.row, col: d.col, symbol: d.symbol });
+  }
+  out.sort((a, b) => a.col - b.col || a.row - b.row || a.cellId - b.cellId);
+  return out;
 }
 
 function combinedState(s: CellRenderState): CellRenderState {
@@ -500,66 +741,77 @@ export function triggerCameraShake(intensity = 7, durationMs = 380): void {
 
 export function getCameraShakeOffset(): { x: number; y: number } {
   if (!shakeActive) return { x: 0, y: 0 };
-  const decay = 1 - shakeElapsed / shakeDuration;
+  const decay = 1 - shakeElapsed / Math.max(1, shakeDuration);
   const amp = shakeIntensity * decay;
-  return { x: (Math.random() * 2 - 1) * amp, y: (Math.random() * 2 - 1) * amp };
+  const ph = shakeElapsed * 0.055;
+  return {
+    x: (Math.sin(ph * 2.1) * 0.72 + Math.sin(ph * 4.3) * 0.28) * amp,
+    y: (Math.cos(ph * 1.8) * 0.68 + Math.cos(ph * 3.6) * 0.32) * amp,
+  };
 }
 
 export function tickAnimations(dtMs: number): void {
+  const dt = Math.min(Math.max(dtMs, 0), 40);
   for (const d of dropOutMap.values()) {
     if (d.delayMs > 0) {
-      d.delayMs -= dtMs;
+      d.delayMs -= dt;
       continue;
     }
-    d.elapsedMs += dtMs;
+    d.elapsedMs += dt;
+  }
+  for (const [id, d] of [...dropOutMap]) {
+    if (d.delayMs <= 0 && d.elapsedMs >= d.durationMs) dropOutMap.delete(id);
   }
   for (const d of dropInMap.values()) {
     if (d.delayMs > 0) {
-      d.delayMs -= dtMs;
+      d.delayMs -= dt;
       continue;
     }
-    d.elapsedMs += dtMs;
+    d.elapsedMs += dt;
   }
-  for (const h of highlightMap.values()) h.elapsedMs += dtMs;
-  for (const p of popMap.values()) p.elapsedMs += dtMs;
+  for (const h of highlightMap.values()) h.elapsedMs += dt;
+  for (const p of popMap.values()) p.elapsedMs += dt;
   for (const f of fallMap.values()) {
     if (f.delayMs > 0) {
-      f.delayMs -= dtMs;
+      f.delayMs -= dt;
       continue;
     }
-    f.elapsedMs += dtMs;
+    f.elapsedMs += dt;
+  }
+  for (const [id, f] of [...fallMap]) {
+    if (f.delayMs <= 0 && f.elapsedMs >= f.durationMs) fallMap.delete(id);
   }
   for (let i = activeFloatingWins.length - 1; i >= 0; i--) {
-    activeFloatingWins[i].elapsedMs += dtMs;
+    activeFloatingWins[i].elapsedMs += dt;
     if (activeFloatingWins[i].elapsedMs >= activeFloatingWins[i].durationMs) {
       activeFloatingWins.splice(i, 1);
     }
   }
   for (let i = activeParticles.length - 1; i >= 0; i--) {
     const p = activeParticles[i];
-    const dt = dtMs / 16;
+    const pdt = dt / 16;
     if (p.kind === 'smoke') {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
+      p.x += p.vx * pdt;
+      p.y += p.vy * pdt;
       p.vx *= 0.985;
-      p.vy = p.vy * 0.991 + 0.022 * dt;
+      p.vy = p.vy * 0.991 + 0.022 * pdt;
       const t = p.life / Math.max(1, p.maxLife);
       const billow = p.dense ? 4.6 : 3.5;
       p.size = p.baseSize * (1 + billow * t);
-      p.rotation += p.rotSpeed * dt;
-      p.life += dtMs;
+      p.rotation += p.rotSpeed * pdt;
+      p.life += dt;
     } else {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += 0.11 * dt;
+      p.x += p.vx * pdt;
+      p.y += p.vy * pdt;
+      p.vy += 0.11 * pdt;
       p.vx *= 0.994;
-      p.rotation += p.rotSpeed * dt;
-      p.life += dtMs;
+      p.rotation += p.rotSpeed * pdt;
+      p.life += dt;
     }
     if (p.life >= p.maxLife) activeParticles.splice(i, 1);
   }
   if (shakeActive) {
-    shakeElapsed += dtMs;
+    shakeElapsed += dt;
     if (shakeElapsed >= shakeDuration) shakeActive = false;
   }
 }

@@ -10,7 +10,8 @@ import {
 } from 'pixi.js';
 import { REELS, ROWS, SYMBOL_COLORS, SYMBOL_LABELS, TempleSymbol } from '../engine/symbols';
 import type { Grid } from '../engine/grid';
-import { getCellAnimState, getParticles, getFloatingWins } from './gridAnimations';
+import { isSpinPaddingCell } from '../engine/grid';
+import { getCellAnimState, getParticles, getFloatingWins, getSpinExplodeOrphans } from './gridAnimations';
 import { getQuestRaiderSymbolTexture } from './questRaiderSymbolTextures';
 import { QR_DEBUG_SHOW_REEL_MASK } from './questRaiderLayout';
 import {
@@ -74,6 +75,8 @@ function minCellDim(layout: GridLayout): number {
 }
 
 const CELL_COUNT = REELS * ROWS;
+/** Spin clear can overlap many explode drop-outs; pool must cover full grid so tiles don’t vanish mid-fall. */
+const SPIN_ORPHAN_POOL = CELL_COUNT;
 const BASE_LABEL = 22;
 
 /** Text placeholders only — textures stay geometrically centered (avoids gap above PNG tiles). */
@@ -129,6 +132,9 @@ let glowGfx: Graphics;
 const cellBacks: Graphics[] = [];
 const cellSymbolSprites: Sprite[] = [];
 const cellLabels: Text[] = [];
+const orphanCellBacks: Graphics[] = [];
+const orphanSymSprites: Sprite[] = [];
+const orphanCellLabels: Text[] = [];
 let particleGfx: Graphics;
 const floatTexts: Text[] = [];
 let multPill: Container;
@@ -199,6 +205,25 @@ export function initGridScene(root: Container): void {
     lb.anchor.set(0.5);
     symContainer.addChild(lb);
     cellLabels.push(lb);
+  }
+
+  for (let i = 0; i < SPIN_ORPHAN_POOL; i++) {
+    const g = new Graphics();
+    symContainer.addChild(g);
+    orphanCellBacks.push(g);
+  }
+  for (let i = 0; i < SPIN_ORPHAN_POOL; i++) {
+    const sp = new Sprite();
+    sp.anchor.set(0.5);
+    sp.visible = false;
+    symContainer.addChild(sp);
+    orphanSymSprites.push(sp);
+  }
+  for (let i = 0; i < SPIN_ORPHAN_POOL; i++) {
+    const lb = new Text({ text: '', style: labelStyle });
+    lb.anchor.set(0.5);
+    symContainer.addChild(lb);
+    orphanCellLabels.push(lb);
   }
 
   particleGfx = new Graphics();
@@ -274,6 +299,12 @@ export function destroyGridScene(): void {
     sp.destroy();
   }
   cellSymbolSprites.length = 0;
+  for (const sp of orphanSymSprites) {
+    sp.destroy();
+  }
+  orphanSymSprites.length = 0;
+  orphanCellBacks.length = 0;
+  orphanCellLabels.length = 0;
   if (reelClipMask) {
     reelClipMask.destroy();
     reelClipMask = null;
@@ -419,6 +450,15 @@ export function updateGridScene(
       const symSprite = cellSymbolSprites[idx];
       const lb = cellLabels[idx];
 
+      if (isSpinPaddingCell(cell)) {
+        gfx.clear();
+        symSprite.visible = false;
+        lb.visible = false;
+        prevCellIds[idx] = cell.id;
+        idx++;
+        continue;
+      }
+
       const brickBottom = gridY + (r + 1) * cellH;
 
       const anim = getCellAnimState(cell.id);
@@ -431,8 +471,8 @@ export function updateGridScene(
 
       const w = cellW * sx;
       const h = cellH * sy;
-      const left = Math.round(gridX + c * cellW + ax * stepX);
-      const bottom = Math.round(brickBottom + ay * stepY);
+      const left = gridX + c * cellW + ax * stepX;
+      const bottom = brickBottom + ay * stepY;
 
       const cx = left + w / 2;
       const cy = bottom - h / 2;
@@ -488,6 +528,81 @@ export function updateGridScene(
 
       prevCellIds[idx] = cell.id;
       idx++;
+    }
+  }
+
+  const orphans = getSpinExplodeOrphans(grid);
+  for (let oi = 0; oi < SPIN_ORPHAN_POOL; oi++) {
+    const gfxO = orphanCellBacks[oi];
+    const symSpriteO = orphanSymSprites[oi];
+    const lbO = orphanCellLabels[oi];
+    if (oi >= orphans.length) {
+      gfxO.clear();
+      symSpriteO.visible = false;
+      lbO.visible = false;
+      continue;
+    }
+    const o = orphans[oi];
+    const rr = o.row;
+    const cc = o.col;
+    const brickBottomO = gridY + (rr + 1) * cellH;
+    const animO = getCellAnimState(o.cellId);
+    const axO = animO?.xOffset ?? 0;
+    const ayO = animO?.yOffset ?? 0;
+    const sxO = animO?.scaleX ?? 1;
+    const syO = animO?.scaleY ?? 1;
+    const alphaO = animO?.alpha ?? 1;
+    const rotO = animO?.rotation ?? 0;
+    const wO = cellW * sxO;
+    const hO = cellH * syO;
+    const leftO = gridX + cc * cellW + axO * stepX;
+    const bottomO = brickBottomO + ayO * stepY;
+    const cxO = leftO + wO / 2;
+    const cyO = bottomO - hO / 2;
+    const symTexO = getQuestRaiderSymbolTexture(o.symbol);
+    const hasTexO = Boolean(symTexO && symTexO.width > 0);
+    const symYO = hasTexO ? cyO : cyO + symbolLabelOffsetY(minDim);
+    gfxO.clear();
+    gfxO.position.set(leftO, bottomO);
+    gfxO.rotation = rotO;
+    gfxO.roundRect(0, -hO, wO, hO, cornerR * Math.min(sxO, syO));
+    const colO = SYMBOL_COLORS[o.symbol] ?? 0x888888;
+    const seamWO = Math.max(0.65, minDim * 0.009);
+    if (!hasTexO) {
+      gfxO.fill({ color: colO, alpha: alphaO * 0.98 });
+      gfxO.stroke({
+        color: 0x1a1612,
+        width: seamWO,
+        alpha: alphaO * 0.55,
+      });
+    }
+    if (hasTexO && symTexO) {
+      symSpriteO.texture = symTexO;
+      symSpriteO.visible = true;
+      symSpriteO.alpha = alphaO;
+      symSpriteO.rotation = rotO;
+      const maxWO = Math.max(1, wO);
+      const maxHO = Math.max(1, hO);
+      const twO = symTexO.width;
+      const thO = symTexO.height;
+      const fitO = Math.min(maxWO / twO, maxHO / thO) * symbolTextureCellScale(minDim);
+      symSpriteO.width = twO * fitO * sxO;
+      symSpriteO.height = thO * fitO * syO;
+      symSpriteO.position.set(cxO, cyO + symbolTextureOpticalOffsetY(minDim));
+      lbO.visible = false;
+    } else {
+      symSpriteO.visible = false;
+      lbO.visible = true;
+      lbO.text = SYMBOL_LABELS[o.symbol] ?? '?';
+      lbO.position.set(cxO, symYO);
+      lbO.rotation = rotO;
+      lbO.scale.set(sxO, syO);
+      lbO.alpha = alphaO;
+      lbO.style.fontSize = symFit.fontPx;
+      const stO = lbO.style.stroke;
+      if (stO && typeof stO === 'object' && 'width' in stO) {
+        (stO as { width: number }).width = symFit.strokeW;
+      }
     }
   }
 

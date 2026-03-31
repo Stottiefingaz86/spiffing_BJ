@@ -17,15 +17,25 @@ import {
 import { computeQuestRaiderStageLayout } from './questRaiderStageLayout';
 import { loadQuestRaiderGridMaskTexture } from './questRaiderGridMask';
 import { preloadQuestRaiderSymbolTextures } from './questRaiderSymbolTextures';
-import { buildFallMovesFromRemoval, particleColorForCells } from './cascadePhysics';
 import {
+  buildFallMovesForSpinIn,
+  buildFallMovesFromRemoval,
+  particleColorForCells,
+} from './cascadePhysics';
+import { buildSpinClearTimeline } from './spinClearTimeline';
+import {
+  appendFallAnimations,
+  appendSpinExplodeDropOut,
   clearAllAnimations,
   clearAllAnimationsAndFloats,
-  queueDropInAnimations,
-  queueDropOutAnimations,
   queueFallAnimations,
   queueHighlightAnimations,
   queuePopAnimations,
+  QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS,
+  QUEST_RAIDER_SPIN_CLEAR_FALL_TIMING,
+  QUEST_RAIDER_SPIN_FALL_IN_TIMING,
+  QUEST_RAIDER_SPIN_REEL_COL_STAGGER_MS,
+  questRaiderSpinStripExplodeTiming,
   spawnFloatingWin,
   spawnBrickExplosion,
   tickAnimations,
@@ -33,6 +43,12 @@ import {
   getCameraShakeOffset,
 } from './gridAnimations';
 import { playTF } from '../audio/questRaiderSfx';
+
+/** Spin fall-in: new symbols land reel-by-reel left → right as one stack per column. */
+const SPIN_REEL_COL_MS = 76;
+/** Minimum ms between trap-door column releases (reel L→R). */
+const SPIN_CLEAR_COLUMN_GAP_MS = 48;
+const SPIN_CLEAR_EXPLODE_MS = 162;
 
 export interface QuestRaiderFrameRect {
   x: number;
@@ -156,7 +172,11 @@ export function QuestRaiderCanvas({
           tickAnimations(app.ticker.deltaMS);
           const gl = gameLayerRef.current;
           if (!gl) return;
-          const shake = getCameraShakeOffset();
+          const ph = snapRef.current.phase;
+          const shake =
+            ph === GamePhase.Dropping || ph === GamePhase.FreeSpinDropping
+              ? { x: 0, y: 0 }
+              : getCameraShakeOffset();
           gl.x = shake.x;
           gl.y = shake.y;
           const d = displayRef.current;
@@ -223,7 +243,7 @@ export function QuestRaiderCanvas({
       const newGrid = snap.grid;
 
       const scheduleDropInSounds = () => {
-        const colStagger = 58;
+        const colStagger = QUEST_RAIDER_SPIN_REEL_COL_STAGGER_MS;
         for (let c = 0; c < REELS; c++) {
           scheduleTimer(() => playTF('rowClick', 0.12), c * colStagger);
           for (let r = 0; r < ROWS; r++) {
@@ -238,38 +258,82 @@ export function QuestRaiderCanvas({
 
       if (oldGrid) {
         displayRef.current = { grid: oldGrid };
-        const dropOutDur = queueDropOutAnimations(oldGrid);
+        const clearScript = buildSpinClearTimeline(oldGrid);
+        let clearEndMs = 0;
+        for (const step of clearScript) {
+          clearEndMs = Math.max(clearEndMs, step.tMs + step.localMaxMs);
+          scheduleTimer(() => {
+            for (const rem of step.removals) {
+              const { delayMs, durationMs } = questRaiderSpinStripExplodeTiming(rem.removedRow);
+              appendSpinExplodeDropOut(
+                rem.removedId,
+                rem.removedRow,
+                rem.removedCol,
+                durationMs,
+                rem.removedSymbol,
+                delayMs,
+              );
+            }
+            if (step.fallMoves.length > 0) {
+              appendFallAnimations(
+                step.fallMoves,
+                QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS,
+                0,
+                QUEST_RAIDER_SPIN_CLEAR_FALL_TIMING,
+              );
+            }
+            displayRef.current = { grid: step.displayAfter };
+            draw(gl, app.renderer, step.displayAfter, layout);
+          }, step.tMs);
+        }
         draw(gl, app.renderer, oldGrid, layout);
 
         scheduleTimer(() => {
           clearAllAnimations();
           displayRef.current = { grid: newGrid };
-          const dropInDur = queueDropInAnimations(newGrid);
+          const spinFallDur = queueFallAnimations(
+            buildFallMovesForSpinIn(newGrid),
+            QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS,
+            3,
+            QUEST_RAIDER_SPIN_FALL_IN_TIMING,
+          );
           draw(gl, app.renderer, newGrid, layout);
           scheduleDropInSounds();
 
           scheduleTimer(() => {
             clearAllAnimations();
             displayRef.current = null;
-            prevGridRef.current = newGrid.map((row) => row.map((c) => ({ ...c })));
             draw(gl, app.renderer, newGrid, layout);
             playTF('reelEnd', 0.34);
             onDropCompleteRef.current();
-          }, dropInDur + 50);
-        }, dropOutDur + 48);
+            /** After session + React snapshot update — avoid stale closure grid vs canonical `snap.grid`. */
+            setTimeout(() => {
+              const g = snapRef.current.grid;
+              prevGridRef.current = g.map((row) => row.map((c) => ({ ...c })));
+            }, 0);
+          }, spinFallDur + 56);
+        }, clearEndMs + 14);
       } else {
         displayRef.current = { grid: newGrid };
-        const dropInDur = queueDropInAnimations(newGrid);
+        const spinFallDur = queueFallAnimations(
+          buildFallMovesForSpinIn(newGrid),
+          QUEST_RAIDER_SPIN_CLEAR_FALL_BASE_MS,
+          0,
+          QUEST_RAIDER_SPIN_FALL_IN_TIMING,
+        );
         draw(gl, app.renderer, newGrid, layout);
         scheduleDropInSounds();
 
         scheduleTimer(() => {
           clearAllAnimations();
           displayRef.current = null;
-          prevGridRef.current = newGrid.map((row) => row.map((c) => ({ ...c })));
           draw(gl, app.renderer, newGrid, layout);
           onDropCompleteRef.current();
-        }, dropInDur + 50);
+          setTimeout(() => {
+            const g = snapRef.current.grid;
+            prevGridRef.current = g.map((row) => row.map((c) => ({ ...c })));
+          }, 0);
+        }, spinFallDur + 56);
       }
       return;
     }
@@ -279,7 +343,15 @@ export function QuestRaiderCanvas({
       snap.currentCascadeIndex >= 0
     ) {
       const step = snap.cascadeSteps[snap.currentCascadeIndex];
-      if (!step) return;
+      if (!step) {
+        timersRef.current.forEach(clearTimeout);
+        timersRef.current = [];
+        clearAllAnimations();
+        displayRef.current = null;
+        prevGridRef.current = snap.grid.map((row) => row.map((c) => ({ ...c })));
+        draw(gl, app.renderer, snap.grid, layout);
+        return;
+      }
 
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];

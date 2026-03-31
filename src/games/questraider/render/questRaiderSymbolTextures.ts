@@ -9,13 +9,18 @@ const BASE =
 /** `symbol1.png` — stand-in texture key used while `QUEST_RAIDER_SYMBOL1_FOR_ALL` is true */
 export const QUEST_RAIDER_SYMBOL1_STANDIN = TempleSymbol.BirdBlue;
 
-/** Add `symbol2.png` etc. and map to enum as assets arrive */
+/** Map each `TempleSymbol` to `symbolN.png` as assets arrive; unmapped symbols use the stand-in texture. */
 export const QUEST_RAIDER_SYMBOL_TEXTURES: Partial<Record<TempleSymbol, string>> = {
   [QUEST_RAIDER_SYMBOL1_STANDIN]: `${BASE}quest_raiders/symbol1.png`,
+  [TempleSymbol.BirdRed]: `${BASE}quest_raiders/symbol2.png`,
+  [TempleSymbol.CreatureTan]: `${BASE}quest_raiders/symbol3.png`,
 };
 
-/** Set false when each `TempleSymbol` has its own PNG wired in `QUEST_RAIDER_SYMBOL_TEXTURES`. */
-export const QUEST_RAIDER_SYMBOL1_FOR_ALL = true;
+/**
+ * When true, every cell uses the stand-in texture only (quick art check).
+ * When false, uses per-symbol PNGs above, then falls back to the stand-in for symbols not yet wired.
+ */
+export const QUEST_RAIDER_SYMBOL1_FOR_ALL = false;
 
 const cache = new Map<TempleSymbol, Texture | null>();
 let loadPromise: Promise<void> | null = null;
@@ -42,5 +47,5 @@ export function getQuestRaiderSymbolTexture(sym: TempleSymbol): Texture | null {
   if (QUEST_RAIDER_SYMBOL1_FOR_ALL) {
     return cache.get(QUEST_RAIDER_SYMBOL1_STANDIN) ?? null;
   }
-  return cache.get(sym) ?? null;
+  return cache.get(sym) ?? cache.get(QUEST_RAIDER_SYMBOL1_STANDIN) ?? null;
 }
