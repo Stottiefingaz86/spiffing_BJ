@@ -756,8 +756,18 @@ export function updateGridScene(
   const maxW = Math.max(112, stage.innerW - cornerGap * 2);
   const barW = Math.min(maxW, Math.min(220, Math.max(152, stage.innerW * 0.44)));
   const barH = Math.max(42, Math.min(52, minDim * 0.42));
-  const barX = stage.innerX + stage.innerW - barW - cornerGap;
-  const barY = Math.max(stage.frameY + 6, stage.innerY - barH - cornerGap);
+  const canvasW = renderer.width;
+  const canvasH = renderer.height;
+  const isMobileLayout = canvasW < 1024;
+  const isPortraitMobile = isMobileLayout && canvasH > canvasW * 1.05;
+  /** Clear baked-in title art; tuck strip toward screen right edge. */
+  const multNudgeUp = isMobileLayout ? (isPortraitMobile ? 40 : 26) : 0;
+  const multNudgeRight = isMobileLayout ? (isPortraitMobile ? 16 : 10) : 0;
+  const edgePad = 4;
+  let barX = stage.innerX + stage.innerW - barW - cornerGap + multNudgeRight;
+  let barY = Math.max(stage.frameY + 6, stage.innerY - barH - cornerGap - multNudgeUp);
+  barX = Math.max(edgePad, Math.min(barX, canvasW - barW - edgePad));
+  barY = Math.max(stage.frameY + 2, barY);
   multPill.position.set(barX, barY);
 
   multBg.clear();
