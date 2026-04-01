@@ -238,7 +238,9 @@ export function AztecCanvas({
                 const st = anim.states[r];
                 if (!st.spinning && reelLandedRef.current[r] && !reelSoundPlayedRef.current[r]) {
                   reelSoundPlayedRef.current[r] = true;
-                  playTF('rowClick', 0.16);
+                  // Reels 0..REELS-2: light tick. Last reel: skip — `reelEnd` on allStopped fires same
+                  // frame and would stack (reel_end ×2 + much higher gain), so reel 5 read as too loud.
+                  if (r < REELS - 1) playTF('rowClick', 0.16);
                 }
               }
               updateAztecReelScene(target, rl, anim.states, snapRef.current.inFreeSpins);
@@ -255,7 +257,7 @@ export function AztecCanvas({
                 reelSoundPlayedRef.current[i] = false;
                 reelStopScheduledRef.current[i] = false;
               }
-              playTF('reelEnd', 0.34);
+              playTF('reelEnd', 0.19);
               onDropCompleteRef.current();
               setTimeout(() => {
                 const g = snapRef.current.grid;

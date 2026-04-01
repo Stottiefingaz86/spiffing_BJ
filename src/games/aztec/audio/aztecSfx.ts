@@ -1,6 +1,6 @@
 /**
  * Aztec — BGM + SFX from `public/aztec/` only.
- * Only `reel_end.mp3` and `win.mp3` exist today; other cues reuse those at different gains.
+ * Files: `spin.mp3`, `reel_end.mp3`, `win.mp3`, `bgm.mp3`; some cues still share `reel_end`.
  */
 
 const BASE =
@@ -10,6 +10,7 @@ const BASE =
 
 /** Distinct files under aztec (deduped when loading). */
 const QR_AUDIO_FILES = {
+  spin: `${BASE}aztec/spin.mp3`,
   reel_end: `${BASE}aztec/reel_end.mp3`,
   win: `${BASE}aztec/win.mp3`,
 } as const;
@@ -23,15 +24,15 @@ export type TfSfxName = 'explode' | 'rowClick' | 'reelEnd' | 'tick' | 'chime' | 
 /** Logical cue → buffer + relative level (multiplies `playTF` volume). */
 const SFX_ROUTING: Record<TfSfxName, { file: QrAudioFileKey; gainMul: number }> = {
   reelEnd: { file: 'reel_end', gainMul: 1 },
-  /** `win.mp3` is hot on peak; keep cascade chime/explode multipliers unchanged below. */
-  win: { file: 'win', gainMul: 0.38 },
-  spin: { file: 'reel_end', gainMul: 0.9 },
+  /** `win.mp3` peaks hot — keep gain conservative. */
+  win: { file: 'win', gainMul: 0.24 },
+  spin: { file: 'spin', gainMul: 0.95 },
   rowClick: { file: 'reel_end', gainMul: 0.32 },
   tick: { file: 'reel_end', gainMul: 0.28 },
   /** Extra column tick (reserved). */
   chime: { file: 'reel_end', gainMul: 0.38 },
-  /** Only for 2nd+ cascade pops; first hit uses `win` only (see AztecCanvas). */
-  explode: { file: 'win', gainMul: 0.22 },
+  /** Only for 2nd+ cascade pops; uses `win.mp3`. */
+  explode: { file: 'win', gainMul: 0.15 },
 };
 
 let ctx: AudioContext | null = null;
@@ -86,7 +87,16 @@ export function setTFSfxMuted(value: boolean): void {
   sfxMuted = value;
 }
 
-function playBuffer(file: QrAudioFileKey, volume: number): void {
+/** Aztec-only: shorten `reelEnd` + fade tail (other titles play full `reel_end.mp3`). */
+const REEL_END_PLAY_SEC = 0.2;
+/** Longer linear tail so the stop doesn’t snap off (capped by `playLen`). */
+const REEL_END_FADE_SEC = 0.13;
+
+function playBuffer(
+  file: QrAudioFileKey,
+  volume: number,
+  opts?: { maxDurationSec?: number; fadeOutSec?: number },
+): void {
   if (sfxMuted) return;
   const buf = qrBuffers.get(file);
   if (!buf) return;
@@ -100,13 +110,39 @@ function playBuffer(file: QrAudioFileKey, volume: number): void {
   gain.gain.value = volume;
   source.connect(gain);
   gain.connect(ac.destination);
-  source.start(0);
+
+  const now = ac.currentTime;
+  const maxDur = opts?.maxDurationSec;
+  if (maxDur != null && maxDur > 0) {
+    const playLen = Math.min(maxDur, Math.max(0.001, buf.duration));
+    const fadeTarget = opts.fadeOutSec ?? REEL_END_FADE_SEC;
+    const fadeOut = Math.min(
+      Math.max(0.001, playLen - 0.01),
+      Math.max(0.03, fadeTarget, playLen * 0.58),
+    );
+    const fadeStart = now + playLen - fadeOut;
+    source.start(now, 0, playLen);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.setValueAtTime(volume, Math.max(now, fadeStart));
+    gain.gain.linearRampToValueAtTime(0, now + playLen);
+    source.stop(now + playLen + 0.02);
+  } else {
+    source.start(now);
+  }
 }
 
 export function playTF(name: TfSfxName, volume = 0.4): void {
   const route = SFX_ROUTING[name];
   if (!route) return;
-  playBuffer(route.file, volume * route.gainMul);
+  const vol = volume * route.gainMul;
+  if (name === 'reelEnd') {
+    playBuffer(route.file, vol, {
+      maxDurationSec: REEL_END_PLAY_SEC,
+      fadeOutSec: REEL_END_FADE_SEC,
+    });
+  } else {
+    playBuffer(route.file, vol);
+  }
 }
 
 // ── Background music (Aztec track) ──
