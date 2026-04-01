@@ -31,11 +31,27 @@ const FRAME_ASPECT = QR_FRAME.w / QR_FRAME.h;
 const QR_PLAYFIELD_OFFSET_Y_AT_NATIVE = 46;
 const QR_REEL_FINE_NUDGE_Y_AT_NATIVE = 6;
 
-/** Move the 5×3 grid up (CSS px at 1×); scaled by post-process `sx` after layout. */
-const AZTEC_GRID_SHIFT_UP_CSS = 14;
+/**
+ * Move the 5×3 grid up vs the playfield (CSS px at 1×); scaled by `sx`.
+ * Desktop: large value to tuck tiles under the top stone. Mobile: slightly lower than desktop so the
+ * bottom row still clears the lower sill when the board is push-down toward the ground decal.
+ */
+const AZTEC_GRID_SHIFT_UP_DESKTOP_CSS = 72;
+/** Mobile: lower than desktop — strong “up” leaves a band under the last row inside the frame. */
+const AZTEC_GRID_SHIFT_UP_MOBILE_CSS = 50;
 
-/** Move **frame + reel grid** up together (CSS px at 1×), after centering clamp; scaled by `sx`. */
-const AZTEC_FRAME_SHIFT_UP_CSS = 12;
+/**
+ * After vertical centering: shift **frame + grid** up (CSS px at 1×), scaled by `sx`.
+ * Desktop: pull the whole board up to reduce sky above the frame. Mobile: light touch.
+ */
+const AZTEC_FRAME_SHIFT_UP_DESKTOP_CSS = 58;
+const AZTEC_FRAME_SHIFT_UP_MOBILE_CSS = 14;
+
+/**
+ * Mobile only (`cssW < 1024`): nudge **frame + tiles** down toward the bottom decal (don’t overdo — large
+ * values stretch the interior and read as a gap above the lower stone).
+ */
+const AZTEC_MOBILE_PUSH_DOWN_TO_DECAL_CSS = 50;
 
 /** Positive = shift grid left (CSS px) vs playfield. */
 const AZTEC_GRID_NUDGE_LEFT_PX = 2;
@@ -45,8 +61,8 @@ const AZTEC_CELL_SHRINK_PX = 2;
 /** Widen/tall each symbol cell by this many CSS px (total inner += REELS× / ROWS×); position nudged to keep center. */
 const AZTEC_CELL_ENLARGE_PX = 2;
 
-/** After core layout: desktop keeps board modest; mobile scales up so the stone frame fills more (can bleed). */
-const AZTEC_STAGE_VISUAL_SCALE_DESKTOP = 0.84;
+/** After core layout: desktop visual scale for frame + grid (lower = smaller board on wide screens). */
+const AZTEC_STAGE_VISUAL_SCALE_DESKTOP = 0.74;
 /** Higher = bigger frame on phones/tablets; clamped in post-process so the 5×3 stays on-screen. */
 const AZTEC_STAGE_VISUAL_SCALE_MOBILE = 0.97;
 
@@ -245,7 +261,11 @@ function applyAztecVisualPostProcess(
     const maxTop = Math.max(0, cssH - fh);
     const fyCenter = Math.floor((cssH - fh) / 2);
     let fy = Math.max(0, Math.min(maxTop, fyCenter));
-    fy -= Math.round(AZTEC_FRAME_SHIFT_UP_CSS * s);
+    const frameShiftUp = isMobile ? AZTEC_FRAME_SHIFT_UP_MOBILE_CSS : AZTEC_FRAME_SHIFT_UP_DESKTOP_CSS;
+    fy -= Math.round(frameShiftUp * s);
+    if (isMobile) {
+      fy += Math.round(AZTEC_MOBILE_PUSH_DOWN_TO_DECAL_CSS * s);
+    }
 
     const ratioW = rw > 0 ? fw / rw : 1;
     const ratioH = rh > 0 ? fh / rh : 1;
@@ -261,11 +281,12 @@ function applyAztecVisualPostProcess(
       shrinkW / 2 -
       AZTEC_GRID_NUDGE_LEFT_PX -
       extraW / 2;
+    const gridShiftUp = isMobile ? AZTEC_GRID_SHIFT_UP_MOBILE_CSS : AZTEC_GRID_SHIFT_UP_DESKTOP_CSS;
     const innerY =
       fy +
       relIY * ratioH +
       shrinkH / 2 -
-      Math.round(AZTEC_GRID_SHIFT_UP_CSS * s) -
+      Math.round(gridShiftUp * s) -
       extraH / 2;
 
     const gap = 0;

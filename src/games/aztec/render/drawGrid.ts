@@ -20,7 +20,11 @@ import {
   getSpinExplodeOrphans,
 } from './gridAnimations';
 import { getAztecSymbolTexture } from './aztecSymbolTextures';
-import { AZTEC_FRAME_SPRITE_TOP_OUTSET_PX, QR_DEBUG_SHOW_REEL_MASK } from './aztecLayout';
+import {
+  AZTEC_FRAME_SPRITE_BOTTOM_OUTSET_PX,
+  AZTEC_FRAME_SPRITE_TOP_OUTSET_PX,
+  QR_DEBUG_SHOW_REEL_MASK,
+} from './aztecLayout';
 import {
   computeAztecStageLayout,
   type AztecStageLayout,
@@ -56,9 +60,8 @@ export function computeGridLayout(canvasW: number, canvasH: number): GridLayout 
 
 const FRAME_URL = `${aztecPublicBase()}aztec/frame.png`;
 
-/** Draw frame art slightly past the layout box: +2px each side, small top (see `AZTEC_FRAME_SPRITE_TOP_OUTSET_PX`), +3px below. */
-const AZTEC_FRAME_OUTSET_X = 2;
-const AZTEC_FRAME_OUTSET_BOTTOM = 7;
+/** Draw frame art slightly past the layout box: +4px each side (was +2; extra 2px/side), +3px below. */
+const AZTEC_FRAME_OUTSET_X = 4;
 
 let cachedFrameTex: Texture | null | undefined;
 let frameSprite: Sprite | null = null;
@@ -474,7 +477,7 @@ export function updateGridScene(
       );
       frameSprite.width = stage.frameW + 2 * AZTEC_FRAME_OUTSET_X;
       frameSprite.height =
-        stage.frameH + AZTEC_FRAME_SPRITE_TOP_OUTSET_PX + AZTEC_FRAME_OUTSET_BOTTOM;
+        stage.frameH + AZTEC_FRAME_SPRITE_TOP_OUTSET_PX + AZTEC_FRAME_SPRITE_BOTTOM_OUTSET_PX;
     }
     bgGfx.clear();
     const inner = inFreeSpins ? 0x2a1810 : 0x141210;

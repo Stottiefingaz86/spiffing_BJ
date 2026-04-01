@@ -16,6 +16,9 @@ export const QR_FRAME = { w: 1119, h: 722 } as const;
  */
 export const AZTEC_FRAME_SPRITE_TOP_OUTSET_PX = 0;
 
+/** Extra px below layout `frameH` when drawing `frame.png` — must match `drawGrid` sprite height. */
+export const AZTEC_FRAME_SPRITE_BOTTOM_OUTSET_PX = 7;
+
 /** Native pixel size of `public/aztec/mask.png` — must match file; assumed centered on frame in layout math */
 export const QR_MASK = { w: 899, h: 544 } as const;
 

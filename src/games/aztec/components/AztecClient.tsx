@@ -9,7 +9,8 @@ import {
 } from '@/components/game/slotChrome';
 
 import { AztecSession, GamePhase } from '../engine/session';
-import { AztecCanvas } from '../render/AztecCanvas';
+import { AZTEC_FRAME_SPRITE_BOTTOM_OUTSET_PX } from '../render/aztecLayout';
+import { AztecCanvas, type AztecFrameRect } from '../render/AztecCanvas';
 import { AztecSettingsModal } from './AztecSettingsModal';
 import {
   preloadTFSfx,
@@ -27,6 +28,15 @@ const aztecFooterPill =
   'rounded-2xl border border-white/20 bg-black/60 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md';
 
 const ASSET_BASE = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+
+const AZTEC_BOTTOM_DECAL_URL = `${ASSET_BASE}aztec/bottomimage.png`;
+
+/**
+ * When true, bottom decal is pinned to the **viewport** bottom (ignores frame).
+ * When false, decal top aligns to the **painted** frame bottom: layout `frameY + frameH` plus the same
+ * bottom outset px the Pixi frame sprite uses (`AZTEC_FRAME_SPRITE_BOTTOM_OUTSET_PX`).
+ */
+const AZTEC_BOTTOM_DECAL_PIN_VIEWPORT = false;
 
 export default function AztecClient() {
   return <AztecGame />;
@@ -50,6 +60,7 @@ function AztecGame() {
   const rafRef = useRef(0);
   /** Mirrored from Pixi gameLayer each tick — HTML overlays can follow the same shake if needed. */
   const cameraShakeRef = useRef({ x: 0, y: 0 });
+  const [frameLayout, setFrameLayout] = useState<AztecFrameRect | null>(null);
 
   const refresh = useCallback(() => {
     setSnap(session.getSnapshot());
@@ -209,6 +220,8 @@ function AztecGame() {
   const canSpin = snap.phase === GamePhase.Idle && snap.balance >= snap.bet;
   const showWin = Math.round(displayedWin);
 
+  const pinAztecBottomDecalToViewport = AZTEC_BOTTOM_DECAL_PIN_VIEWPORT;
+
   return (
     <div
       className={cn(
@@ -235,6 +248,16 @@ function AztecGame() {
             aria-hidden
             style={{
               backgroundImage: `url(${ASSET_BASE}aztec/bg.jpg)`,
+            }}
+          />
+          {/* Darken lower third of the jungle BG only (not the stone decal). */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[min(52vh,620px)]"
+            aria-hidden
+            style={{
+              background: isFreeSpinActive
+                ? 'linear-gradient(to top, rgba(12,6,4,0.92) 0%, rgba(28,16,10,0.55) 32%, rgba(40,24,16,0.2) 58%, transparent 100%)'
+                : 'linear-gradient(to top, rgba(2,8,18,0.9) 0%, rgba(4,14,26,0.52) 34%, rgba(8,22,36,0.18) 62%, transparent 100%)',
             }}
           />
         </div>
@@ -317,8 +340,47 @@ function AztecGame() {
           onDropComplete={onDropComplete}
           onCascadeStepComplete={onCascadeStepComplete}
           cameraShakeRef={cameraShakeRef}
+          onFrameLayout={setFrameLayout}
           className="relative z-10 h-full w-full min-h-0"
         />
+        {/* Decorative ground — default: top edge = painted frame bottom (layout + sprite bottom outset). */}
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-x-0 z-[25] flex justify-center',
+            pinAztecBottomDecalToViewport && 'items-end',
+          )}
+          style={
+            pinAztecBottomDecalToViewport
+              ? {
+                  bottom: 0,
+                  paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
+                }
+              : frameLayout
+                ? {
+                    top:
+                      frameLayout.y +
+                      frameLayout.h +
+                      AZTEC_FRAME_SPRITE_BOTTOM_OUTSET_PX,
+                  }
+                : {
+                    bottom: 0,
+                    paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
+                  }
+          }
+        >
+          <img
+            src={AZTEC_BOTTOM_DECAL_URL}
+            alt=""
+            className={cn(
+              'h-auto w-full max-w-full select-none object-contain',
+              pinAztecBottomDecalToViewport
+                ? 'max-h-[min(42vh,320px)] object-bottom'
+                : 'object-top',
+            )}
+            draggable={false}
+            decoding="async"
+          />
+        </div>
         {/* Vignette over the whole playfield (frame + reels) so stone doesn’t “float” above the grade; keep soft. */}
         <div
           className="pointer-events-none absolute inset-0 z-[15]"
