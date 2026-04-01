@@ -16,10 +16,12 @@ import {
   initGridScene,
   loadAztecFrameTexture,
   setAztecGridLayerVisibleForBanditSpin,
+  setAztecReelMaskTexture,
   setAztecReelSpinOverlayVisible,
   updateGridScene,
   type GridLayout,
 } from './drawGrid';
+import { loadAztecGridMaskTexture } from './aztecGridMask';
 import { computeAztecStageLayout } from './aztecStageLayout';
 import { preloadAztecSymbolTextures } from './aztecSymbolTextures';
 import { buildFallMovesFromRemoval, particleColorForCells } from './cascadePhysics';
@@ -41,7 +43,7 @@ import {
   BANDITS_REEL_STOP_STAGGER_MS,
   createReelAnimator,
   type ReelAnimator,
-} from '../../bandits/render/reelAnimation';
+} from '../../shared/reelAnimator';
 import {
   computeAztecReelLayout,
   destroyAztecReelScene,
@@ -169,11 +171,34 @@ export function AztecCanvas({
         gameLayerRef.current = gameLayer;
 
         initGridScene(gameLayer);
+        setAztecGridLayerVisibleForBanditSpin(true);
+        setAztecReelSpinOverlayVisible(false);
+        destroyAztecReelScene();
         if (!reelAnimatorRef.current) reelAnimatorRef.current = createReelAnimator();
+
+        const kickResize = () => {
+          if (destroyed || !app.renderer) return;
+          const r = host.getBoundingClientRect();
+          const w = Math.max(16, Math.floor(r.width));
+          const h = Math.max(16, Math.floor(r.height));
+          if (w > 0 && h > 0 && (w !== app.renderer.width || h !== app.renderer.height)) {
+            app.renderer.resize(w, h);
+          }
+        };
+        requestAnimationFrame(() => {
+          kickResize();
+          requestAnimationFrame(kickResize);
+        });
+
         void (async () => {
           await loadAztecFrameTexture();
           await preloadAztecSymbolTextures();
+          if (!destroyed && gameLayerRef.current) {
+            const maskTex = await loadAztecGridMaskTexture();
+            if (maskTex) setAztecReelMaskTexture(maskTex);
+          }
           if (destroyed || !gameLayerRef.current || !appRef.current) return;
+          kickResize();
           const l = getLayout(appRef.current.renderer.width, appRef.current.renderer.height);
           const s = snapRef.current;
           const d = displayRef.current;

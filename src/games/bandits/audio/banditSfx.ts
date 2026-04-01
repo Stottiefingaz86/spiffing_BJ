@@ -1,3 +1,5 @@
+import { publicAssetUrl } from '@/lib/publicUrl';
+
 let audioCtx: AudioContext | null = null;
 let muted = false;
 let bgmMuted = false;
@@ -23,11 +25,11 @@ export type SfxName = 'spin' | 'stop' | 'win' | 'winLine' | 'bigWin' | 'scatter'
 /* ── File-backed SFX (pre-loaded as AudioBuffers) ── */
 
 const SFX_FILES: Partial<Record<SfxName, string>> = {
-  spin:         '/bandits/sounds/spin.mp3',
-  stop:         '/bandits/sounds/reel stop.mp3',
-  scatter:      '/bandits/sounds/scatter.mp3',
-  scatterMaybe: '/bandits/sounds/scatter_maybe.mp3',
-  winLine:      '/bandits/sounds/WIN_LINE.mp3',
+  spin:         'bandits/sounds/spin.mp3',
+  stop:         'bandits/sounds/reel stop.mp3',
+  scatter:      'bandits/sounds/scatter.mp3',
+  scatterMaybe: 'bandits/sounds/scatter_maybe.mp3',
+  winLine:      'bandits/sounds/WIN_LINE.mp3',
 };
 
 const sfxBuffers = new Map<SfxName, AudioBuffer>();
@@ -39,9 +41,9 @@ export async function preloadBanditSfx(): Promise<void> {
   const ctx = getCtx();
   const entries = Object.entries(SFX_FILES) as [SfxName, string][];
   await Promise.all(
-    entries.map(async ([name, url]) => {
+    entries.map(async ([name, rel]) => {
       try {
-        const res = await fetch(url);
+        const res = await fetch(publicAssetUrl(rel));
         const buf = await res.arrayBuffer();
         const decoded = await ctx.decodeAudioData(buf);
         sfxBuffers.set(name, decoded);
@@ -89,9 +91,9 @@ export function playBandit(name: SfxName, volume = 1): void {
       src.start(0);
       return;
     }
-    const fileUrl = SFX_FILES[name];
-    if (fileUrl) {
-      const a = new Audio(fileUrl);
+    const rel = SFX_FILES[name];
+    if (rel) {
+      const a = new Audio(publicAssetUrl(rel));
       a.volume = volume;
       a.play().catch(() => {});
       return;
@@ -111,7 +113,7 @@ export function startBanditBgm(volume = 0.15): void {
     return;
   }
   try {
-    bgmEl = new Audio('/bandits/sounds/bg music.mp3');
+    bgmEl = new Audio(publicAssetUrl('bandits/sounds/bg music.mp3'));
     bgmEl.loop = true;
     bgmEl.volume = volume;
     bgmEl.muted = bgmMuted;

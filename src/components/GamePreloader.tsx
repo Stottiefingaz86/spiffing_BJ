@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { ParticleBackground } from '@/components/ParticleBackground';
+import { publicAssetUrl } from '@/lib/publicUrl';
 
 interface GamePreloaderProps {
   children: ReactNode;
@@ -16,9 +17,13 @@ export function GamePreloader({ children, assets = [], onPlay: onPlayProp }: Gam
   const loadedRef = useRef(0);
   const totalRef = useRef(Math.max(assets.length, 1));
   const startTime = useRef(Date.now());
+  const assetsKey = useMemo(() => assets.join('\0'), [assets]);
 
   useEffect(() => {
     startTime.current = Date.now();
+    loadedRef.current = 0;
+    setProgress(0);
+    setReady(false);
 
     if (assets.length === 0) {
       let p = 0;
@@ -37,32 +42,63 @@ export function GamePreloader({ children, assets = [], onPlay: onPlayProp }: Gam
       return () => clearInterval(iv);
     }
 
-    totalRef.current = assets.length;
+    const total = Math.max(assets.length, 1);
+    totalRef.current = total;
     let cancelled = false;
 
     const check = () => {
       if (cancelled) return;
-      const pct = Math.round((loadedRef.current / totalRef.current) * 100);
+      const pct = Math.min(100, Math.round((loadedRef.current / total) * 100));
       setProgress(pct);
-      if (loadedRef.current >= totalRef.current) {
+      if (loadedRef.current >= total) {
         const elapsed = Date.now() - startTime.current;
-        setTimeout(() => { if (!cancelled) setReady(true); }, Math.max(0, 1500 - elapsed));
+        setTimeout(() => {
+          if (!cancelled) setReady(true);
+        }, Math.max(0, 1500 - elapsed));
       }
     };
 
+    const bump = () => {
+      if (cancelled) return;
+      loadedRef.current += 1;
+      check();
+    };
+
     for (const url of assets) {
+      if (!url || typeof url !== 'string') {
+        queueMicrotask(bump);
+        continue;
+      }
       if (url.match(/\.(mp3|wav|ogg|m4a)$/i)) {
-        fetch(url).then((r) => r.blob()).catch(() => {}).finally(() => { loadedRef.current++; check(); });
+        fetch(url)
+          .then((r) => r.blob())
+          .catch(() => {})
+          .finally(() => {
+            bump();
+          });
       } else {
         const img = new Image();
-        img.onload = img.onerror = () => { loadedRef.current++; check(); };
+        img.onload = () => {
+          bump();
+        };
+        img.onerror = () => {
+          bump();
+        };
         img.src = url;
       }
     }
 
-    const fallback = setTimeout(() => { if (!cancelled) { setProgress(100); setReady(true); } }, 8000);
-    return () => { cancelled = true; clearTimeout(fallback); };
-  }, []);
+    const fallback = setTimeout(() => {
+      if (!cancelled) {
+        setProgress(100);
+        setReady(true);
+      }
+    }, 8000);
+    return () => {
+      cancelled = true;
+      clearTimeout(fallback);
+    };
+  }, [assetsKey, assets.length]);
 
   const onPlay = useCallback(() => {
     try {
@@ -85,10 +121,6 @@ export function GamePreloader({ children, assets = [], onPlay: onPlayProp }: Gam
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, visibility: 'hidden', pointerEvents: 'none' }}>
-        {children}
-      </div>
-
       <div
         style={{
           position: 'fixed',
@@ -121,7 +153,7 @@ export function GamePreloader({ children, assets = [], onPlay: onPlayProp }: Gam
         }}>
           {/* Logo + tagline grouped together */}
           <img
-            src="/logo-spiffing.svg"
+            src={publicAssetUrl('logo-spiffing.svg')}
             alt="Spiffing Studios"
             style={{ height: '140px', width: 'auto' }}
           />

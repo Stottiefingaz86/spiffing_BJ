@@ -1,11 +1,7 @@
 import { Texture } from 'pixi.js';
+import { aztecPublicBase } from './aztecPublicBase';
 
-const BASE =
-  typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
-    ? import.meta.env.BASE_URL.replace(/\/?$/, '/')
-    : '/';
-
-const MASK_URL = `${BASE}aztec/mask.png`;
+const MASK_URL = `${aztecPublicBase()}aztec/mask.png`;
 
 let cached: Texture | null | undefined;
 

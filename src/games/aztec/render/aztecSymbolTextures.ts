@@ -1,10 +1,8 @@
 import { Assets, Texture } from 'pixi.js';
 import { TempleSymbol } from '../engine/symbols';
+import { aztecPublicBase } from './aztecPublicBase';
 
-const BASE =
-  typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL
-    ? import.meta.env.BASE_URL.replace(/\/?$/, '/')
-    : '/';
+const BASE = aztecPublicBase();
 
 /**
  * Stand-in texture key used while `AZTEC_SYMBOL1_FOR_ALL` is true.

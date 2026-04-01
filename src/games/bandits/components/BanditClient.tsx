@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { publicAssetUrl } from '@/lib/publicUrl';
 import { formatMoney } from '@/lib/formatMoney';
 import { GamePreloader } from '@/components/GamePreloader';
 import {
@@ -26,28 +27,28 @@ import {
 } from '../audio/banditSfx';
 
 const PRELOAD_ASSETS = [
-  '/bandits/bg2.png',
-  '/bandits/frame.png',
-  '/bandits/mask.png',
-  '/bandits/logo.png',
-  '/bandits/cowboy.png',
-  '/bandits/WILD.png',
-  '/bandits/scatter.png',
-  '/bandits/J.png',
-  '/bandits/q.png',
-  '/bandits/k.png',
-  '/bandits/a.png',
-  '/bandits/SKULL_SYMBOL.png',
-  '/bandits/FLASH.png',
-  '/bandits/DYNAMITE.png',
-  '/bandits/goldbag.png',
-  '/bandits/bullion.png',
-  '/bandits/sounds/spin.mp3',
-  '/bandits/sounds/reel stop.mp3',
-  '/bandits/sounds/scatter.mp3',
-  '/bandits/sounds/scatter_maybe.mp3',
-  '/bandits/sounds/WIN_LINE.mp3',
-];
+  'bandits/bg2.png',
+  'bandits/frame.png',
+  'bandits/mask.png',
+  'bandits/logo.png',
+  'bandits/cowboy.png',
+  'bandits/WILD.png',
+  'bandits/scatter.png',
+  'bandits/J.png',
+  'bandits/q.png',
+  'bandits/k.png',
+  'bandits/a.png',
+  'bandits/SKULL_SYMBOL.png',
+  'bandits/FLASH.png',
+  'bandits/DYNAMITE.png',
+  'bandits/goldbag.png',
+  'bandits/bullion.png',
+  'bandits/sounds/spin.mp3',
+  'bandits/sounds/reel stop.mp3',
+  'bandits/sounds/scatter.mp3',
+  'bandits/sounds/scatter_maybe.mp3',
+  'bandits/sounds/WIN_LINE.mp3',
+].map((p) => publicAssetUrl(p));
 
 function handlePreloaderPlay() {
   unlockBanditAudio();
@@ -236,7 +237,7 @@ function BanditGame() {
     >
       {/* Full-screen background image */}
       <img
-        src="/bandits/bg2.png"
+        src={publicAssetUrl('bandits/bg2.png')}
         alt=""
         className={cn(
           'pointer-events-none absolute inset-0 z-0 h-full w-full object-cover transition-opacity duration-700',
@@ -292,7 +293,7 @@ function BanditGame() {
       <div className="relative z-10 min-h-0 flex-1" onClick={(e) => e.stopPropagation()}>
         {/* Logo — always attached to top of frame */}
         <img
-          src="/bandits/logo.png"
+          src={publicAssetUrl('bandits/logo.png')}
           alt="Breaking Bandits"
           className="pointer-events-none absolute left-1/2 z-40 w-auto object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.6)]"
           style={frameRect ? (() => {
@@ -315,7 +316,7 @@ function BanditGame() {
         />
         {/* Cowboy character — bottom-left, feet off screen */}
         <img
-          src="/bandits/cowboy.png"
+          src={publicAssetUrl('bandits/cowboy.png')}
           alt=""
           className="pointer-events-none absolute -bottom-36 -left-14 z-30 h-[55%] w-auto object-contain brightness-[0.8] sepia-[0.25] saturate-[1.2] drop-shadow-[0_8px_24px_rgba(0,0,0,0.7)] lg:-bottom-12 lg:left-[calc(2%-30px)] lg:h-[55%] xl:left-[calc(10%-50px)] xl:h-[65%] 2xl:left-[calc(16%-50px)] 2xl:h-[75%]"
         />

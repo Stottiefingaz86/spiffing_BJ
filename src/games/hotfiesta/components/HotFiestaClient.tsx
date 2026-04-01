@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { publicAssetUrl } from '@/lib/publicUrl';
 import { formatMoney } from '@/lib/formatMoney';
 import {
   slotGlassPill,
@@ -213,7 +214,7 @@ function HotFiestaGame() {
       {/* Background image */}
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#2a1810]">
         <img
-          src="/hotfiesta/bg.png"
+          src={publicAssetUrl('hotfiesta/bg.png')}
           alt=""
           className="absolute inset-0 h-full w-full blur-[2px] scale-[1.05] brightness-[0.85] object-cover"
         />
@@ -279,7 +280,7 @@ function HotFiestaGame() {
       >
         {/* Logo — absolutely positioned so it doesn't shrink the grid */}
         <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[70px] max-lg:top-[35px]">
-          <img src="/hotfiesta/logo.png" alt="Hot Fiesta" className="h-36 lg:h-40 w-auto" style={{ willChange: 'transform' }} />
+          <img src={publicAssetUrl('hotfiesta/logo.png')} alt="Hot Fiesta" className="h-36 lg:h-40 w-auto" style={{ willChange: 'transform' }} />
         </div>
 
         <HotFiestaCanvas

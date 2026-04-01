@@ -103,8 +103,25 @@ export function BambooFortunesCanvas({
 
         host.appendChild(app.canvas as HTMLCanvasElement);
         appRef.current = app;
+
+        const kickResize = () => {
+          if (destroyed || !app.renderer) return;
+          const r = host.getBoundingClientRect();
+          const w = Math.max(16, Math.floor(r.width));
+          const h = Math.max(16, Math.floor(r.height));
+          if (w > 0 && h > 0 && (w !== app.renderer.width || h !== app.renderer.height)) {
+            app.renderer.resize(w, h);
+          }
+        };
+        requestAnimationFrame(() => {
+          kickResize();
+          requestAnimationFrame(kickResize);
+        });
+
         await preloadAllTextures(app.renderer);
         if (destroyed) return;
+
+        kickResize();
 
         const gameLayer = new Container();
         app.stage.addChild(gameLayer);

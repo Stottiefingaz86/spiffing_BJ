@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Home, RefreshCw, Settings, Volume2, VolumeX, X, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { publicAssetUrl } from '@/lib/publicUrl';
 import { formatMoney } from '@/lib/formatMoney';
 import { GamePreloader } from '@/components/GamePreloader';
 import {
@@ -15,22 +16,22 @@ import { FrootJarzCanvas } from '../render/FrootJarzCanvas';
 import { FrootJarzSettingsModal } from './FrootJarzSettingsModal';
 import { preloadFJSfx, playFJ, setFJSfxMuted, setFJBgmMuted, startFJBgm, stopFJBgm, unlockFJAudio, preloadBgm } from '../audio/frootjarzSfx';
 
-const FJ_BG_SRC = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}frootshoot/bg.png`;
+const FJ_BG_SRC = publicAssetUrl('frootshoot/bg.png');
 
 const PRELOAD_ASSETS = [
-  '/frootshoot/bg.png',
-  '/frootshoot/symbols/s1.png',
-  '/frootshoot/symbols/s2.png',
-  '/frootshoot/symbols/s3.png',
-  '/frootshoot/symbols/s4.png',
-  '/frootshoot/symbols/s5.png',
-  '/frootshoot/symbols/s6.png',
-  '/frootshoot/symbols/jar.png',
-  '/frootshoot/LOGO.png',
-  '/frootshoot/symbols/sounds/spin.mp3',
-  '/frootshoot/symbols/sounds/scatter.mp3',
-  '/frootshoot/reelend.mp3',
-];
+  'frootshoot/bg.png',
+  'frootshoot/symbols/s1.png',
+  'frootshoot/symbols/s2.png',
+  'frootshoot/symbols/s3.png',
+  'frootshoot/symbols/s4.png',
+  'frootshoot/symbols/s5.png',
+  'frootshoot/symbols/s6.png',
+  'frootshoot/symbols/jar.png',
+  'frootshoot/LOGO.png',
+  'frootshoot/symbols/sounds/spin.mp3',
+  'frootshoot/symbols/sounds/scatter.mp3',
+  'frootshoot/reelend.mp3',
+].map((p) => publicAssetUrl(p));
 
 function handleFJPreloaderPlay() {
   unlockFJAudio();
@@ -320,7 +321,7 @@ function FrootJarzGame() {
       >
         {/* Logo — absolutely positioned so it doesn't shrink the grid */}
         <div className="pointer-events-none absolute left-0 right-0 z-10 flex justify-center -top-[75px] max-lg:-top-[45px]">
-          <img src="/frootshoot/LOGO.png" alt="Froot Jarz" className="h-64 lg:h-64 w-auto" style={{ willChange: 'transform' }} />
+          <img src={publicAssetUrl('frootshoot/LOGO.png')} alt="Froot Jarz" className="h-64 lg:h-64 w-auto" style={{ willChange: 'transform' }} />
         </div>
 
         <FrootJarzCanvas

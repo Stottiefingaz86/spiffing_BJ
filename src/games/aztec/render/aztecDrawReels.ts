@@ -14,7 +14,7 @@ import {
 import type { Grid } from '../engine/grid';
 import { isSpinPaddingCell } from '../engine/grid';
 import { getAztecSymbolTexture } from './aztecSymbolTextures';
-import type { ReelAnimState } from '../../bandits/render/reelAnimation';
+import type { ReelAnimState } from '../../shared/reelAnimator';
 import {
   computeGridLayout,
   symbolTextureCoverFit,

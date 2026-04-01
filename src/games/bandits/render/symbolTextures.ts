@@ -1,4 +1,5 @@
 import { Graphics, Texture, type Renderer } from 'pixi.js';
+import { publicAssetUrl } from '@/lib/publicUrl';
 import { BanditSymbol, SYMBOL_COLORS } from '../engine/symbols';
 
 const TEXTURE_SIZE = 128;
@@ -335,17 +336,17 @@ export async function preloadAllTextures(renderer: Renderer): Promise<void> {
   cache.clear();
 
   const loads = await Promise.all([
-    loadTrimmedTexture('/bandits/WILD.png'),
-    loadTrimmedTexture('/bandits/scatter.png'),
-    loadTrimmedTexture('/bandits/J.png'),
-    loadTrimmedTexture('/bandits/q.png'),
-    loadTrimmedTexture('/bandits/k.png'),
-    loadTrimmedTexture('/bandits/a.png'),
-    loadTrimmedTexture('/bandits/SKULL_SYMBOL.png'),
-    loadTrimmedTexture('/bandits/FLASH.png'),
-    loadTrimmedTexture('/bandits/DYNAMITE.png'),
-    loadTrimmedTexture('/bandits/goldbag.png'),
-    loadTrimmedTexture('/bandits/bullion.png'),
+    loadTrimmedTexture(publicAssetUrl('bandits/WILD.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/scatter.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/J.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/q.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/k.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/a.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/SKULL_SYMBOL.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/FLASH.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/DYNAMITE.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/goldbag.png')),
+    loadTrimmedTexture(publicAssetUrl('bandits/bullion.png')),
   ]);
 
   wildPngTexture = loads[0];

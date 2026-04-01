@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { publicAssetUrl } from '@/lib/publicUrl';
 import { BanditSymbol, PAYTABLE, type PaytableEntry } from '../engine/symbols';
 
 interface BanditSettingsProps {
@@ -32,17 +33,17 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 const SYMBOL_IMAGES: Partial<Record<BanditSymbol, string>> = {
-  [BanditSymbol.Wild]: '/bandits/WILD.png',
-  [BanditSymbol.Scatter]: '/bandits/scatter.png',
-  [BanditSymbol.Revolver]: '/bandits/bullion.png',
-  [BanditSymbol.Shotgun]: '/bandits/FLASH.png',
-  [BanditSymbol.Dynamite]: '/bandits/DYNAMITE.png',
-  [BanditSymbol.Boots]: '/bandits/goldbag.png',
-  [BanditSymbol.Horseshoe]: '/bandits/SKULL_SYMBOL.png',
-  [BanditSymbol.King]: '/bandits/k.png',
-  [BanditSymbol.Queen]: '/bandits/q.png',
-  [BanditSymbol.Jack]: '/bandits/J.png',
-  [BanditSymbol.Ace]: '/bandits/a.png',
+  [BanditSymbol.Wild]: publicAssetUrl('bandits/WILD.png'),
+  [BanditSymbol.Scatter]: publicAssetUrl('bandits/scatter.png'),
+  [BanditSymbol.Revolver]: publicAssetUrl('bandits/bullion.png'),
+  [BanditSymbol.Shotgun]: publicAssetUrl('bandits/FLASH.png'),
+  [BanditSymbol.Dynamite]: publicAssetUrl('bandits/DYNAMITE.png'),
+  [BanditSymbol.Boots]: publicAssetUrl('bandits/goldbag.png'),
+  [BanditSymbol.Horseshoe]: publicAssetUrl('bandits/SKULL_SYMBOL.png'),
+  [BanditSymbol.King]: publicAssetUrl('bandits/k.png'),
+  [BanditSymbol.Queen]: publicAssetUrl('bandits/q.png'),
+  [BanditSymbol.Jack]: publicAssetUrl('bandits/J.png'),
+  [BanditSymbol.Ace]: publicAssetUrl('bandits/a.png'),
 };
 
 const SYMBOL_DISPLAY_NAMES: Partial<Record<BanditSymbol, string>> = {
@@ -118,7 +119,7 @@ function PaytableTab() {
       {/* Wild */}
       <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
         <div className="flex items-center gap-3">
-          <img src="/bandits/WILD.png" alt="Wild" className="size-10 rounded object-contain" />
+          <img src={publicAssetUrl('bandits/WILD.png')} alt="Wild" className="size-10 rounded object-contain" />
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">Wild</h4>
             <p className="mt-0.5 text-[11px] leading-relaxed text-white/50">Substitutes for all symbols except Scatter. Appears on all reels.</p>
@@ -129,7 +130,7 @@ function PaytableTab() {
       {/* Scatter */}
       <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4">
         <div className="flex items-center gap-3">
-          <img src="/bandits/scatter.png" alt="Scatter" className="size-10 rounded object-contain" />
+          <img src={publicAssetUrl('bandits/scatter.png')} alt="Scatter" className="size-10 rounded object-contain" />
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">Scatter</h4>
             <p className="mt-0.5 text-[11px] leading-relaxed text-white/50">3 or more Scatters anywhere trigger Free Spins.</p>

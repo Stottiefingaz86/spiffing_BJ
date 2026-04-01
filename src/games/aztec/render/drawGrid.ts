@@ -25,6 +25,7 @@ import {
   computeAztecStageLayout,
   type AztecStageLayout,
 } from './aztecStageLayout';
+import { aztecPublicBase } from './aztecPublicBase';
 
 export type { AztecStageLayout };
 
@@ -48,7 +49,7 @@ export function computeGridLayout(canvasW: number, canvasH: number): GridLayout 
   };
 }
 
-const FRAME_URL = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}aztec/frame.png`;
+const FRAME_URL = `${aztecPublicBase()}aztec/frame.png`;
 
 /** Draw frame art slightly past the layout box: +2px each side, small top (see `AZTEC_FRAME_SPRITE_TOP_OUTSET_PX`), +3px below. */
 const AZTEC_FRAME_OUTSET_X = 2;
@@ -330,6 +331,9 @@ export function initGridScene(root: Container): void {
 
   prevLayoutKey = '';
   prevCellIds = Array(CELL_COUNT).fill(null);
+
+  if (symContainer) symContainer.visible = true;
+  if (reelSpinOverlay) reelSpinOverlay.visible = false;
 }
 
 /** Call after `loadAztecGridMaskTexture()` — shaped mask matches `QR_PLAYFIELD` on the scaled frame. */

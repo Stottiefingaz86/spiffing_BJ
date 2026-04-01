@@ -6,9 +6,10 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
+    "postinstall": "node scripts/patch-vite-container.mjs",
+    "dev": "node scripts/run-astro.mjs dev",
+    "build": "node scripts/run-astro.mjs build",
+    "preview": "node scripts/run-astro.mjs preview",
     "astro": "astro",
     "extract:quest-par": "node scripts/extract-quest-par.mjs"
   },
@@ -37,5 +38,8 @@
     "@types/node": "^25.5.0",
     "typescript": "^5.9.3",
     "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "vite": "7.3.1"
   }
 }

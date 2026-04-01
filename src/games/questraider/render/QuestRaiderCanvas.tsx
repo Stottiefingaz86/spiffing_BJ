@@ -158,6 +158,20 @@ export function QuestRaiderCanvas({
         host.appendChild(app.canvas as HTMLCanvasElement);
         appRef.current = app;
 
+        const kickResize = () => {
+          if (destroyed || !app.renderer) return;
+          const r = host.getBoundingClientRect();
+          const w = Math.max(16, Math.floor(r.width));
+          const h = Math.max(16, Math.floor(r.height));
+          if (w > 0 && h > 0 && (w !== app.renderer.width || h !== app.renderer.height)) {
+            app.renderer.resize(w, h);
+          }
+        };
+        requestAnimationFrame(() => {
+          kickResize();
+          requestAnimationFrame(kickResize);
+        });
+
         const gameLayer = new Container();
         app.stage.addChild(gameLayer);
         gameLayerRef.current = gameLayer;
@@ -167,6 +181,7 @@ export function QuestRaiderCanvas({
           await loadQuestRaiderFrameTexture();
           await preloadQuestRaiderSymbolTextures();
           if (destroyed || !gameLayerRef.current || !appRef.current) return;
+          kickResize();
           const l = getLayout(appRef.current.renderer.width, appRef.current.renderer.height);
           const s = snapRef.current;
           const d = displayRef.current;
@@ -177,6 +192,7 @@ export function QuestRaiderCanvas({
           setQuestRaiderReelMaskTexture(tex);
           const gl = gameLayerRef.current;
           if (!gl) return;
+          kickResize();
           const layout = getLayout(app.renderer.width, app.renderer.height);
           draw(gl, app.renderer, snapRef.current.grid, layout);
         });

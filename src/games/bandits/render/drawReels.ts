@@ -7,6 +7,7 @@ import {
   TextStyle,
   type Renderer,
 } from 'pixi.js';
+import { publicAssetUrl } from '@/lib/publicUrl';
 import { REELS, ROWS, BanditSymbol, SYMBOL_LABELS, randomBaseSymbol } from '../engine/symbols';
 import { PAYLINE_PATTERNS, type PaylineWin, type ReelGrid } from '../engine/paylines';
 import type { WildFeatureResult } from '../engine/wildFeatures';
@@ -36,7 +37,7 @@ export async function loadFrameAsset(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
       img.onerror = () => reject(new Error('frame load failed'));
-      img.src = '/bandits/frame.png';
+      img.src = publicAssetUrl('bandits/frame.png');
     });
 
     const w = img.width;
@@ -105,7 +106,7 @@ export async function loadFrameAsset(): Promise<void> {
       await new Promise<void>((resolve, reject) => {
         maskImg.onload = () => resolve();
         maskImg.onerror = () => reject(new Error('mask load failed'));
-        maskImg.src = '/bandits/mask.png';
+        maskImg.src = publicAssetUrl('bandits/mask.png');
       });
 
       const mw = maskImg.width;
