@@ -240,7 +240,7 @@ export function AztecCanvas({
                   reelSoundPlayedRef.current[r] = true;
                   // Reels 0..REELS-2: light tick. Last reel: skip — `reelEnd` on allStopped fires same
                   // frame and would stack (reel_end ×2 + much higher gain), so reel 5 read as too loud.
-                  if (r < REELS - 1) playTF('rowClick', 0.16);
+                  if (r < REELS - 1) playTF('rowClick', 0.11);
                 }
               }
               updateAztecReelScene(target, rl, anim.states, snapRef.current.inFreeSpins);
@@ -257,7 +257,7 @@ export function AztecCanvas({
                 reelSoundPlayedRef.current[i] = false;
                 reelStopScheduledRef.current[i] = false;
               }
-              playTF('reelEnd', 0.19);
+              playTF('reelEnd', 0.07);
               onDropCompleteRef.current();
               setTimeout(() => {
                 const g = snapRef.current.grid;
@@ -425,7 +425,7 @@ export function AztecCanvas({
       scheduleTimer(() => {
         clearAllAnimations();
         if (hasWins) queueHighlightAnimations([...winIds], highlightMs);
-        if (hasWins) playTF('tick', 0.35);
+        if (hasWins) playTF('tick', 0.26);
         displayRef.current = {
           grid: gridBeforeClone,
           winCells: hasWins ? winIds : undefined,
@@ -439,7 +439,7 @@ export function AztecCanvas({
         if (hasWins) queuePopAnimations([...winIds], popMs);
         if (hasWins) {
           if (playExplodeSfx) playTF('explode', 0.3);
-          if (stepWin > 0) playTF('win', 0.28);
+          if (stepWin > 0) playTF('win', 0.48);
           const accent = particleColorForCells(step.gridBefore, winIds);
           const minDim = Math.min(layout.cellW, layout.cellH);
           const spread = minDim * 0.82;
@@ -484,7 +484,7 @@ export function AztecCanvas({
           displayRef.current = { grid: settled, multLabel };
           prevGridRef.current = settled.map((row) => row.map((c) => ({ ...c })));
           draw(gl, app.renderer, settled, layout, undefined, multLabel);
-          playTF('reelEnd', 0.32);
+          playTF('reelEnd', 0.17);
           onCascadeRef.current();
         }, fallDur + 120);
       }, fallStart);

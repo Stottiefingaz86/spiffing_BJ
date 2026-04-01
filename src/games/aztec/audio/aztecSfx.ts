@@ -23,12 +23,12 @@ export type TfSfxName = 'explode' | 'rowClick' | 'reelEnd' | 'tick' | 'chime' | 
 
 /** Logical cue → buffer + relative level (multiplies `playTF` volume). */
 const SFX_ROUTING: Record<TfSfxName, { file: QrAudioFileKey; gainMul: number }> = {
-  reelEnd: { file: 'reel_end', gainMul: 1 },
-  /** `win.mp3` peaks hot — keep gain conservative. */
-  win: { file: 'win', gainMul: 0.24 },
+  /** Shared `reel_end` clip — keep gain modest; spin uses `rowClick` + `reelEnd`. */
+  reelEnd: { file: 'reel_end', gainMul: 0.48 },
+  win: { file: 'win', gainMul: 0.58 },
   spin: { file: 'spin', gainMul: 0.95 },
-  rowClick: { file: 'reel_end', gainMul: 0.32 },
-  tick: { file: 'reel_end', gainMul: 0.28 },
+  rowClick: { file: 'reel_end', gainMul: 0.2 },
+  tick: { file: 'reel_end', gainMul: 0.2 },
   /** Extra column tick (reserved). */
   chime: { file: 'reel_end', gainMul: 0.38 },
   /** Only for 2nd+ cascade pops; uses `win.mp3`. */
@@ -87,10 +87,9 @@ export function setTFSfxMuted(value: boolean): void {
   sfxMuted = value;
 }
 
-/** Aztec-only: shorten `reelEnd` + fade tail (other titles play full `reel_end.mp3`). */
-const REEL_END_PLAY_SEC = 0.2;
-/** Longer linear tail so the stop doesn’t snap off (capped by `playLen`). */
-const REEL_END_FADE_SEC = 0.13;
+/** Aztec-only: short `reel_end` slice + fade — use for land ticks too (full file was too loud). */
+const REEL_END_PLAY_SEC = 0.18;
+const REEL_END_FADE_SEC = 0.12;
 
 function playBuffer(
   file: QrAudioFileKey,
@@ -131,11 +130,15 @@ function playBuffer(
   }
 }
 
+function usesShortReelEnd(name: TfSfxName): boolean {
+  return name === 'reelEnd' || name === 'rowClick' || name === 'tick';
+}
+
 export function playTF(name: TfSfxName, volume = 0.4): void {
   const route = SFX_ROUTING[name];
   if (!route) return;
   const vol = volume * route.gainMul;
-  if (name === 'reelEnd') {
+  if (usesShortReelEnd(name)) {
     playBuffer(route.file, vol, {
       maxDurationSec: REEL_END_PLAY_SEC,
       fadeOutSec: REEL_END_FADE_SEC,

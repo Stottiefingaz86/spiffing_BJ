@@ -614,7 +614,7 @@ export function getCellAnimState(cellId: number): CellRenderState | null {
 }
 
 // --- particles ---
-export type ParticleKind = 'debris' | 'smoke';
+export type ParticleKind = 'debris' | 'smoke' | 'sand';
 
 export interface Particle {
   kind: ParticleKind;
@@ -639,6 +639,30 @@ const activeParticles: Particle[] = [];
 const SMOKE_DUST = [0x5c5348, 0x7a6e62, 0x4a433c, 0x8c8072, 0x3d3830, 0x6b6358];
 const STONE_DUST_DARK = [0x2a2824, 0x353330, 0x3e3b36, 0x48443e, 0x322f2c, 0x4a4540];
 const STONE_CHIP = [0x1c1a18, 0x252220, 0x2e2b27, 0x383430];
+
+/** Desert sand + sun-bleached dust (cascade pop — not Quest grey stone burst). */
+const SAND_GRAINS = [
+  0xf2e6d4, 0xe8d4b8, 0xd4c4a4, 0xc9a86c, 0xb8956a, 0xa67c50, 0xcdaa7d, 0x8b6914, 0xdcc9a8,
+];
+const DUST_HAZE_LIGHT = [
+  0xf4ead8, 0xe8dcc8, 0xd8c8a8, 0xc8b090, 0xe4d2b8, 0xf0e8d4,
+];
+const DUST_HAZE_DEEP = [
+  0xb59a78, 0xa68460, 0x967858, 0x8a6e52, 0x7a5c44,
+];
+
+function mixRgb(a: number, b: number, t: number): number {
+  const ar = (a >> 16) & 0xff;
+  const ag = (a >> 8) & 0xff;
+  const ab = a & 0xff;
+  const br = (b >> 16) & 0xff;
+  const bg = (b >> 8) & 0xff;
+  const bb = b & 0xff;
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const b2 = Math.round(ab + (bb - ab) * t);
+  return (r << 16) | (g << 8) | b2;
+}
 
 export function spawnParticles(x: number, y: number, color: number, count = 12, speed = 4, lifeMs = 620): void {
   const n = Math.max(count, 10);
@@ -665,98 +689,104 @@ export function spawnParticles(x: number, y: number, color: number, count = 12, 
 }
 
 /**
- * Stone slab shatter: dark chips + grit burst + dense grey-brown dust cloud (Gonzo-style).
+ * Temple cascade: **sand + warm dust** puff (distinct from Quest grey stone shatter).
  */
 export function spawnBrickExplosion(cx: number, cy: number, accentColor: number, spread = 14): void {
-  const shardN = 22;
-  for (let i = 0; i < shardN; i++) {
-    const angle = (Math.PI * 2 * i) / shardN + (Math.random() - 0.5) * 1.15;
-    const v = 3 + Math.random() * 5.5;
-    const useAccent = Math.random() < 0.22;
-    const col = useAccent ? accentColor : STONE_CHIP[Math.floor(Math.random() * STONE_CHIP.length)];
-    const sz = 2.4 + Math.random() * 5;
+  const sandTint = mixRgb(SAND_GRAINS[3], accentColor, 0.35);
+
+  const grainN = 52;
+  for (let i = 0; i < grainN; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const v = 0.75 + Math.random() * 3.4;
+    const useTint = Math.random() < 0.18;
+    const col = useTint
+      ? sandTint
+      : SAND_GRAINS[Math.floor(Math.random() * SAND_GRAINS.length)];
+    const sz = 0.85 + Math.random() * 2.5;
     activeParticles.push({
-      kind: 'debris',
-      x: cx + (Math.random() - 0.5) * spread * 0.92,
-      y: cy + (Math.random() - 0.5) * spread * 0.92,
+      kind: 'sand',
+      x: cx + (Math.random() - 0.5) * spread * 0.98,
+      y: cy + (Math.random() - 0.5) * spread * 0.98,
       vx: Math.cos(angle) * v,
-      vy: Math.sin(angle) * v - 3.2,
+      vy: Math.sin(angle) * v - (1.4 + Math.random() * 2.6),
       color: col,
       life: 0,
-      maxLife: 420 + Math.random() * 520,
+      maxLife: 380 + Math.random() * 560,
       size: sz,
       baseSize: sz,
       rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.55,
-      aspect: 0.32 + Math.random() * 0.55,
+      rotSpeed: (Math.random() - 0.5) * 0.14,
+      aspect: 0.5 + Math.random() * 0.5,
     });
   }
 
-  const gritN = 32;
-  for (let i = 0; i < gritN; i++) {
+  const fineN = 40;
+  for (let i = 0; i < fineN; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const v = 1.8 + Math.random() * 5;
-    const sz = 1 + Math.random() * 2.2;
+    const v = 0.4 + Math.random() * 2.1;
+    const sz = 0.45 + Math.random() * 1.35;
     activeParticles.push({
-      kind: 'debris',
-      x: cx + (Math.random() - 0.5) * spread * 0.75,
-      y: cy + (Math.random() - 0.5) * spread * 0.75,
+      kind: 'sand',
+      x: cx + (Math.random() - 0.5) * spread * 1.08,
+      y: cy + (Math.random() - 0.5) * spread * 1.02,
       vx: Math.cos(angle) * v,
-      vy: Math.sin(angle) * v - 2.8,
-      color: STONE_CHIP[Math.floor(Math.random() * STONE_CHIP.length)],
+      vy: Math.sin(angle) * v - (0.8 + Math.random() * 1.8),
+      color: DUST_HAZE_LIGHT[Math.floor(Math.random() * DUST_HAZE_LIGHT.length)],
       life: 0,
-      maxLife: 220 + Math.random() * 320,
+      maxLife: 260 + Math.random() * 420,
       size: sz,
       baseSize: sz,
       rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.9,
-      aspect: 0.4 + Math.random() * 0.45,
+      rotSpeed: (Math.random() - 0.5) * 0.2,
+      aspect: 0.55 + Math.random() * 0.4,
     });
   }
 
-  const denseSmokeN = 18;
-  for (let i = 0; i < denseSmokeN; i++) {
-    const col = STONE_DUST_DARK[Math.floor(Math.random() * STONE_DUST_DARK.length)];
-    const bs = 12 + Math.random() * 22;
+  const hazeN = 20;
+  for (let i = 0; i < hazeN; i++) {
+    const col = DUST_HAZE_LIGHT[Math.floor(Math.random() * DUST_HAZE_LIGHT.length)];
+    const bs = 8 + Math.random() * 18;
     const ang = Math.random() * Math.PI * 2;
-    const puff = 0.8 + Math.random() * 2.4;
+    const puff = 0.45 + Math.random() * 1.6;
     activeParticles.push({
       kind: 'smoke',
-      x: cx + (Math.random() - 0.5) * spread * 0.88,
+      x: cx + (Math.random() - 0.5) * spread * 1.12,
+      y: cy + (Math.random() - 0.5) * spread * 1.02,
+      vx: Math.cos(ang) * puff,
+      vy: Math.sin(ang) * puff - (0.35 + Math.random() * 0.95),
+      color: col,
+      life: 0,
+      maxLife: 720 + Math.random() * 820,
+      size: bs,
+      baseSize: bs,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.07,
+      aspect: 0.78 + Math.random() * 0.42,
+      dense: false,
+    });
+  }
+
+  const dustPuffN = 14;
+  for (let i = 0; i < dustPuffN; i++) {
+    const col = DUST_HAZE_DEEP[Math.floor(Math.random() * DUST_HAZE_DEEP.length)];
+    const bs = 10 + Math.random() * 20;
+    const ang = Math.random() * Math.PI * 2;
+    const puff = 0.35 + Math.random() * 1.1;
+    activeParticles.push({
+      kind: 'smoke',
+      x: cx + (Math.random() - 0.5) * spread * 0.9,
       y: cy + (Math.random() - 0.5) * spread * 0.88,
       vx: Math.cos(ang) * puff,
-      vy: Math.sin(ang) * puff - (0.6 + Math.random() * 1.2),
+      vy: Math.sin(ang) * puff - (0.25 + Math.random() * 0.75),
       color: col,
       life: 0,
-      maxLife: 880 + Math.random() * 700,
+      maxLife: 920 + Math.random() * 780,
       size: bs,
       baseSize: bs,
       rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.1,
-      aspect: 0.75 + Math.random() * 0.45,
+      rotSpeed: (Math.random() - 0.5) * 0.09,
+      aspect: 0.72 + Math.random() * 0.38,
       dense: true,
-    });
-  }
-
-  const wispN = 26;
-  for (let i = 0; i < wispN; i++) {
-    const col = SMOKE_DUST[Math.floor(Math.random() * SMOKE_DUST.length)];
-    const bs = 6 + Math.random() * 14;
-    activeParticles.push({
-      kind: 'smoke',
-      x: cx + (Math.random() - 0.5) * (spread * 1.15),
-      y: cy + (Math.random() - 0.5) * (spread * 1.05),
-      vx: (Math.random() - 0.5) * 2.2,
-      vy: (Math.random() - 0.5) * 1.8 - (0.4 + Math.random() * 1.1),
-      color: col,
-      life: 0,
-      maxLife: 620 + Math.random() * 750,
-      size: bs,
-      baseSize: bs,
-      rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.08,
-      aspect: 0.82 + Math.random() * 0.38,
-      dense: false,
     });
   }
 }
@@ -856,6 +886,14 @@ export function tickAnimations(dtMs: number): void {
       const t = p.life / Math.max(1, p.maxLife);
       const billow = p.dense ? 4.6 : 3.5;
       p.size = p.baseSize * (1 + billow * t);
+      p.rotation += p.rotSpeed * pdt;
+      p.life += dt;
+    } else if (p.kind === 'sand') {
+      p.x += p.vx * pdt;
+      p.y += p.vy * pdt;
+      p.vy += 0.048 * pdt;
+      p.vx *= 0.987;
+      p.vy *= 0.996;
       p.rotation += p.rotSpeed * pdt;
       p.life += dt;
     } else {

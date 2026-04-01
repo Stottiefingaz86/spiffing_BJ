@@ -703,23 +703,32 @@ export function updateGridScene(
     if (p.kind === 'smoke') {
       const r = p.size * p.aspect;
       if (p.dense) {
-        const coreA = 0.5 * fade;
+        const coreA = 0.44 * fade;
         particleGfx.circle(p.x, p.y, r * 1.02);
         particleGfx.fill({ color: p.color, alpha: coreA });
         particleGfx.circle(p.x - r * 0.18, p.y + r * 0.12, r * 0.78);
-        particleGfx.fill({ color: 0x3a3834, alpha: 0.32 * fadeLin });
+        particleGfx.fill({ color: 0x9a8068, alpha: 0.3 * fadeLin });
         particleGfx.circle(p.x + r * 0.15, p.y - r * 0.1, r * 0.62);
-        particleGfx.fill({ color: 0x524e46, alpha: 0.24 * fadeLin });
+        particleGfx.fill({ color: 0xb89a78, alpha: 0.22 * fadeLin });
         particleGfx.circle(p.x + r * 0.06, p.y + r * 0.14, r * 1.18);
-        particleGfx.fill({ color: 0x7a7268, alpha: 0.12 * fadeLin });
+        particleGfx.fill({ color: 0xd4c4a8, alpha: 0.14 * fadeLin });
         particleGfx.circle(p.x - r * 0.22, p.y - r * 0.16, r * 0.45);
-        particleGfx.fill({ color: 0x2c2a26, alpha: 0.2 * fade });
+        particleGfx.fill({ color: 0x7a6248, alpha: 0.2 * fade });
       } else {
-        const a = 0.24 * fade;
+        const a = 0.26 * fade;
         particleGfx.circle(p.x, p.y, r);
         particleGfx.fill({ color: p.color, alpha: a });
         particleGfx.circle(p.x - r * 0.12, p.y - r * 0.1, r * 0.68);
-        particleGfx.fill({ color: 0x8f877c, alpha: 0.14 * fadeLin });
+        particleGfx.fill({ color: 0xc4b8a4, alpha: 0.16 * fadeLin });
+      }
+    } else if (p.kind === 'sand') {
+      const rad = p.size * (0.42 + p.aspect * 0.32);
+      const a = (0.5 + 0.45 * (1 - fade)) * Math.sqrt(Math.max(0, 1 - fade * 0.35));
+      particleGfx.circle(p.x, p.y, rad);
+      particleGfx.fill({ color: p.color, alpha: a });
+      if (p.size > 1.0 && fade < 0.85) {
+        particleGfx.circle(p.x - rad * 0.28, p.y - rad * 0.22, rad * 0.32);
+        particleGfx.fill({ color: 0xfff5e6, alpha: 0.14 * a });
       }
     } else {
       const grit = p.baseSize <= 2.35 && p.maxLife < 520;
