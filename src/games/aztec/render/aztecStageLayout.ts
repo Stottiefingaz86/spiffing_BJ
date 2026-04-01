@@ -32,12 +32,15 @@ const QR_PLAYFIELD_OFFSET_Y_AT_NATIVE = 46;
 const QR_REEL_FINE_NUDGE_Y_AT_NATIVE = 6;
 
 /** Move the 5×3 grid up (CSS px at 1×); scaled by post-process `sx` after layout. */
-const AZTEC_GRID_SHIFT_UP_CSS = 10;
+const AZTEC_GRID_SHIFT_UP_CSS = 14;
 
 /** Positive = shift grid left (CSS px) vs playfield. */
 const AZTEC_GRID_NUDGE_LEFT_PX = 2;
 
 const AZTEC_CELL_SHRINK_PX = 2;
+
+/** Widen/tall each symbol cell by this many CSS px (total inner += REELS× / ROWS×); position nudged to keep center. */
+const AZTEC_CELL_ENLARGE_PX = 2;
 
 /** After core layout: desktop keeps board modest; mobile scales up so the stone frame fills more (can bleed). */
 const AZTEC_STAGE_VISUAL_SCALE_DESKTOP = 0.84;
@@ -242,15 +245,23 @@ function applyAztecVisualPostProcess(
     const ratioW = rw > 0 ? fw / rw : 1;
     const ratioH = rh > 0 ? fh / rh : 1;
 
-    const innerPxW = Math.max(1, Math.floor(raw.innerW * ratioW) - shrinkW);
-    const innerPxH = Math.max(1, Math.floor(raw.innerH * ratioH) - shrinkH);
+    const extraW = REELS * AZTEC_CELL_ENLARGE_PX;
+    const extraH = ROWS * AZTEC_CELL_ENLARGE_PX;
+    const innerPxW = Math.max(1, Math.floor(raw.innerW * ratioW) - shrinkW) + extraW;
+    const innerPxH = Math.max(1, Math.floor(raw.innerH * ratioH) - shrinkH) + extraH;
 
-    const innerX = fx + relIX * ratioW + shrinkW / 2 - AZTEC_GRID_NUDGE_LEFT_PX;
+    const innerX =
+      fx +
+      relIX * ratioW +
+      shrinkW / 2 -
+      AZTEC_GRID_NUDGE_LEFT_PX -
+      extraW / 2;
     const innerY =
       fy +
       relIY * ratioH +
       shrinkH / 2 -
-      Math.round(AZTEC_GRID_SHIFT_UP_CSS * s);
+      Math.round(AZTEC_GRID_SHIFT_UP_CSS * s) -
+      extraH / 2;
 
     const gap = 0;
     const cellW = innerPxW / REELS;

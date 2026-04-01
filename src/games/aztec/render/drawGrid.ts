@@ -26,6 +26,11 @@ import {
   type AztecStageLayout,
 } from './aztecStageLayout';
 import { aztecPublicBase } from './aztecPublicBase';
+import {
+  destroyAztecLightShaftsLayer,
+  initAztecLightShaftsLayer,
+  updateAztecLightShaftsLayer,
+} from './aztecLightShafts';
 
 export type { AztecStageLayout };
 
@@ -263,6 +268,9 @@ export function initGridScene(root: Container): void {
   /** Above reels, below particles / multiplier — stone frame overlaps tile edges like a real bezel. */
   root.addChild(frameSprite);
 
+  /** Warm sun shafts over frame + reels; particles/wins/mult render above. */
+  initAztecLightShaftsLayer(root);
+
   particleGfx = new Graphics();
   root.addChild(particleGfx);
 
@@ -364,6 +372,7 @@ export function getAztecReelSpinOverlay(): Container | null {
 }
 
 export function destroyGridScene(): void {
+  destroyAztecLightShaftsLayer();
   reelShapeMaskLoaded = false;
   if (symContainer) {
     symContainer.mask = null;
@@ -827,6 +836,8 @@ export function updateGridScene(
   }
 
   multPill.visible = true;
+
+  updateAztecLightShaftsLayer(renderer.width, renderer.height, performance.now());
 
   void renderer; // layout pass may use renderer later
 }
