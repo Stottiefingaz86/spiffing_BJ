@@ -426,8 +426,8 @@ export function QuestRaiderCanvas({
         clearAllAnimations();
         if (hasWins) queuePopAnimations([...winIds], popMs);
         if (hasWins) {
-          if (playExplodeSfx) playTF('explode', 0.3);
-          if (stepWin > 0) playTF('win', 0.28);
+          if (playExplodeSfx) playTF('explode', 0.22);
+          if (stepWin > 0) playTF('win', 0.2);
           const accent = particleColorForCells(step.gridBefore, winIds);
           const minDim = Math.min(layout.cellW, layout.cellH);
           const spread = minDim * 0.82;

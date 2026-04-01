@@ -23,15 +23,15 @@ export type TfSfxName = 'explode' | 'rowClick' | 'reelEnd' | 'tick' | 'chime' | 
 /** Logical cue → buffer + relative level (multiplies `playTF` volume). */
 const SFX_ROUTING: Record<TfSfxName, { file: QrAudioFileKey; gainMul: number }> = {
   reelEnd: { file: 'reel_end', gainMul: 1 },
-  /** `win.mp3` is hot on peak; keep cascade chime/explode multipliers unchanged below. */
-  win: { file: 'win', gainMul: 0.38 },
+  /** `win.mp3` is hot on peak — keep gain conservative so cascade wins don’t slam. */
+  win: { file: 'win', gainMul: 0.22 },
   spin: { file: 'reel_end', gainMul: 0.9 },
   rowClick: { file: 'reel_end', gainMul: 0.32 },
   tick: { file: 'reel_end', gainMul: 0.28 },
   /** Extra column tick (reserved). */
   chime: { file: 'reel_end', gainMul: 0.38 },
   /** Only for 2nd+ cascade pops; first hit uses `win` only (see QuestRaiderCanvas). */
-  explode: { file: 'win', gainMul: 0.22 },
+  explode: { file: 'win', gainMul: 0.14 },
 };
 
 let ctx: AudioContext | null = null;
