@@ -49,9 +49,13 @@ export function computeGridLayout(canvasW: number, canvasH: number): GridLayout 
 }
 
 const FRAME_URL = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}quest_raiders/frame.png`;
+const MULTIPLIER_ART_URL = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}quest_raiders/multiplier.png`;
 
 let cachedFrameTex: Texture | null | undefined;
 let frameSprite: Sprite | null = null;
+
+let cachedMultArtTex: Texture | null | undefined;
+let multFrameSprite: Sprite | null = null;
 
 /** Linear + mipmaps + anisotropy before first GPU bind — smoother frame edges when scaled. */
 function configureQuestRaiderFrameSampling(tex: Texture): void {
@@ -77,6 +81,30 @@ export async function loadQuestRaiderFrameTexture(): Promise<void> {
   }
 }
 
+function configureMultiplierArtSampling(tex: Texture): void {
+  const src = tex.source;
+  src.autoGenerateMipmaps = true;
+  src.scaleMode = 'linear';
+  src.maxAnisotropy = 8;
+}
+
+/** Stone multiplier plaque (`multiplier.png` — header baked in; five slots for live ×N). */
+export async function loadQuestRaiderMultiplierTexture(): Promise<void> {
+  if (cachedMultArtTex === undefined) {
+    try {
+      cachedMultArtTex = await Assets.load<Texture>(MULTIPLIER_ART_URL);
+      if (cachedMultArtTex) configureMultiplierArtSampling(cachedMultArtTex);
+    } catch {
+      cachedMultArtTex = null;
+    }
+  }
+  if (multFrameSprite && cachedMultArtTex) {
+    multFrameSprite.texture = cachedMultArtTex;
+    multFrameSprite.visible = true;
+    configureMultiplierArtSampling(cachedMultArtTex);
+  }
+}
+
 function minCellDim(layout: GridLayout): number {
   return Math.min(layout.cellW, layout.cellH);
 }
@@ -84,6 +112,27 @@ function minCellDim(layout: GridLayout): number {
 /** Base game avalanche caps at ×5; free falls use ×3 steps up to ×15. */
 const MULT_TIERS_BASE = [1, 2, 3, 4, 5] as const;
 const MULT_TIERS_FREE = [3, 6, 9, 12, 15] as const;
+
+/**
+ * Where the live ×N values sit inside `multiplier.png` (fractions of art width / height).
+ * Art has a stone header + five recessed slots; tweak if the PNG layout changes.
+ */
+const MULT_ART_SLOT = {
+  left: 0.096,
+  right: 0.074,
+  /** Vertical center of ×N text in `multiplier.png` (0 = art top, 1 = bottom; larger = lower on screen). */
+  centerY: 0.588,
+  /** Small uniform X nudge (fraction of bar width). */
+  nudgeXFrac: 0.006,
+  /** Extra shift down (fraction of bar height). */
+  nudgeYFrac: 0.007,
+} as const;
+
+/**
+ * Per-slot X shift left (fraction of bar width), subtracted from even-fifth center X.
+ * Recesses in `multiplier.png` tighten toward the right vs pure math spacing.
+ */
+const MULT_ART_SLOT_X_PER_INDEX: readonly number[] = [0, 0, 0.018, 0.036, 0.052];
 
 function parseMultiplierFromLabel(label: string): number {
   const normalized = label.replace(/[×✕]/g, 'x').trim();
@@ -158,6 +207,8 @@ const orphanCellLabels: Text[] = [];
 let particleGfx: Graphics;
 const floatTexts: Text[] = [];
 let multPill: Container;
+/** Wide amber plate behind the active ×N (fills most of the slot; not just text-bound drop shadow). */
+let multActiveSlotGlow: Graphics | null = null;
 let multBg: Graphics;
 let multTitle: Text;
 const multSegTexts: Text[] = [];
@@ -267,6 +318,11 @@ export function initGridScene(root: Container): void {
   }
 
   multPill = new Container();
+  multFrameSprite = new Sprite();
+  multFrameSprite.visible = false;
+  multPill.addChild(multFrameSprite);
+  multActiveSlotGlow = new Graphics();
+  multPill.addChild(multActiveSlotGlow);
   multBg = new Graphics();
   multPill.addChild(multBg);
   multTitle = new Text({
@@ -356,6 +412,26 @@ export function destroyGridScene(): void {
   if (frameSprite) {
     frameSprite.destroy({ texture: false });
     frameSprite = null;
+  }
+  if (multFrameSprite) {
+    try {
+      if (!(multFrameSprite as unknown as { destroyed?: boolean }).destroyed) {
+        multFrameSprite.destroy({ texture: false });
+      }
+    } catch {
+      /* already destroyed with parent */
+    }
+    multFrameSprite = null;
+  }
+  if (multActiveSlotGlow) {
+    try {
+      if (!(multActiveSlotGlow as unknown as { destroyed?: boolean }).destroyed) {
+        multActiveSlotGlow.destroy();
+      }
+    } catch {
+      /* noop */
+    }
+    multActiveSlotGlow = null;
   }
   if (recessGfx) {
     recessGfx.destroy();
@@ -706,39 +782,83 @@ export function updateGridScene(
     }
   }
 
-  /** Compact multiplier strip — top-right; large chiseled tier type (Gonzo-style read). */
+  /** Multiplier strip — stone art when `multiplier.png` is loaded, else flat pill fallback. */
   const multLabelShown = multiplierLabel?.trim() ? multiplierLabel.trim() : '×1';
   const currentMult = parseMultiplierFromLabel(multLabelShown);
   const tiers = inFreeSpins ? MULT_TIERS_FREE : MULT_TIERS_BASE;
   const cornerGap = 8;
   const maxW = Math.max(112, stage.innerW - cornerGap * 2);
-  const barW = Math.min(maxW, Math.min(220, Math.max(152, stage.innerW * 0.44)));
-  const barH = Math.max(42, Math.min(52, minDim * 0.42));
-  const barX = stage.innerX + stage.innerW - barW - cornerGap;
-  const barY = Math.max(stage.frameY + 6, stage.innerY - barH - cornerGap);
-  multPill.position.set(barX, barY);
 
-  multBg.clear();
-  multBg.roundRect(0, 0, barW, barH, 7);
-  multBg.fill({ color: 0x080706, alpha: 0.97 });
-  multBg.stroke({ color: inFreeSpins ? 0x5a3518 : 0x2a241c, width: 2 });
-  multBg.roundRect(2.5, 2.5, barW - 5, barH - 5, 5);
-  multBg.stroke({ color: inFreeSpins ? 0xd88840 : 0x9a8048, width: 1.35, alpha: 0.92 });
-
-  multTitle.style.fontSize = Math.max(8, Math.min(11, Math.round(barH * 0.2)));
-  multTitle.position.set(barW / 2, 5);
-  multTitle.style.fill = inFreeSpins ? 0xffe8d8 : 0xf5f0e8;
-
-  const segFont = Math.max(15, Math.min(22, Math.round(barW / 10.5)));
-  const rowY = barH * 0.62;
-  const padX = 6;
-  const usable = barW - padX * 2;
-  const colW = usable / 5;
+  const useStoneArt =
+    cachedMultArtTex != null &&
+    multFrameSprite != null &&
+    multFrameSprite.texture === cachedMultArtTex;
 
   const dimFill = 0x8a8780;
   const dimStroke = 0x0a0908;
   const activeFill = 0xffee88;
   const activeStroke = 0x3d2208;
+
+  let barW: number;
+  let barH: number;
+  let barX: number;
+  let barY: number;
+  let segFont: number;
+  let rowY: number;
+  let slotLeft: number;
+  let slotUsable: number;
+
+  if (useStoneArt && multFrameSprite) {
+    const src = multFrameSprite.texture.source;
+    const natW = src.width;
+    const natH = src.height;
+    const maxBarW = Math.min(maxW, Math.min(320, Math.max(190, stage.innerW * 0.52)));
+    const scale = maxBarW / natW;
+    barW = natW * scale;
+    barH = natH * scale;
+    barX = Math.round(stage.innerX + (stage.innerW - barW) / 2);
+    barY = Math.max(stage.frameY + 4, stage.innerY - barH - cornerGap + 2);
+    multPill.position.set(barX, barY);
+    multFrameSprite.position.set(0, 0);
+    multFrameSprite.width = barW;
+    multFrameSprite.height = barH;
+    multFrameSprite.visible = true;
+    multFrameSprite.tint = inFreeSpins ? 0xffe8dc : 0xffffff;
+    multFrameSprite.alpha = 1;
+    multBg.visible = false;
+    multTitle.visible = false;
+
+    rowY = barH * (MULT_ART_SLOT.centerY + MULT_ART_SLOT.nudgeYFrac);
+    slotLeft = barW * MULT_ART_SLOT.left;
+    slotUsable = Math.max(1, barW * (1 - MULT_ART_SLOT.left - MULT_ART_SLOT.right));
+    segFont = Math.max(10, Math.min(17, Math.round(barH * 0.112)));
+  } else {
+    if (multFrameSprite) multFrameSprite.visible = false;
+    multBg.visible = true;
+    multTitle.visible = true;
+    barW = Math.min(maxW, Math.min(220, Math.max(152, stage.innerW * 0.44)));
+    barH = Math.max(42, Math.min(52, minDim * 0.42));
+    barX = Math.round(stage.innerX + (stage.innerW - barW) / 2);
+    barY = Math.max(stage.frameY + 6, stage.innerY - barH - cornerGap);
+    multPill.position.set(barX, barY);
+
+    multBg.clear();
+    multBg.roundRect(0, 0, barW, barH, 7);
+    multBg.fill({ color: 0x080706, alpha: 0.97 });
+    multBg.stroke({ color: inFreeSpins ? 0x5a3518 : 0x2a241c, width: 2 });
+    multBg.roundRect(2.5, 2.5, barW - 5, barH - 5, 5);
+    multBg.stroke({ color: inFreeSpins ? 0xd88840 : 0x9a8048, width: 1.35, alpha: 0.92 });
+
+    multTitle.style.fontSize = Math.max(8, Math.min(11, Math.round(barH * 0.2)));
+    multTitle.position.set(barW / 2, 5);
+    multTitle.style.fill = inFreeSpins ? 0xffe8d8 : 0xf5f0e8;
+
+    segFont = Math.max(15, Math.min(22, Math.round(barW / 10.5)));
+    rowY = barH * 0.62;
+    const padX = 6;
+    slotLeft = padX;
+    slotUsable = Math.max(1, barW - padX * 2);
+  }
 
   for (let i = 0; i < 5; i++) {
     const t = multSegTexts[i];
@@ -752,17 +872,48 @@ export function updateGridScene(
     };
     if (on) {
       t.style.dropShadow = {
-        alpha: 1,
+        alpha: useStoneArt ? 0.75 : 1,
         angle: Math.PI / 2,
-        blur: 6,
-        color: 0xffb020,
+        blur: useStoneArt ? 5 : 6,
+        color: 0xffe8a8,
         distance: 0,
       };
     } else {
       t.style.dropShadow = false;
     }
-    t.position.set(padX + colW * (i + 0.5), rowY);
+    let cx = slotLeft + (slotUsable * (i + 0.5)) / 5;
+    if (useStoneArt) {
+      cx += barW * MULT_ART_SLOT.nudgeXFrac;
+      cx -= barW * (MULT_ART_SLOT_X_PER_INDEX[i] ?? 0);
+    }
+    t.position.set(cx, rowY);
     t.scale.set(on ? 1.08 : 1);
+  }
+
+  if (multActiveSlotGlow) {
+    multActiveSlotGlow.clear();
+    let activeIdx = -1;
+    for (let i = 0; i < 5; i++) {
+      if (tiers[i] === currentMult) {
+        activeIdx = i;
+        break;
+      }
+    }
+    if (activeIdx >= 0) {
+      const slotW = slotUsable / 5;
+      const inset = slotW * 0.028;
+      const hx = slotLeft + activeIdx * slotW + inset;
+      const hw = slotW - inset * 2;
+      const hh = Math.max(segFont * 1.22, barH * 0.1);
+      const hy = rowY - hh * 0.5;
+      const r = Math.min(11, hh * 0.38);
+      multActiveSlotGlow.roundRect(hx - 5, hy - 3, hw + 10, hh + 6, r + 3);
+      multActiveSlotGlow.fill({ color: 0xffcc55, alpha: 0.2 });
+      multActiveSlotGlow.roundRect(hx - 2, hy - 1, hw + 4, hh + 2, r + 1);
+      multActiveSlotGlow.fill({ color: 0xffb020, alpha: 0.28 });
+      multActiveSlotGlow.roundRect(hx, hy, hw, hh, r);
+      multActiveSlotGlow.fill({ color: 0xff9a18, alpha: 0.42 });
+    }
   }
 
   multPill.visible = true;

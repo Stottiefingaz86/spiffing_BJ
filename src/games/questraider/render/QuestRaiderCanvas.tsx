@@ -14,6 +14,7 @@ import {
   destroyGridScene,
   initGridScene,
   loadQuestRaiderFrameTexture,
+  loadQuestRaiderMultiplierTexture,
   setQuestRaiderReelMaskTexture,
   updateGridScene,
   type GridLayout,
@@ -179,6 +180,7 @@ export function QuestRaiderCanvas({
         initGridScene(gameLayer);
         void (async () => {
           await loadQuestRaiderFrameTexture();
+          await loadQuestRaiderMultiplierTexture();
           await preloadQuestRaiderSymbolTextures();
           if (destroyed || !gameLayerRef.current || !appRef.current) return;
           kickResize();

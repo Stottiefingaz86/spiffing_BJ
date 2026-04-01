@@ -35,16 +35,6 @@ export const QR_PLAYFIELD = {
 } as const;
 
 /**
- * Logo sits on the frame art (not the viewport): fractions of the **rendered frame box** (same as `frame.png` aspect).
- */
-export const QR_LOGO_ON_FRAME = {
-  /** From top edge of frame bitmap box (keep low so tall logo doesn’t overlap reel on narrow screens). */
-  topFrac: 0.01,
-  /** Max width as fraction of frame width (centered) */
-  widthFrac: 0.68,
-} as const;
-
-/**
  * Central emerald under the reel window on `frame.png` — fractions of the full frame bitmap (0–1).
  * Tweak if art changes; used for the spin-state glow overlay in `QuestRaiderClient`.
  */

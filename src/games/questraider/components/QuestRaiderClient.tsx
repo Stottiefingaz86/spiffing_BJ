@@ -9,8 +9,7 @@ import {
 } from '@/components/game/slotChrome';
 
 import { QuestRaiderSession, GamePhase } from '../engine/session';
-import { QuestRaiderCanvas, type QuestRaiderFrameRect } from '../render/QuestRaiderCanvas';
-import { QR_LOGO_ON_FRAME } from '../render/questRaiderLayout';
+import { QuestRaiderCanvas } from '../render/QuestRaiderCanvas';
 import { QuestRaiderSettingsModal } from './QuestRaiderSettingsModal';
 import {
   preloadTFSfx,
@@ -41,7 +40,6 @@ function QuestRaiderGame() {
   const [bgmOn, setBgmOn] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [stakeOpen, setStakeOpen] = useState(false);
-  const [frameRect, setFrameRect] = useState<QuestRaiderFrameRect | null>(null);
   const [displayedWin, setDisplayedWin] = useState(0);
   const targetWinRef = useRef(0);
   const lastSpinWinRef = useRef(0);
@@ -275,7 +273,6 @@ function QuestRaiderGame() {
           snapshot={snap}
           onDropComplete={onDropComplete}
           onCascadeStepComplete={onCascadeStepComplete}
-          onFrameLayout={setFrameRect}
           cameraShakeRef={cameraShakeRef}
           className="relative z-10 h-full w-full min-h-0"
         />
@@ -288,41 +285,6 @@ function QuestRaiderGame() {
               ? 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(48,28,16,0.12) 62%, rgba(22,12,8,0.34) 100%)'
               : 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(0,0,0,0.1) 64%, rgba(0,0,0,0.3) 100%)',
           }}
-        />
-        <img
-          src={`${ASSET_BASE}quest_raiders/logo.png`}
-          alt="Quest Raider"
-          className="pointer-events-none absolute z-40 w-auto object-contain [filter:drop-shadow(0_5px_20px_rgba(0,0,0,0.82))]"
-          style={
-            frameRect
-              ? (() => {
-                  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
-                  const logoH = isMobile
-                    ? Math.max(72, frameRect.w * 0.22)
-                    : Math.max(64, frameRect.w * 0.18);
-                  const overlap = isMobile ? 0.42 : 0.32;
-                  const top =
-                    Math.max(0, frameRect.y + frameRect.h * QR_LOGO_ON_FRAME.topFrac - logoH * overlap) + 5;
-                  return {
-                    left: '50%',
-                    top: `${top}px`,
-                    height: `${logoH}px`,
-                    transform: 'translateX(-50%)',
-                    maxWidth: `min(100%, ${frameRect.w * QR_LOGO_ON_FRAME.widthFrac}px)`,
-                    opacity: 1,
-                  };
-                })()
-              : {
-                  left: '50%',
-                  top: 'calc(max(0.5rem, env(safe-area-inset-top)) + 5px)',
-                  height: '4rem',
-                  transform: 'translateX(-50%)',
-                  maxWidth: 'min(100%, 36rem)',
-                  opacity: 0.35,
-                }
-          }
-          decoding="async"
-          draggable={false}
         />
 
         {isFreeSpinIntro && (
