@@ -34,6 +34,9 @@ const QR_REEL_FINE_NUDGE_Y_AT_NATIVE = 6;
 /** Move the 5×3 grid up (CSS px at 1×); scaled by post-process `sx` after layout. */
 const AZTEC_GRID_SHIFT_UP_CSS = 14;
 
+/** Move **frame + reel grid** up together (CSS px at 1×), after centering clamp; scaled by `sx`. */
+const AZTEC_FRAME_SHIFT_UP_CSS = 12;
+
 /** Positive = shift grid left (CSS px) vs playfield. */
 const AZTEC_GRID_NUDGE_LEFT_PX = 2;
 
@@ -240,7 +243,9 @@ function applyAztecVisualPostProcess(
     const fh = Math.max(1, Math.floor(raw.frameH * s));
     const fx = Math.floor((cssW - fw) / 2);
     const maxTop = Math.max(0, cssH - fh);
-    const fy = Math.max(0, Math.min(maxTop, Math.floor((cssH - fh) / 2)));
+    const fyCenter = Math.floor((cssH - fh) / 2);
+    let fy = Math.max(0, Math.min(maxTop, fyCenter));
+    fy -= Math.round(AZTEC_FRAME_SHIFT_UP_CSS * s);
 
     const ratioW = rw > 0 ? fw / rw : 1;
     const ratioH = rh > 0 ? fh / rh : 1;
