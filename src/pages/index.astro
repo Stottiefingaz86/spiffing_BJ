@@ -1,6 +1,6 @@
 ---
 import Layout from '@/layouts/Layout.astro';
-import { LobbyHamburgerMenu } from '@/components/lobby/LobbyHamburgerMenu';
+import { LobbySidebar } from '@/components/lobby/LobbySidebar';
 
 type LobbyTileBg =
   | { type: 'image'; src: string }
@@ -125,6 +125,8 @@ const filterDefs: { id: string; label: string }[] = [
 
 <Layout title="Spiffing Studios — Casino games with manners" scrollable>
   <div class="spiffing-site font-staatliches relative min-h-dvh">
+    <LobbySidebar client:load />
+
     <!-- CRT FX — VCR / TV-tuning warp (under .crt-ui) -->
     <div class="crt-overlay" aria-hidden="true">
       <div class="crt-overlay__grain"></div>
@@ -148,69 +150,29 @@ const filterDefs: { id: string; label: string }[] = [
       <span id="crt-toggle-label">CRT ON</span>
     </button>
 
-    <!-- Nav -->
-    <header
-      class="crt-ui toshi-grain-surface border-b border-[var(--toshi-border)] backdrop-blur-sm"
-    >
-      <div
-        class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8"
-      >
-        <div class="flex items-center gap-3 sm:gap-6">
-          <div class="md:hidden">
-            <LobbyHamburgerMenu client:load />
-          </div>
-          <a href="/" class="leading-none" aria-label="Spiffing Studios home">
-            <img
-              src="/logo-spiffing.svg"
-              alt="Spiffing Studios"
-              class="block h-10 w-auto sm:h-12"
-              width="200"
-              height="120"
-            />
-          </a>
-          <nav class="hidden items-center gap-6 md:flex" aria-label="Primary">
-            <a href="#games" class="lobby-nav-link">Games</a>
-            <a href="#games" class="lobby-nav-link" data-filter-jump="exclusive">Exclusive</a>
-            <a
-              href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20demo"
-              class="lobby-nav-link"
-            >
-              Contact
-            </a>
-          </nav>
-        </div>
-        <a
-          href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20demo"
-          class="lobby-brand-cta inline-flex h-9 items-center justify-center px-3 text-[10px] font-bold uppercase tracking-[0.16em] sm:h-10 sm:px-4 sm:text-[11px]"
-        >
-          Contact
-        </a>
-      </div>
-    </header>
-
     <!-- Hero — full-bleed manor art with VCR warp; UI stacks above -->
-    <section class="relative z-[1] flex min-h-[calc(100dvh-4rem)] flex-col" aria-label="Hero">
+    <section class="relative z-[1] flex min-h-dvh flex-col" aria-label="Hero">
       <svg class="pointer-events-none absolute h-0 w-0" aria-hidden="true">
         <filter id="vcr-warp" x="-10%" y="-10%" width="120%" height="120%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.01 0.045"
+            baseFrequency="0.008 0.03"
             numOctaves="2"
             seed="2"
             result="noise"
           >
             <animate
               attributeName="baseFrequency"
-              dur="3.2s"
-              values="0.01 0.04;0.018 0.06;0.01 0.045;0.01 0.04"
+              dur="4.5s"
+              values="0.008 0.028;0.012 0.038;0.008 0.03;0.008 0.028"
               repeatCount="indefinite"
             />
           </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G">
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.5" xChannelSelector="R" yChannelSelector="G">
             <animate
               attributeName="scale"
-              dur="4s"
-              values="5;12;7;10;5"
+              dur="5s"
+              values="1.5;3.5;2;3;1.5"
               repeatCount="indefinite"
             />
           </feDisplacementMap>
@@ -226,7 +188,7 @@ const filterDefs: { id: string; label: string }[] = [
         />
         <!-- Soft wash so logo/type read; keep the art visible -->
         <div
-          class="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,8,6,0.35)_0%,rgba(10,8,6,0.28)_40%,rgba(10,8,6,0.55)_72%,rgba(12,11,9,0.88)_100%)]"
+          class="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,8,6,0.12)_0%,rgba(10,8,6,0.08)_40%,rgba(10,8,6,0.28)_72%,rgba(12,11,9,0.55)_100%)]"
         >
         </div>
         <div
@@ -241,11 +203,11 @@ const filterDefs: { id: string; label: string }[] = [
       >
         <div class="spiffing-logo-glitch mb-8 sm:mb-10">
           <img
-            src="/logo-spiffing.svg"
+            src="/spiffing3d.png"
             alt="Spiffing Studios"
-            class="spiffing-logo-glitch__img h-20 w-auto drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)] sm:h-28 md:h-32"
-            width="320"
-            height="196"
+            class="spiffing-logo-glitch__img h-24 w-auto drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)] sm:h-32 md:h-40"
+            width="354"
+            height="177"
           />
         </div>
         <h1
@@ -262,19 +224,28 @@ const filterDefs: { id: string; label: string }[] = [
         >
           Explore games
         </a>
+        <a
+          href="#games"
+          class="hero-scroll-cue mt-10 sm:mt-12"
+          aria-label="Scroll to games"
+        >
+          <span class="hero-scroll-cue__mouse" aria-hidden="true">
+            <span class="hero-scroll-cue__wheel"></span>
+          </span>
+        </a>
       </div>
     </section>
 
     <!-- Portfolio -->
     <section
       id="games"
-      class="crt-ui toshi-grain border-t border-[var(--toshi-border)] px-4 py-14 sm:px-6 sm:py-20 lg:px-8"
+      class="crt-ui toshi-grain border-t border-white/10 px-4 py-16 sm:px-6 sm:py-24 lg:px-8"
       aria-label="Game portfolio"
     >
       <div class="mx-auto max-w-6xl">
         <div class="mx-auto max-w-2xl text-center">
-          <p class="lobby-brand-accent text-[10px] uppercase tracking-[0.22em]">Portfolio</p>
-          <h2 class="mt-2 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl md:text-5xl">
+          <p class="toshi-eyebrow">Portfolio</p>
+          <h2 class="mt-3 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl md:text-5xl">
             Suits you sir!
           </h2>
           <p class="mt-3 text-sm text-[var(--toshi-muted)] sm:text-base">
@@ -287,7 +258,7 @@ const filterDefs: { id: string; label: string }[] = [
           aria-label="Game filters and sort"
         >
           <div class="min-w-0 flex-1">
-            <p class="lobby-brand-accent mb-2 text-[10px] uppercase tracking-[0.22em]">Filter by</p>
+            <p class="toshi-eyebrow mb-2">Filter by</p>
             <div
               class="flex flex-wrap gap-2 max-sm:-mx-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-1 max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
               id="lobby-filter-group"
@@ -299,7 +270,7 @@ const filterDefs: { id: string; label: string }[] = [
                   <button
                     type="button"
                     class:list={[
-                      'lobby-filter-btn shrink-0 whitespace-nowrap rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:px-3.5 sm:text-xs',
+                      'lobby-filter-btn shrink-0 whitespace-nowrap border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:px-3.5 sm:text-xs',
                       i === 0 ? 'lobby-filter-on' : 'lobby-filter-off',
                     ]}
                     data-filter={f.id}
@@ -312,11 +283,11 @@ const filterDefs: { id: string; label: string }[] = [
             </div>
           </div>
           <div class="min-w-0 shrink-0 lg:text-right">
-            <p class="lobby-brand-accent mb-2 text-[10px] uppercase tracking-[0.22em]">Sort by</p>
+            <p class="toshi-eyebrow mb-2">Sort by</p>
             <button
               type="button"
               id="lobby-sort-btn"
-              class="lobby-sort-btn flex w-full items-center justify-center gap-2 rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:inline-flex sm:w-auto sm:px-3.5 sm:text-xs"
+              class="lobby-sort-btn flex w-full items-center justify-center gap-2 border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:inline-flex sm:w-auto sm:px-3.5 sm:text-xs"
               data-sort-mode="release"
               aria-label="Change sort order"
             >
@@ -335,7 +306,7 @@ const filterDefs: { id: string; label: string }[] = [
               <a
                 href={game.available ? game.href : undefined}
                 class:list={[
-                  'lobby-game-tile group relative flex w-full flex-col overflow-hidden',
+                  'lobby-game-tile group relative flex w-full flex-col',
                   game.available ? 'cursor-pointer' : 'cursor-default opacity-50',
                 ]}
                 data-lobby-tile
@@ -362,14 +333,13 @@ const filterDefs: { id: string; label: string }[] = [
                     </div>
                   )}
 
-                  {/* CRT on hover */}
                   <div class="lobby-game-tile__crt" aria-hidden="true">
                     <div class="lobby-game-tile__crt-grain" />
                     <div class="lobby-game-tile__crt-scan" />
                     <div class="lobby-game-tile__crt-chroma" />
                   </div>
 
-                  <div class="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/90 via-black/30 to-black/15" />
+                  <div class="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
 
                   <div class="absolute left-2.5 top-2.5 z-[3] flex flex-wrap gap-1.5">
                     {game.isNew && (
@@ -384,15 +354,14 @@ const filterDefs: { id: string; label: string }[] = [
                     )}
                   </div>
 
-                  {/* Typographic title on art — replaces weak logo assets */}
-                  <div class="absolute inset-x-0 bottom-0 z-[3] px-3 pb-4 pt-16 text-center">
-                    <p class="lobby-game-tile__title text-[1.35rem] leading-none tracking-tight text-white sm:text-[1.55rem]">
+                  <div class="absolute inset-x-0 bottom-0 z-[3] px-3 pb-3.5 pt-12 text-center">
+                    <p class="lobby-game-tile__title text-[1.2rem] leading-none text-white sm:text-[1.4rem]">
                       {game.title}
                     </p>
                   </div>
                 </div>
 
-                <div class="flex flex-col px-3 py-2.5 sm:px-3.5 sm:py-3">
+                <div class="lobby-game-tile__meta flex flex-col px-3 py-2.5 sm:px-3.5 sm:py-3">
                   <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--toshi-muted)] sm:text-[11px]">
                     {game.category}
                   </p>
@@ -400,15 +369,15 @@ const filterDefs: { id: string; label: string }[] = [
                     {game.subtitle}
                   </p>
                   {game.available && (
-                    <span class="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--toshi-orange)] transition-colors group-hover:text-[var(--toshi-text)] sm:text-[11px]">
+                    <span class="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--toshi-orange)] sm:text-[11px]">
                       Demo play →
                     </span>
                   )}
                 </div>
 
                 {!game.available && (
-                  <div class="absolute inset-0 z-[5] flex items-center justify-center rounded-[1.15rem] bg-black/50">
-                    <span class="rounded-full border border-[var(--toshi-border)] bg-[var(--toshi-surface)] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--toshi-muted)]">
+                  <div class="absolute inset-0 z-[5] flex items-center justify-center rounded-[0.85rem] bg-black/40">
+                    <span class="rounded-full bg-black/70 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/70">
                       Coming Soon
                     </span>
                   </div>
@@ -430,12 +399,12 @@ const filterDefs: { id: string; label: string }[] = [
 
     <!-- Partner -->
     <section
-      class="crt-ui toshi-grain-surface border-t border-[var(--toshi-border)] px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
+      class="crt-ui toshi-grain border-t border-white/10 px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
       aria-label="Partner"
     >
       <div class="mx-auto max-w-xl">
-        <p class="lobby-brand-accent text-[10px] uppercase tracking-[0.22em]">Operators</p>
-        <h2 class="mt-2 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl">
+        <p class="toshi-eyebrow">Operators</p>
+        <h2 class="mt-3 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl">
           Become a partner
         </h2>
         <p class="mt-3 text-sm leading-relaxed text-[var(--toshi-muted)] sm:text-base">
@@ -451,7 +420,7 @@ const filterDefs: { id: string; label: string }[] = [
     </section>
 
     <footer
-      class="crt-ui toshi-grain border-t border-[var(--toshi-border)] px-4 py-5 text-center text-[10px] font-medium tracking-wide text-[var(--toshi-muted-2)] sm:text-[11px]"
+      class="crt-ui border-t border-white/10 bg-black/50 px-4 py-5 text-center text-[10px] font-medium tracking-wide text-white/35 sm:text-[11px]"
     >
       Spiffing Studios &mdash; Play Responsibly
     </footer>
@@ -649,11 +618,11 @@ const filterDefs: { id: string; label: string }[] = [
       });
     });
 
-    document.querySelectorAll('[data-filter-jump]').forEach(function (link) {
-      link.addEventListener('click', function () {
-        var tag = link.getAttribute('data-filter-jump');
-        if (tag) applyFilter(tag);
-      });
+    document.addEventListener('click', function (e) {
+      var link = e.target && e.target.closest ? e.target.closest('[data-filter-jump]') : null;
+      if (!link) return;
+      var tag = link.getAttribute('data-filter-jump');
+      if (tag) applyFilter(tag);
     });
 
     if (sortBtn && sortLabel) {

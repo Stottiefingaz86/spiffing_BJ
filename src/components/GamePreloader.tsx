@@ -153,7 +153,7 @@ export function GamePreloader({ children, assets = [], onPlay: onPlayProp }: Gam
         }}>
           {/* Logo + tagline grouped together */}
           <img
-            src={publicAssetUrl('logo-spiffing.svg')}
+            src={publicAssetUrl('spiffing3d.png')}
             alt="Spiffing Studios"
             style={{ height: '140px', width: 'auto' }}
           />
