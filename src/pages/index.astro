@@ -26,6 +26,8 @@ interface GameTile {
   releaseOrder: number;
   /** Show orange New badge */
   isNew?: boolean;
+  /** Show Fire badge */
+  isFire?: boolean;
 }
 
 const games: GameTile[] = [
@@ -127,6 +129,7 @@ const games: GameTile[] = [
     available: true,
     filterTags: ['table', 'exclusive'],
     releaseOrder: 20,
+    isFire: true,
   },
 ];
 
@@ -356,6 +359,14 @@ const filterDefs: { id: string; label: string }[] = [
                     {game.isNew && (
                       <span class="lobby-badge-new px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]">
                         New
+                      </span>
+                    )}
+                    {game.isFire && (
+                      <span class="lobby-badge-fire" aria-label="Hot">
+                        <svg viewBox="0 0 24 24" fill="currentColor" class="lobby-badge-fire__icon" aria-hidden="true">
+                          <path d="M12 23c4.97 0 9-3.58 9-8 0-3.4-2.1-5.85-3.85-7.65C15.9 6 14.7 4.55 14.2 2.8c-.15-.55-.9-.7-1.25-.25-1.55 2-2.35 3.85-4.05 5.55C7.25 9.65 5.5 11.55 5.5 14.5 5.5 19.15 8.85 23 12 23zm0-3.5c-1.1 0-2-.9-2-2 0-.85.5-1.4 1.15-2.05.45-.45.95-.95 1.25-1.7.15-.35.6-.4.8-.1.55.85.8 1.55.8 2.35 0 1.35-.95 2.5-2 2.5z" />
+                        </svg>
+                        Hot
                       </span>
                     )}
                     {game.filterTags.includes('exclusive') && (
