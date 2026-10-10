@@ -134,112 +134,885 @@
   .font-staatliches {
     font-family: 'Staatliches', system-ui, sans-serif;
   }
+}
 
-  /**
-   * Lobby page atmosphere — sits under content, over base gradients.
-   * Diagonal purple threads + drifting dot matrix (very low contrast).
-   */
-  .lobby-bg-pattern-weave {
-    background-image: repeating-linear-gradient(
-      118deg,
-      transparent 0,
-      transparent 16px,
-      rgba(168, 85, 247, 0.045) 16px,
-      rgba(168, 85, 247, 0.045) 17px
-    );
+/**
+ * Spiffing marketing site — Toshi Ways Club palette:
+ * cool grayscale + one hot orange accent, lo-fi graphic chrome.
+ */
+.spiffing-site {
+  --toshi-bg: #12110f;
+  --toshi-surface: #1a1816;
+  --toshi-surface-2: #221f1c;
+  --toshi-border: #2e2a26;
+  --toshi-border-hover: #ff5a1f;
+  --toshi-text: #f2f2f2;
+  --toshi-muted: #8a8a8a;
+  --toshi-muted-2: #5c5c5c;
+  --toshi-orange: #ff5a1f;
+  --toshi-orange-dim: #c94414;
+  --toshi-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-color: var(--toshi-bg);
+  color: var(--toshi-text);
+}
+
+/* Static grit on dark panels — no clean flat black */
+.toshi-grain {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--toshi-bg);
+}
+
+.toshi-grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
+  background-image: var(--toshi-noise);
+  background-size: 180px 180px;
+}
+
+.toshi-grain > * {
+  position: relative;
+  z-index: 1;
+}
+
+.toshi-grain-surface {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--toshi-surface);
+}
+
+.toshi-grain-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.2;
+  mix-blend-mode: overlay;
+  background-image: var(--toshi-noise);
+  background-size: 160px 160px;
+}
+
+.toshi-grain-surface > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero image — VCR / tuning warp via SVG displacement */
+.hero-vcr-img {
+  filter: url(#vcr-warp) contrast(1.1) brightness(0.78) saturate(0.85);
+  transform-origin: center;
+  animation: hero-vcr-hold 3.8s steps(2) infinite;
+}
+
+@keyframes hero-vcr-hold {
+  0%,
+  86%,
+  100% {
+    transform: scale(1.08) translateY(0);
   }
-
-  .lobby-bg-pattern-dots {
-    background-image: radial-gradient(
-      circle at center,
-      rgba(255, 255, 255, 0.055) 0.55px,
-      transparent 0.65px
-    );
-    background-size: 20px 20px;
-    animation: lobby-bg-pattern-drift 85s linear infinite;
+  89% {
+    transform: scale(1.085) translateY(0.6%);
   }
-
-  .lobby-bg-pattern-noise {
-    opacity: 0.22;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-size: 180px 180px;
+  92% {
+    transform: scale(1.08) translateY(-0.4%);
+  }
+  95% {
+    transform: scale(1.08) translateY(0);
   }
 }
 
-@keyframes lobby-bg-pattern-drift {
-  to {
-    background-position: 20px 14px;
+html.crt-off .hero-vcr-img {
+  filter: contrast(1.08) brightness(0.78) saturate(0.85);
+  animation: none;
+}
+
+/* ── CRT overlay
+ * Strong old-TV / VCR tracking warp on atmosphere layers only.
+ * Interactive UI (.crt-ui) stacks above so CTAs stay crisp.
+ */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: -3%;
+  z-index: 20;
+  overflow: hidden;
+  animation: crt-hsync-wobble 1.4s steps(2) infinite;
+  will-change: transform;
+}
+
+.crt-overlay__grain {
+  position: absolute;
+  inset: -30%;
+  opacity: 0.38;
+  mix-blend-mode: overlay;
+  background-image: var(--toshi-noise);
+  background-size: 140px 140px;
+  animation: crt-grain-drift 0.18s steps(2) infinite;
+}
+
+/* Fine TV raster lines — the “lines” look */
+.crt-overlay__scanlines {
+  position: absolute;
+  inset: -12% -6%;
+  opacity: 0.42;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0px,
+    rgba(0, 0, 0, 0.55) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  animation: crt-line-wobble 0.12s steps(1) infinite;
+}
+
+/* Thicker interlaced band for depth */
+.crt-overlay__scanlines-thick {
+  position: absolute;
+  inset: -15% -8%;
+  opacity: 0.16;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.04) 0px,
+    rgba(255, 255, 255, 0.04) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  animation: crt-line-wobble-alt 0.16s steps(1) infinite;
+}
+
+/* VCR tracking tear — subtle horizontal offset bands */
+.crt-overlay__tracking {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  height: 8%;
+  top: 30%;
+  opacity: 0.28;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 40%,
+    rgba(0, 0, 0, 0.22) 50%,
+    rgba(255, 255, 255, 0.03) 60%,
+    transparent 100%
+  );
+  animation: crt-tracking-tear 4.5s steps(3) infinite;
+  mix-blend-mode: soft-light;
+}
+
+.crt-overlay__tracking--b {
+  top: 64%;
+  height: 5%;
+  opacity: 0.2;
+  animation-duration: 5.5s;
+  animation-delay: -1.4s;
+}
+
+/* Rolling refresh bar like an old CRT */
+.crt-overlay__refresh {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  height: 16%;
+  top: -20%;
+  opacity: 0.1;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(255, 255, 255, 0.07) 45%,
+    rgba(255, 90, 31, 0.05) 55%,
+    transparent 100%
+  );
+  animation: crt-refresh-roll 6.5s linear infinite;
+}
+
+.crt-overlay__wobble {
+  position: absolute;
+  inset: 0;
+  opacity: 0.14;
+  mix-blend-mode: screen;
+  background: linear-gradient(
+    100deg,
+    transparent 42%,
+    rgba(255, 60, 40, 0.1) 49%,
+    rgba(40, 140, 255, 0.08) 51%,
+    transparent 58%
+  );
+  background-size: 240% 100%;
+  animation: crt-chroma-sweep 3.2s steps(3) infinite;
+}
+
+.crt-overlay__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 70% 65% at 50% 48%,
+    transparent 35%,
+    rgba(0, 0, 0, 0.62) 100%
+  );
+}
+
+/* Interactive chrome sits above the CRT layer */
+.crt-ui {
+  position: relative;
+  z-index: 40;
+}
+
+html.crt-off .crt-overlay {
+  display: none;
+}
+
+/* Classic H-sync — light bend, not a seizure */
+@keyframes crt-hsync-wobble {
+  0%,
+  100% {
+    transform: translate(0, 0) skewX(0deg) scale(1.02);
+  }
+  12% {
+    transform: translate(-4px, 0) skewX(0.25deg) scale(1.022);
+  }
+  18% {
+    transform: translate(5px, 1px) skewX(-0.3deg) scale(1.018);
+  }
+  45% {
+    transform: translate(1px, 0) skewX(-0.1deg) scale(1.02);
+  }
+  72% {
+    transform: translate(-3px, 0) skewX(0.2deg) scale(1.021);
+  }
+  78% {
+    transform: translate(4px, 0) skewX(-0.22deg) scale(1.019);
+  }
+}
+
+@keyframes crt-tracking-tear {
+  0%,
+  100% {
+    transform: translateX(0) skewX(0deg);
+  }
+  25% {
+    transform: translateX(-8px) skewX(0.4deg);
+  }
+  50% {
+    transform: translateX(10px) skewX(-0.5deg);
+  }
+  75% {
+    transform: translateX(-5px) skewX(0.25deg);
+  }
+}
+
+/* Per-line horizontal jitter — old TV look */
+@keyframes crt-line-wobble {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-3px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes crt-line-wobble-alt {
+  0% {
+    transform: translateX(2px);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
+  100% {
+    transform: translateX(1px);
+  }
+}
+
+@keyframes crt-grain-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-2.5%, 1.5%);
+  }
+  50% {
+    transform: translate(2%, -2%);
+  }
+  75% {
+    transform: translate(-1.5%, -1%);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes crt-refresh-roll {
+  0% {
+    top: -25%;
+  }
+  100% {
+    top: 110%;
+  }
+}
+
+@keyframes crt-chroma-sweep {
+  0% {
+    background-position: 120% 0;
+    opacity: 0.06;
+  }
+  35% {
+    opacity: 0.28;
+  }
+  100% {
+    background-position: -50% 0;
+    opacity: 0.08;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lobby-bg-pattern-dots {
+  .crt-overlay,
+  .crt-overlay__grain,
+  .crt-overlay__scanlines,
+  .crt-overlay__scanlines-thick,
+  .crt-overlay__tracking,
+  .crt-overlay__refresh,
+  .crt-overlay__wobble,
+  .hero-vcr-img {
     animation: none;
+  }
+
+  .hero-vcr-img {
+    filter: contrast(1.08) brightness(0.78) saturate(0.85);
   }
 }
 
-/**
- * Lobby: green = PLAY / CTA only (~#5cb35d, #7ed987).
- * Coral = Spiffing logo (~#f0715e) — filter/sort UI and their labels.
- */
+.crt-toggle {
+  pointer-events: auto;
+  position: fixed;
+  bottom: 0.85rem;
+  left: 0.75rem;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--toshi-border);
+  background: rgba(11, 11, 11, 0.85);
+  color: var(--toshi-muted);
+  padding: 0.35rem 0.65rem;
+  font-family: 'Staatliches', system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.crt-toggle:hover {
+  color: var(--toshi-text);
+  border-color: var(--toshi-orange);
+}
+
+.crt-toggle[aria-pressed='true'] {
+  color: var(--toshi-orange);
+  border-color: var(--toshi-orange);
+}
+
+.crt-toggle__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: currentColor;
+}
+
+/* ── Game launcher modal ── */
+.game-launcher {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
+  background: rgba(8, 7, 6, 0.72);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.22s ease,
+    visibility 0.22s ease;
+}
+
+.game-launcher.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.game-launcher__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  background: #0e0d0c;
+  border: 0;
+  box-shadow: 0 0 0 1px #2e2a26;
+  overflow: hidden;
+}
+
+@media (min-width: 900px) {
+  .game-launcher {
+    padding: 1.25rem;
+  }
+
+  .game-launcher__panel {
+    max-width: min(1200px, 100%);
+    max-height: 100%;
+    margin: auto;
+    border-radius: 1.15rem;
+    border: 1px solid #2e2a26;
+    box-shadow:
+      0 24px 80px rgba(0, 0, 0, 0.65),
+      0 0 0 1px rgba(255, 90, 31, 0.15);
+  }
+}
+
+.game-launcher__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid #2e2a26;
+  background: #141210;
+}
+
+.game-launcher__title {
+  flex: 1;
+  min-width: 0;
+  font-family: 'Staatliches', system-ui, sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: #f2f2f2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-launcher__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.game-launcher__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.15rem;
+  padding: 0 0.85rem;
+  border: 1px solid #2e2a26;
+  border-radius: 9999px;
+  background: transparent;
+  color: #8a8a8a;
+  font-family: 'Staatliches', system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.game-launcher__btn:hover {
+  color: #f2f2f2;
+  border-color: #ff5a1f;
+}
+
+.game-launcher__btn--close {
+  border-color: #ff5a1f;
+  background: #ff5a1f;
+  color: #0b0b0b;
+}
+
+.game-launcher__btn--close:hover {
+  filter: brightness(1.08);
+  color: #0b0b0b;
+}
+
+.game-launcher__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+}
+
+.game-launcher__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #000;
+}
+
+.game-launcher__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Staatliches', system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  background: #0e0d0c;
+  transition: opacity 0.25s ease;
+}
+
+.game-launcher__loading.is-done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html.launcher-open {
+  overflow: hidden;
+}
+
+html.launcher-open .crt-toggle {
+  display: none;
+}
+
 @layer components {
   .lobby-brand-accent {
-    color: rgba(240, 113, 94, 0.92);
+    color: var(--toshi-orange);
   }
 
   .lobby-brand-accent-dim {
-    color: rgba(240, 113, 94, 0.85);
+    color: rgba(255, 90, 31, 0.75);
   }
 
   .lobby-brand-cta {
-    border: 1px solid rgba(126, 217, 135, 0.45);
-    background: linear-gradient(180deg, #6abf69 0%, #459648 100%);
-    color: #fff;
-    box-shadow: 0 4px 22px rgba(92, 179, 93, 0.42);
+    border: 1px solid var(--toshi-orange);
+    border-radius: 9999px;
+    background: var(--toshi-orange);
+    color: #0b0b0b;
     transition:
       filter 0.15s ease,
-      box-shadow 0.15s ease;
+      background-color 0.15s ease;
   }
 
   .lobby-brand-cta:hover {
-    filter: brightness(1.06);
-    box-shadow: 0 6px 28px rgba(92, 179, 93, 0.5);
+    filter: brightness(1.08);
+    background: #ff7340;
   }
 
   .lobby-filter-on {
-    border-color: rgba(240, 113, 94, 0.92);
-    background-color: #e85542;
-    color: #fff;
-    box-shadow: 0 0 22px rgba(240, 113, 94, 0.35);
+    border-color: var(--toshi-orange);
+    background-color: var(--toshi-orange);
+    color: #0b0b0b;
   }
 
   .lobby-filter-off {
-    border-color: rgba(255, 255, 255, 0.08);
-    background-color: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.78);
-    box-shadow: none;
+    border-color: var(--toshi-border);
+    background-color: transparent;
+    color: var(--toshi-muted);
   }
 
   .lobby-filter-off:hover {
-    border-color: rgba(240, 113, 94, 0.42);
-    background-color: rgba(240, 113, 94, 0.14);
-    color: rgba(255, 255, 255, 0.96);
+    border-color: var(--toshi-orange);
+    color: var(--toshi-text);
+    background-color: rgba(255, 90, 31, 0.08);
   }
 
   .lobby-sort-btn {
-    border-color: rgba(240, 113, 94, 0.45);
-    background-color: rgba(240, 113, 94, 0.12);
-    color: rgba(255, 248, 246, 0.96);
+    border-color: var(--toshi-border);
+    background-color: var(--toshi-surface);
+    color: var(--toshi-text);
     transition:
       border-color 0.15s ease,
-      background-color 0.15s ease,
-      box-shadow 0.15s ease;
+      color 0.15s ease;
   }
 
   .lobby-sort-btn:hover {
-    border-color: rgba(240, 113, 94, 0.72);
-    background-color: rgba(240, 113, 94, 0.2);
-    box-shadow: 0 0 18px rgba(240, 113, 94, 0.2);
+    border-color: var(--toshi-orange);
+    color: var(--toshi-orange);
+  }
+
+  .lobby-nav-link {
+    color: var(--toshi-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    transition: color 0.15s ease;
+  }
+
+  .lobby-nav-link:hover {
+    color: var(--toshi-orange);
+  }
+
+  .lobby-game-tile {
+    border: 1px solid var(--toshi-border);
+    border-radius: 1.15rem;
+    background: var(--toshi-surface);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    transition:
+      border-color 0.25s ease,
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  .lobby-game-tile:hover {
+    border-color: var(--toshi-orange);
+    transform: translateY(-3px);
+    box-shadow:
+      0 16px 36px rgba(0, 0, 0, 0.45),
+      0 0 0 1px rgba(255, 90, 31, 0.35);
+  }
+
+  .lobby-game-tile__media {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.05rem 1.05rem 0.65rem 0.65rem;
+    aspect-ratio: 16 / 11;
+    background: var(--toshi-surface-2);
+  }
+
+  .lobby-game-tile__art {
+    filter: grayscale(0.28) contrast(1.06) brightness(0.95);
+    transform: scale(1.02);
+    transition:
+      filter 0.4s ease,
+      transform 0.5s ease;
+  }
+
+  .lobby-game-tile:hover .lobby-game-tile__art {
+    filter: grayscale(0) contrast(1.08) brightness(1.05);
+    transform: scale(1.08);
+  }
+
+  /* CRT wash — only on tile hover */
+  .lobby-game-tile__crt {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .lobby-game-tile:hover .lobby-game-tile__crt {
+    opacity: 1;
+  }
+
+  .lobby-game-tile__crt-scan {
+    position: absolute;
+    inset: -8% -4%;
+    opacity: 0.45;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.5) 0px,
+      rgba(0, 0, 0, 0.5) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    animation: crt-line-wobble 0.14s steps(1) infinite;
+  }
+
+  .lobby-game-tile__crt-grain {
+    position: absolute;
+    inset: -15%;
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+    background-image: var(--toshi-noise);
+    background-size: 120px 120px;
+    animation: crt-grain-drift 0.2s steps(2) infinite;
+  }
+
+  .lobby-game-tile__crt-chroma {
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+    mix-blend-mode: screen;
+    box-shadow:
+      inset 2px 0 10px rgba(255, 60, 40, 0.35),
+      inset -2px 0 10px rgba(40, 140, 255, 0.28);
+    animation: crt-hsync-wobble 0.7s steps(2) infinite;
+  }
+
+  .lobby-badge-new {
+    border-radius: 9999px;
+    background: var(--toshi-orange);
+    color: #0b0b0b;
+  }
+
+  .lobby-badge-exclusive {
+    border-radius: 9999px;
+    background: rgba(20, 18, 16, 0.72);
+    color: #e0e0e0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(6px);
+  }
+
+  .lobby-game-tile__title {
+    font-family: 'Staatliches', system-ui, sans-serif;
+    text-shadow:
+      0 2px 16px rgba(0, 0, 0, 0.9),
+      0 0 1px rgba(0, 0, 0, 1);
+    letter-spacing: 0.02em;
+  }
+}
+
+/* Hero logo RGB glitch */
+.spiffing-logo-glitch {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+}
+
+.spiffing-logo-glitch__img {
+  position: relative;
+  z-index: 2;
+  display: block;
+  animation: logo-glitch-main 4.5s steps(1) infinite;
+}
+
+.spiffing-logo-glitch::before,
+.spiffing-logo-glitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: center / contain no-repeat url('/logo-spiffing.svg');
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.spiffing-logo-glitch::before {
+  z-index: 1;
+  animation: logo-glitch-r 4.5s steps(1) infinite;
+  mix-blend-mode: screen;
+  filter: drop-shadow(-2px 0 0 rgba(255, 50, 40, 0.85));
+}
+
+.spiffing-logo-glitch::after {
+  z-index: 3;
+  animation: logo-glitch-b 4.5s steps(1) infinite;
+  mix-blend-mode: screen;
+  filter: drop-shadow(2px 0 0 rgba(40, 140, 255, 0.75));
+}
+
+@keyframes logo-glitch-main {
+  0%,
+  88%,
+  100% {
+    transform: translate(0, 0);
+    clip-path: inset(0 0 0 0);
+  }
+  89% {
+    transform: translate(-3px, 1px);
+    clip-path: inset(12% 0 55% 0);
+  }
+  91% {
+    transform: translate(3px, -1px);
+    clip-path: inset(40% 0 20% 0);
+  }
+  93% {
+    transform: translate(-2px, 0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes logo-glitch-r {
+  0%,
+  88%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  89% {
+    transform: translate(-6px, 0);
+    opacity: 0.85;
+    clip-path: inset(8% 0 60% 0);
+  }
+  91% {
+    transform: translate(5px, 2px);
+    opacity: 0.7;
+    clip-path: inset(50% 0 10% 0);
+  }
+  93% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes logo-glitch-b {
+  0%,
+  88%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  89% {
+    transform: translate(6px, -1px);
+    opacity: 0.8;
+    clip-path: inset(20% 0 40% 0);
+  }
+  91% {
+    transform: translate(-4px, 1px);
+    opacity: 0.65;
+    clip-path: inset(55% 0 5% 0);
+  }
+  93% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spiffing-logo-glitch__img,
+  .spiffing-logo-glitch::before,
+  .spiffing-logo-glitch::after {
+    animation: none;
+  }
+
+  .spiffing-logo-glitch::before,
+  .spiffing-logo-glitch::after {
+    opacity: 0;
+  }
+
+  .lobby-game-tile:hover .lobby-game-tile__crt-scan,
+  .lobby-game-tile:hover .lobby-game-tile__crt-grain,
+  .lobby-game-tile:hover .lobby-game-tile__crt-chroma {
+    animation: none;
   }
 }
 
@@ -392,16 +1165,16 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 95% 55% at 25% 88%, rgba(168, 85, 247, 0.2) 0%, transparent 58%),
-    radial-gradient(ellipse 75% 48% at 78% 12%, rgba(236, 72, 153, 0.14) 0%, transparent 52%),
+    radial-gradient(ellipse 95% 55% at 25% 88%, rgba(255, 90, 31, 0.12) 0%, transparent 58%),
+    radial-gradient(ellipse 75% 48% at 78% 12%, rgba(255, 255, 255, 0.06) 0%, transparent 52%),
     linear-gradient(
       145deg,
-      #1a1334 0%,
-      #261a40 22%,
-      #2e1c42 42%,
-      #221636 62%,
-      #1e1230 82%,
-      #1a1334 100%
+      #121212 0%,
+      #1a1a1a 22%,
+      #222 42%,
+      #181818 62%,
+      #101010 82%,
+      #0b0b0b 100%
     );
 }
 
@@ -409,15 +1182,15 @@
   content: '';
   position: absolute;
   inset: 0;
-  opacity: 0.1;
+  opacity: 0.12;
   pointer-events: none;
   background-image:
     repeating-linear-gradient(
       120deg,
       transparent,
       transparent 20px,
-      rgba(180, 120, 255, 0.45) 20px,
-      rgba(180, 120, 255, 0.45) 21px,
+      rgba(255, 255, 255, 0.2) 20px,
+      rgba(255, 255, 255, 0.2) 21px,
       transparent 21px,
       transparent 40px
     ),
@@ -425,8 +1198,8 @@
       60deg,
       transparent,
       transparent 28px,
-      rgba(255, 100, 180, 0.35) 28px,
-      rgba(255, 100, 180, 0.35) 29px,
+      rgba(255, 90, 31, 0.25) 28px,
+      rgba(255, 90, 31, 0.25) 29px,
       transparent 29px,
       transparent 55px
     );
@@ -437,5 +1210,5 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.38) 50%, rgba(0, 0, 0, 0.78) 100%);
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.45) 50%, rgba(0, 0, 0, 0.85) 100%);
 }

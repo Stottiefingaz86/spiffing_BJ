@@ -56,10 +56,11 @@ const AZTEC_MOBILE_PUSH_DOWN_TO_DECAL_CSS = 50;
 /** Positive = shift grid left (CSS px) vs playfield. */
 const AZTEC_GRID_NUDGE_LEFT_PX = 2;
 
-const AZTEC_CELL_SHRINK_PX = 2;
+/** Post-layout shrink removed so cells use full computed inner (was 2px/side total band). */
+const AZTEC_CELL_SHRINK_PX = 0;
 
-/** Widen/tall each symbol cell by this many CSS px (total inner += REELS× / ROWS×); position nudged to keep center. */
-const AZTEC_CELL_ENLARGE_PX = 2;
+/** Extra size per cell edge (total inner += REELS× / ROWS×); nudged to stay centered in playfield. */
+const AZTEC_CELL_ENLARGE_PX = 3;
 
 /** After core layout: desktop visual scale for frame + grid (lower = smaller board on wide screens). */
 const AZTEC_STAGE_VISUAL_SCALE_DESKTOP = 0.74;

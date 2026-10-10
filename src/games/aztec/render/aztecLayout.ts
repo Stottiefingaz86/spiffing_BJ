@@ -24,9 +24,9 @@ export const QR_MASK = { w: 899, h: 544 } as const;
 
 /**
  * Fractional inset inside the mask rect (per side), as fractions of **mask** width/height.
- * Slightly inset so 5×3 tiles sit inside the stone window with a bit of breathing room.
+ * Smaller inset = larger playfield so tiles fill the carved opening across breakpoints (still clears bevel).
  */
-export const QR_REEL_INSET = { x: 0.022, y: 0.026 } as const;
+export const QR_REEL_INSET = { x: 0.009, y: 0.011 } as const;
 
 const maskLeftN = (QR_FRAME.w - QR_MASK.w) / (2 * QR_FRAME.w);
 const maskTopN = (QR_FRAME.h - QR_MASK.h) / (2 * QR_FRAME.h);

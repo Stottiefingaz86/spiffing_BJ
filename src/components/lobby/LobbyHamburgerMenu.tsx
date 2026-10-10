@@ -2,12 +2,10 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { slotGlassPill } from '@/components/game/slotChrome';
 
 const menuItemClass =
-  'flex w-full items-center rounded-xl px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-white transition-colors hover:bg-white/[0.1] active:bg-white/[0.07] sm:px-3.5 sm:py-3 sm:text-xs sm:tracking-[0.16em]';
+  'flex w-full items-center border border-transparent px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.14em] text-[#f2f2f2] transition-colors hover:border-[#ff5a1f] hover:text-[#ff5a1f] active:bg-white/[0.04] sm:px-3.5 sm:py-3 sm:text-xs sm:tracking-[0.16em]';
 
-/** Minimal 3-line menu — compact, even strokes, round caps */
 function MenuIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -87,7 +85,7 @@ export function LobbyHamburgerMenu() {
       <>
         <button
           type="button"
-          className="fixed inset-0 z-[9998] cursor-default bg-black/55 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[9998] cursor-default bg-black/70"
           aria-label="Close menu"
           tabIndex={-1}
           onClick={() => setOpen(false)}
@@ -95,10 +93,7 @@ export function LobbyHamburgerMenu() {
         <div
           id={menuId}
           role="menu"
-          className={cn(
-            slotGlassPill,
-            'fixed z-[9999] rounded-2xl border border-white/[0.14] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.55)]',
-          )}
+          className="fixed z-[9999] border border-[#2a2a2a] bg-[#141414] p-1.5"
           style={{
             top: panelStyle.top,
             left: panelStyle.left,
@@ -106,12 +101,7 @@ export function LobbyHamburgerMenu() {
           }}
         >
           <nav className="font-staatliches flex flex-col gap-0.5" aria-label="Lobby navigation">
-            <a
-              role="menuitem"
-              href="/"
-              className={menuItemClass}
-              onClick={() => setOpen(false)}
-            >
+            <a role="menuitem" href="/" className={menuItemClass} onClick={() => setOpen(false)}>
               Lobby
             </a>
             <a
@@ -122,15 +112,14 @@ export function LobbyHamburgerMenu() {
             >
               Games
             </a>
-            <button
-              type="button"
+            <a
               role="menuitem"
-              disabled
-              className={cn(menuItemClass, 'cursor-not-allowed text-left text-white/38')}
-              title="Coming soon"
+              href="#games"
+              className={menuItemClass}
+              onClick={() => setOpen(false)}
             >
-              Work
-            </button>
+              Exclusive
+            </a>
             <a
               role="menuitem"
               href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20demo"
@@ -150,10 +139,7 @@ export function LobbyHamburgerMenu() {
       <button
         ref={btnRef}
         type="button"
-        className={cn(
-          slotGlassPill,
-          'flex h-10 w-10 shrink-0 items-center justify-center backdrop-blur-md text-white/65 hover:text-white active:scale-[0.94] sm:h-11 sm:w-11',
-        )}
+        className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#2a2a2a] bg-[#141414] text-[#8a8a8a] transition-colors hover:border-[#ff5a1f] hover:text-[#ff5a1f] active:scale-[0.94] sm:h-11 sm:w-11"
         aria-expanded={open}
         aria-haspopup="true"
         aria-controls={menuId}

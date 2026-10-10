@@ -5,13 +5,15 @@ import '../styles/global.css';
 
 interface Props {
 	title?: string;
+	/** Allow document scroll (marketing / lobby). Games keep locked viewport. */
+	scrollable?: boolean;
 }
 
-const { title = 'Multi-Hand Blackjack' } = Astro.props;
+const { title = 'Multi-Hand Blackjack', scrollable = false } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en" class="h-dvh overflow-hidden">
+<html lang="en" class:list={[scrollable ? 'min-h-dvh' : 'h-dvh overflow-hidden']}>
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -20,7 +22,13 @@ const { title = 'Multi-Hand Blackjack' } = Astro.props;
 		<title>{title}</title>
 		<slot name="head" />
 	</head>
-	<body class="h-dvh overflow-hidden bg-[#2c1f3f] text-white antialiased">
+	<body
+		class:list={[
+			scrollable
+				? 'min-h-dvh overflow-x-hidden overflow-y-auto bg-[#12110f] text-white antialiased'
+				: 'h-dvh overflow-hidden bg-[#2c1f3f] text-white antialiased',
+		]}
+	>
 		<slot />
 	</body>
 </html>

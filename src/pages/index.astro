@@ -1,6 +1,5 @@
 ---
 import Layout from '@/layouts/Layout.astro';
-import { ParticleBackground } from '@/components/ParticleBackground';
 import { LobbyHamburgerMenu } from '@/components/lobby/LobbyHamburgerMenu';
 
 type LobbyTileBg =
@@ -11,8 +10,7 @@ interface GameTile {
   title: string;
   subtitle: string;
   href: string;
-  accent: string;
-  logoSrc?: string;
+  category: string;
   tileBg?: LobbyTileBg;
   icon: string;
   available: boolean;
@@ -20,29 +18,50 @@ interface GameTile {
   filterTags: string[];
   /** Higher = newer; used for “Release date” sort */
   releaseOrder: number;
-  /** Bigger logo slot inside the same tile height (e.g. wide/short artwork) */
-  largeLobbyLogo?: boolean;
+  /** Show orange New badge */
+  isNew?: boolean;
 }
 
 const games: GameTile[] = [
   {
-    title: 'Blackjack',
-    subtitle: 'Multi-Hand with 21+3 & Perfect Pairs',
-    href: '/blackjack',
-    accent: 'from-purple-500 to-fuchsia-500',
-    logoSrc: '/cards/multihand%20logo.png',
-    tileBg: { type: 'blackjack' },
-    icon: '🃏',
+    title: 'Dealr',
+    subtitle: 'Live Blackjack · AI Dealer Isla · Real Table',
+    href: 'https://livedealr-ten.vercel.app/real',
+    category: 'Live table',
+    tileBg: { type: 'image', src: '/dealr/bg.jpg' },
+    icon: '🂡',
     available: true,
     filterTags: ['table', 'exclusive'],
-    releaseOrder: 20,
+    releaseOrder: 99,
+    isNew: true,
+  },
+  {
+    title: 'Aztec',
+    subtitle: '5×3 Line Pays · Avalanche Multipliers · Free Falls',
+    href: '/aztec',
+    category: 'Slot game',
+    tileBg: { type: 'image', src: '/aztec/bg.jpg' },
+    icon: '🗿',
+    available: true,
+    filterTags: ['slots', 'exclusive'],
+    releaseOrder: 89,
+  },
+  {
+    title: 'Quest Raider',
+    subtitle: '5×3 Line Pays · Avalanche Multipliers · Free Falls',
+    href: '/quest-raider',
+    category: 'Slot game',
+    tileBg: { type: 'image', src: '/quest_raiders/bg.png' },
+    icon: '🧭',
+    available: true,
+    filterTags: ['slots', 'exclusive'],
+    releaseOrder: 88,
   },
   {
     title: 'Bamboo Fortunes',
     subtitle: '7x7 Cluster Pays with Symbol Multipliers',
     href: '/bamboofortunes',
-    accent: 'from-emerald-500 to-green-600',
-    logoSrc: '/bamboofortunes/logo.png',
+    category: 'Slot game',
     tileBg: { type: 'image', src: '/bamboofortunes/bg.png' },
     icon: '🐼',
     available: true,
@@ -53,21 +72,18 @@ const games: GameTile[] = [
     title: 'Froot Jarz',
     subtitle: 'Cluster Pays Cascading Slot',
     href: '/frootjarz',
-    accent: 'from-amber-400 to-orange-500',
-    logoSrc: '/frootshoot/LOGO.png',
+    category: 'Slot game',
     tileBg: { type: 'image', src: '/frootshoot/bg.png' },
     icon: '🍓',
     available: true,
     filterTags: ['slots', 'exclusive'],
     releaseOrder: 75,
-    largeLobbyLogo: true,
   },
   {
     title: 'Hot Fiesta',
     subtitle: '7x7 Cluster Pays with Multipliers & Free Spins',
     href: '/hotfiesta',
-    accent: 'from-red-500 to-orange-500',
-    logoSrc: '/hotfiesta/logo.png',
+    category: 'Slot game',
     tileBg: { type: 'image', src: '/hotfiesta/bg.png' },
     icon: '🌮',
     available: true,
@@ -75,40 +91,26 @@ const games: GameTile[] = [
     releaseOrder: 70,
   },
   {
-    title: 'Quest Raider',
-    subtitle: '5×3 Line Pays · Avalanche Multipliers · Free Falls',
-    href: '/quest-raider',
-    accent: 'from-amber-600 to-stone-700',
-    logoSrc: '/quest_raiders/logo.png',
-    tileBg: { type: 'image', src: '/quest_raiders/bg.png' },
-    icon: '🧭',
-    available: true,
-    filterTags: ['slots', 'exclusive'],
-    releaseOrder: 88,
-  },
-  {
-    title: 'Aztec',
-    subtitle: '5×3 Line Pays · Avalanche Multipliers · Free Falls',
-    href: '/aztec',
-    accent: 'from-teal-600 to-amber-800',
-    logoSrc: '/aztec/logo.png',
-    tileBg: { type: 'image', src: '/aztec/bg.jpg' },
-    icon: '🗿',
-    available: true,
-    filterTags: ['slots', 'exclusive'],
-    releaseOrder: 89,
-  },
-  {
     title: 'Breaking Bandits',
     subtitle: '5x3 Western Slot with Wild Features & Gamble',
     href: '/bandits',
-    accent: 'from-amber-600 to-orange-700',
-    logoSrc: '/bandits/logo.png',
+    category: 'Slot game',
     tileBg: { type: 'image', src: '/bandits/bg2.png' },
     icon: '🤠',
     available: true,
     filterTags: ['slots', 'exclusive'],
     releaseOrder: 65,
+  },
+  {
+    title: 'Blackjack',
+    subtitle: 'Multi-Hand with 21+3 & Perfect Pairs',
+    href: '/blackjack',
+    category: 'Table game',
+    tileBg: { type: 'blackjack' },
+    icon: '🃏',
+    available: true,
+    filterTags: ['table', 'exclusive'],
+    releaseOrder: 20,
   },
 ];
 
@@ -118,147 +120,214 @@ const filterDefs: { id: string; label: string }[] = [
   { id: 'table', label: 'Cards' },
   { id: 'exclusive', label: 'Exclusive' },
 ];
+
 ---
 
-<Layout title="Spiffing Casino — Game lobby">
-  <!-- Same deep base as GamePreloader (#0e0620) + navy gradient — darker than Layout body -->
-  <div
-    class="font-staatliches relative flex h-dvh min-h-0 flex-col overflow-y-auto bg-[#0e0620] text-white antialiased"
-  >
-    <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-      <!-- Same particle field as GamePreloader -->
-      <div class="absolute inset-0">
-        <ParticleBackground client:load />
-      </div>
-      <!-- Preloader card–style vertical wash (rgba(14,6,32) → rgba(20,10,45)) -->
-      <div
-        class="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,6,32,0.88)_0%,rgba(22,10,48,0.92)_38%,rgba(20,10,45,0.95)_62%,rgba(10,4,28,0.93)_100%)]"
-      />
-      <div
-        class="absolute inset-0 bg-[radial-gradient(ellipse_90%_65%_at_50%_-5%,rgba(168,85,247,0.14),transparent_55%)]"
-      />
-      <div
-        class="absolute inset-0 bg-[radial-gradient(ellipse_75%_55%_at_28%_72%,rgba(168,85,247,0.1),transparent_58%)]"
-      />
-      <div
-        class="absolute inset-0 bg-[radial-gradient(ellipse_65%_50%_at_74%_20%,rgba(236,72,153,0.08),transparent_52%)]"
-      />
-      <!-- Subtle pattern + grain (pointer-events none on parent) -->
-      <div class="lobby-bg-pattern-weave absolute inset-0 opacity-[0.7]" />
-      <div class="lobby-bg-pattern-dots absolute inset-0 opacity-[0.65]" />
-      <div class="lobby-bg-pattern-noise absolute inset-0 mix-blend-overlay" />
-      <div
-        class="absolute inset-0 bg-[radial-gradient(ellipse_100%_100%_at_50%_50%,transparent_0%,rgba(0,0,0,0.38)_100%)]"
-      />
+<Layout title="Spiffing Studios — Casino games with manners" scrollable>
+  <div class="spiffing-site font-staatliches relative min-h-dvh">
+    <!-- CRT FX — VCR / TV-tuning warp (under .crt-ui) -->
+    <div class="crt-overlay" aria-hidden="true">
+      <div class="crt-overlay__grain"></div>
+      <div class="crt-overlay__scanlines"></div>
+      <div class="crt-overlay__scanlines-thick"></div>
+      <div class="crt-overlay__tracking"></div>
+      <div class="crt-overlay__tracking crt-overlay__tracking--b"></div>
+      <div class="crt-overlay__refresh"></div>
+      <div class="crt-overlay__wobble"></div>
+      <div class="crt-overlay__vignette"></div>
     </div>
 
-    <div class="relative z-10 flex min-h-0 flex-1 flex-col">
+    <button
+      type="button"
+      id="crt-toggle"
+      class="crt-toggle"
+      aria-pressed="true"
+      aria-label="Toggle CRT effect"
+    >
+      <span class="crt-toggle__dot" aria-hidden="true"></span>
+      <span id="crt-toggle-label">CRT ON</span>
+    </button>
+
+    <!-- Nav -->
+    <header
+      class="crt-ui toshi-grain-surface border-b border-[var(--toshi-border)] backdrop-blur-sm"
+    >
       <div
-        class="sticky top-0 z-50 w-full shrink-0 self-start border-b border-white/[0.05] bg-gradient-to-b from-white/[0.04] via-[#0e0620]/52 to-[#0e0620]/36 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-md supports-[backdrop-filter]:from-white/[0.03] supports-[backdrop-filter]:via-[#0e0620]/44 supports-[backdrop-filter]:to-[#0e0620]/30"
+        class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8"
       >
-        <!-- Preloader card: purple rim energy -->
-        <div
-          class="h-0.5 w-full shrink-0 bg-gradient-to-r from-purple-500/55 via-fuchsia-500/45 to-purple-500/55 opacity-80"
-          aria-hidden="true"
-        />
-        <header
-          class="mx-auto grid max-w-6xl grid-cols-3 items-center gap-2 px-4 py-1.5 sm:px-6 sm:py-2 lg:px-8"
-        >
-          <div class="flex min-w-0 justify-start">
+        <div class="flex items-center gap-3 sm:gap-6">
+          <div class="md:hidden">
             <LobbyHamburgerMenu client:load />
           </div>
-          <a
-            href="/"
-            class="flex justify-center justify-self-center leading-none"
-            aria-label="Spiffing Studios home"
-          >
+          <a href="/" class="leading-none" aria-label="Spiffing Studios home">
             <img
               src="/logo-spiffing.svg"
               alt="Spiffing Studios"
-              class="block h-[3.15rem] w-auto sm:h-[3.95rem] md:h-[4.65rem] lg:h-[4.95rem]"
-              width="280"
-              height="172"
+              class="block h-10 w-auto sm:h-12"
+              width="200"
+              height="120"
             />
           </a>
-          <div class="flex min-w-0 justify-end">
+          <nav class="hidden items-center gap-6 md:flex" aria-label="Primary">
+            <a href="#games" class="lobby-nav-link">Games</a>
+            <a href="#games" class="lobby-nav-link" data-filter-jump="exclusive">Exclusive</a>
             <a
               href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20demo"
-              class="lobby-brand-cta inline-flex h-10 shrink-0 items-center justify-center rounded-lg px-2.5 text-center text-[9px] font-bold uppercase tracking-[0.16em] sm:h-11 sm:px-3 sm:text-[10px] sm:tracking-[0.18em]"
+              class="lobby-nav-link"
             >
               Contact
             </a>
-          </div>
-        </header>
+          </nav>
+        </div>
+        <a
+          href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20demo"
+          class="lobby-brand-cta inline-flex h-9 items-center justify-center px-3 text-[10px] font-bold uppercase tracking-[0.16em] sm:h-10 sm:px-4 sm:text-[11px]"
+        >
+          Contact
+        </a>
+      </div>
+    </header>
+
+    <!-- Hero — full-bleed manor art with VCR warp; UI stacks above -->
+    <section class="relative z-[1] flex min-h-[calc(100dvh-4rem)] flex-col" aria-label="Hero">
+      <svg class="pointer-events-none absolute h-0 w-0" aria-hidden="true">
+        <filter id="vcr-warp" x="-10%" y="-10%" width="120%" height="120%">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.01 0.045"
+            numOctaves="2"
+            seed="2"
+            result="noise"
+          >
+            <animate
+              attributeName="baseFrequency"
+              dur="3.2s"
+              values="0.01 0.04;0.018 0.06;0.01 0.045;0.01 0.04"
+              repeatCount="indefinite"
+            />
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G">
+            <animate
+              attributeName="scale"
+              dur="4s"
+              values="5;12;7;10;5"
+              repeatCount="indefinite"
+            />
+          </feDisplacementMap>
+        </filter>
+      </svg>
+      <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <img
+          src="/lobby/hero.jpg"
+          alt=""
+          class="hero-vcr-img absolute inset-0 h-full w-full scale-110 object-cover object-center"
+          loading="eager"
+          decoding="async"
+        />
+        <!-- Soft wash so logo/type read; keep the art visible -->
+        <div
+          class="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,8,6,0.35)_0%,rgba(10,8,6,0.28)_40%,rgba(10,8,6,0.55)_72%,rgba(12,11,9,0.88)_100%)]"
+        >
+        </div>
+        <div
+          class="absolute inset-0 opacity-50 mix-blend-screen"
+          style="box-shadow: inset 3px 0 18px rgba(255,70,40,0.22), inset -3px 0 18px rgba(40,120,255,0.18);"
+        >
+        </div>
       </div>
 
-      <div class="relative mx-auto w-full max-w-6xl flex-1 px-4 pb-8 pt-2 sm:px-6 sm:pb-10 sm:pt-3 lg:px-8">
-        <div id="games" class="mt-4 flex flex-col gap-6 sm:mt-5 sm:gap-8">
-        <section
-          class="relative px-0 py-1 sm:py-2"
-          aria-label="Game filters and sort"
-        >
-          <div
-            class="relative flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-8"
-          >
-            <div class="min-w-0 flex-1">
-              <p class="lobby-brand-accent mb-2 text-[10px] font-normal uppercase tracking-[0.22em]">
-                Filter by
-              </p>
-              <div
-                class="flex flex-wrap gap-2 max-sm:-mx-1 max-sm:flex-nowrap max-sm:touch-pan-x max-sm:gap-2 max-sm:overflow-x-auto max-sm:overflow-y-hidden max-sm:overscroll-x-contain max-sm:px-1 max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
-                id="lobby-filter-group"
-                role="group"
-                aria-label="Filter games"
-              >
-                {
-                  filterDefs.map((f, i) => (
-                    <button
-                      type="button"
-                      class:list={[
-                        'lobby-filter-btn shrink-0 whitespace-nowrap rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-[color,background-color,border-color,box-shadow] sm:px-3.5 sm:text-xs',
-                        i === 0 ? 'lobby-filter-on' : 'lobby-filter-off',
-                      ]}
-                      data-filter={f.id}
-                      aria-pressed={i === 0 ? 'true' : 'false'}
-                    >
-                      {f.label}
-                    </button>
-                  ))
-                }
-              </div>
-            </div>
-            <div class="min-w-0 shrink-0 lg:text-right">
-              <p class="lobby-brand-accent mb-2 text-[10px] font-normal uppercase tracking-[0.22em]">
-                Sort by
-              </p>
-              <button
-                type="button"
-                id="lobby-sort-btn"
-                class="lobby-sort-btn flex w-full items-center justify-center gap-2 rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:inline-flex sm:w-auto sm:justify-start sm:px-3.5 sm:text-xs"
-                data-sort-mode="release"
-                aria-label="Change sort order"
-              >
-                <span id="lobby-sort-label">Release date</span>
-                <span class="lobby-brand-accent-dim" aria-hidden="true">↕</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <div
-          class="mt-6 flex w-full items-center gap-3 text-left sm:mt-8 sm:gap-4 md:mt-10 md:gap-5 lg:mt-12"
-        >
-          <h1 class="shrink-0 text-xl font-normal tracking-tight text-white sm:text-2xl md:text-3xl lg:text-4xl">
-            Suits you sir!
-          </h1>
-          <div
-            class="h-px min-w-[1.5rem] flex-1 bg-gradient-to-r from-white/30 via-white/12 to-transparent sm:from-white/35"
-            aria-hidden="true"
+      <div
+        class="crt-ui mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
+      >
+        <div class="spiffing-logo-glitch mb-8 sm:mb-10">
+          <img
+            src="/logo-spiffing.svg"
+            alt="Spiffing Studios"
+            class="spiffing-logo-glitch__img h-20 w-auto drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)] sm:h-28 md:h-32"
+            width="320"
+            height="196"
           />
+        </div>
+        <h1
+          class="max-w-3xl text-4xl font-normal tracking-tight text-[var(--toshi-text)] drop-shadow-[0_2px_18px_rgba(0,0,0,0.9)] sm:text-5xl md:text-6xl lg:text-7xl"
+        >
+          Casino games with manners.
+        </h1>
+        <p class="mt-4 max-w-md text-sm font-medium tracking-wide text-[var(--toshi-muted)] drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] sm:text-base">
+          Premium slots and tables for operators who want polish without the fuss.
+        </p>
+        <a
+          href="#games"
+          class="lobby-brand-cta mt-8 inline-flex h-11 items-center justify-center px-6 text-xs font-bold uppercase tracking-[0.2em] sm:h-12 sm:text-sm"
+        >
+          Explore games
+        </a>
+      </div>
+    </section>
+
+    <!-- Portfolio -->
+    <section
+      id="games"
+      class="crt-ui toshi-grain border-t border-[var(--toshi-border)] px-4 py-14 sm:px-6 sm:py-20 lg:px-8"
+      aria-label="Game portfolio"
+    >
+      <div class="mx-auto max-w-6xl">
+        <div class="mx-auto max-w-2xl text-center">
+          <p class="lobby-brand-accent text-[10px] uppercase tracking-[0.22em]">Portfolio</p>
+          <h2 class="mt-2 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl md:text-5xl">
+            Suits you sir!
+          </h2>
+          <p class="mt-3 text-sm text-[var(--toshi-muted)] sm:text-base">
+            Explore our online casino games — slots, tables, and exclusives built for operator platforms.
+          </p>
         </div>
 
         <div
-          class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:gap-5"
+          class="mt-10 flex flex-col gap-4 sm:mt-12 lg:flex-row lg:items-end lg:justify-between"
+          aria-label="Game filters and sort"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="lobby-brand-accent mb-2 text-[10px] uppercase tracking-[0.22em]">Filter by</p>
+            <div
+              class="flex flex-wrap gap-2 max-sm:-mx-1 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-1 max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden"
+              id="lobby-filter-group"
+              role="group"
+              aria-label="Filter games"
+            >
+              {
+                filterDefs.map((f, i) => (
+                  <button
+                    type="button"
+                    class:list={[
+                      'lobby-filter-btn shrink-0 whitespace-nowrap rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:px-3.5 sm:text-xs',
+                      i === 0 ? 'lobby-filter-on' : 'lobby-filter-off',
+                    ]}
+                    data-filter={f.id}
+                    aria-pressed={i === 0 ? 'true' : 'false'}
+                  >
+                    {f.label}
+                  </button>
+                ))
+              }
+            </div>
+          </div>
+          <div class="min-w-0 shrink-0 lg:text-right">
+            <p class="lobby-brand-accent mb-2 text-[10px] uppercase tracking-[0.22em]">Sort by</p>
+            <button
+              type="button"
+              id="lobby-sort-btn"
+              class="lobby-sort-btn flex w-full items-center justify-center gap-2 rounded-full border border-solid px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide sm:inline-flex sm:w-auto sm:px-3.5 sm:text-xs"
+              data-sort-mode="release"
+              aria-label="Change sort order"
+            >
+              <span id="lobby-sort-label">Release date</span>
+              <span class="lobby-brand-accent-dim" aria-hidden="true">↕</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          class="mt-8 grid grid-cols-2 gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5"
           data-lobby-grid
         >
           {
@@ -266,112 +335,80 @@ const filterDefs: { id: string; label: string }[] = [
               <a
                 href={game.available ? game.href : undefined}
                 class:list={[
-                  'group relative flex h-[272px] w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 sm:h-[296px] lg:h-[312px]',
-                  game.available
-                    ? game.tileBg
-                      ? 'cursor-pointer border-white/10 bg-transparent hover:border-white/25 hover:shadow-lg hover:shadow-purple-500/15 active:scale-[0.98]'
-                      : 'cursor-pointer border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.07] hover:shadow-lg hover:shadow-purple-500/10 active:scale-[0.98]'
-                    : 'cursor-default border-white/[0.05] bg-white/[0.02] opacity-50',
+                  'lobby-game-tile group relative flex w-full flex-col overflow-hidden',
+                  game.available ? 'cursor-pointer' : 'cursor-default opacity-50',
                 ]}
                 data-lobby-tile
                 data-tags={game.filterTags.join(',')}
                 data-title={game.title}
                 data-release={String(game.releaseOrder)}
+                data-launch={game.available ? '1' : undefined}
+                data-launch-href={game.available ? game.href : undefined}
               >
-                {game.tileBg && (
-                  <div
-                    class="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-2xl"
-                    aria-hidden="true"
-                  >
-                    {game.tileBg.type === 'image' && (
-                      <div class="relative h-full w-full">
-                        <img
-                          src={game.tileBg.src}
-                          alt=""
-                          class="absolute inset-0 h-full w-full object-cover object-center"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                        <div class="absolute inset-0 bg-gradient-to-b from-black/15 via-black/48 to-black/90" />
-                      </div>
+                <div class="lobby-game-tile__media">
+                  {game.tileBg?.type === 'image' && (
+                    <img
+                      src={game.tileBg.src}
+                      alt=""
+                      class="lobby-game-tile__art absolute inset-0 h-full w-full object-cover object-center"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                  {game.tileBg?.type === 'blackjack' && (
+                    <div class="lobby-game-tile__art absolute inset-0">
+                      <div class="lobby-tile-bg-blackjack" />
+                      <div class="lobby-tile-bg-blackjack-tint" />
+                    </div>
+                  )}
+
+                  {/* CRT on hover */}
+                  <div class="lobby-game-tile__crt" aria-hidden="true">
+                    <div class="lobby-game-tile__crt-grain" />
+                    <div class="lobby-game-tile__crt-scan" />
+                    <div class="lobby-game-tile__crt-chroma" />
+                  </div>
+
+                  <div class="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/90 via-black/30 to-black/15" />
+
+                  <div class="absolute left-2.5 top-2.5 z-[3] flex flex-wrap gap-1.5">
+                    {game.isNew && (
+                      <span class="lobby-badge-new px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]">
+                        New
+                      </span>
                     )}
-                    {game.tileBg.type === 'blackjack' && (
-                      <div class="relative h-full min-h-0 w-full">
-                        <div class="lobby-tile-bg-blackjack" />
-                        <div class="lobby-tile-bg-blackjack-tint" />
-                      </div>
+                    {game.filterTags.includes('exclusive') && (
+                      <span class="lobby-badge-exclusive px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]">
+                        Exclusive
+                      </span>
                     )}
                   </div>
-                )}
 
-                <div
-                  class:list={[
-                    'relative z-[1] flex min-h-0 flex-1 flex-col',
-                    game.tileBg && game.available && 'transition-colors group-hover:bg-white/[0.05]',
-                  ]}
-                >
-                  <div class={`relative h-1.5 w-full shrink-0 bg-gradient-to-r ${game.accent}`} />
-
-                  <div
-                    class:list={[
-                      'flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-2 text-center sm:px-4 lg:px-5',
-                      game.largeLobbyLogo ? 'py-3 sm:py-4 lg:py-4' : 'py-4 sm:py-5 lg:py-5',
-                    ]}
-                  >
-                    <div
-                      class:list={[
-                        'mb-2 flex w-full shrink-0 items-center justify-center sm:mb-2',
-                        game.largeLobbyLogo
-                          ? 'h-[7.35rem] sm:h-[8.85rem] lg:h-[10.5rem]'
-                          : 'h-24 sm:h-28 lg:h-32',
-                      ]}
-                    >
-                      {game.logoSrc ? (
-                        <img
-                          src={game.logoSrc}
-                          alt={`${game.title} logo`}
-                          class:list={[
-                            'max-h-full w-auto object-contain object-center drop-shadow-[0_6px_24px_rgba(0,0,0,0.55)]',
-                            game.largeLobbyLogo
-                              ? 'max-w-[min(100%,19rem)] sm:max-w-[min(100%,21rem)] lg:max-w-[min(100%,23rem)]'
-                              : 'max-w-[min(100%,15rem)] sm:max-w-[min(100%,17rem)]',
-                          ]}
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : (
-                        <span class="text-4xl sm:text-5xl lg:text-6xl" aria-hidden="true">
-                          {game.icon}
-                        </span>
-                      )}
-                    </div>
-                    <h2 class="text-[13px] font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.85)] sm:text-sm lg:text-base">
+                  {/* Typographic title on art — replaces weak logo assets */}
+                  <div class="absolute inset-x-0 bottom-0 z-[3] px-3 pb-4 pt-16 text-center">
+                    <p class="lobby-game-tile__title text-[1.35rem] leading-none tracking-tight text-white sm:text-[1.55rem]">
                       {game.title}
-                    </h2>
-                    <p class="mt-0.5 text-[9px] font-medium leading-snug text-white/55 drop-shadow-[0_1px_10px_rgba(0,0,0,0.75)] sm:text-[10px] lg:text-[11px]">
-                      {game.subtitle}
                     </p>
                   </div>
+                </div>
 
+                <div class="flex flex-col px-3 py-2.5 sm:px-3.5 sm:py-3">
+                  <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--toshi-muted)] sm:text-[11px]">
+                    {game.category}
+                  </p>
+                  <p class="mt-1 line-clamp-1 text-[10px] leading-snug text-[var(--toshi-muted-2)] sm:text-[11px]">
+                    {game.subtitle}
+                  </p>
                   {game.available && (
-                    <div
-                      class:list={[
-                        'shrink-0 border-t border-t-[rgba(92,179,93,0.35)] px-2 py-2 text-center backdrop-blur-sm sm:px-3 sm:py-2.5',
-                        game.tileBg
-                          ? 'border-white/10 bg-black/40'
-                          : 'border-white/[0.06]',
-                      ]}
-                    >
-                      <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c8f0c9] transition-colors group-hover:text-white">
-                        Demo Play
-                      </span>
-                    </div>
+                    <span class="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--toshi-orange)] transition-colors group-hover:text-[var(--toshi-text)] sm:text-[11px]">
+                      Demo play →
+                    </span>
                   )}
                 </div>
 
                 {!game.available && (
-                  <div class="absolute inset-0 z-[5] flex items-center justify-center rounded-2xl bg-black/35">
-                    <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/50">
+                  <div class="absolute inset-0 z-[5] flex items-center justify-center rounded-[1.15rem] bg-black/50">
+                    <span class="rounded-full border border-[var(--toshi-border)] bg-[var(--toshi-surface)] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--toshi-muted)]">
                       Coming Soon
                     </span>
                   </div>
@@ -383,31 +420,180 @@ const filterDefs: { id: string; label: string }[] = [
 
         <p
           id="lobby-empty"
-          class="mt-10 hidden text-center text-sm font-medium text-white/50"
+          class="mt-10 hidden text-center text-sm font-medium text-[var(--toshi-muted)]"
           role="status"
         >
           No titles in this category yet — try another filter.
         </p>
+      </div>
+    </section>
+
+    <!-- Partner -->
+    <section
+      class="crt-ui toshi-grain-surface border-t border-[var(--toshi-border)] px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
+      aria-label="Partner"
+    >
+      <div class="mx-auto max-w-xl">
+        <p class="lobby-brand-accent text-[10px] uppercase tracking-[0.22em]">Operators</p>
+        <h2 class="mt-2 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl">
+          Become a partner
+        </h2>
+        <p class="mt-3 text-sm leading-relaxed text-[var(--toshi-muted)] sm:text-base">
+          Partner with Spiffing Studios — premium casino content and table games built for long-term operator growth.
+        </p>
+        <a
+          href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20partnership"
+          class="lobby-brand-cta mt-8 inline-flex h-11 items-center justify-center px-6 text-xs font-bold uppercase tracking-[0.2em] sm:h-12 sm:text-sm"
+        >
+          Request a demo
+        </a>
+      </div>
+    </section>
+
+    <footer
+      class="crt-ui toshi-grain border-t border-[var(--toshi-border)] px-4 py-5 text-center text-[10px] font-medium tracking-wide text-[var(--toshi-muted-2)] sm:text-[11px]"
+    >
+      Spiffing Studios &mdash; Play Responsibly
+    </footer>
+
+    <!-- Game launcher modal -->
+    <div
+      id="game-launcher"
+      class="game-launcher"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="game-launcher-title"
+      aria-hidden="true"
+    >
+      <div class="game-launcher__panel">
+        <div class="game-launcher__bar">
+          <p id="game-launcher-title" class="game-launcher__title">Game</p>
+          <div class="game-launcher__actions">
+            <a
+              id="game-launcher-external"
+              class="game-launcher__btn"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              New tab
+            </a>
+            <button type="button" id="game-launcher-close" class="game-launcher__btn game-launcher__btn--close">
+              Close
+            </button>
+          </div>
+        </div>
+        <div class="game-launcher__stage">
+          <div id="game-launcher-loading" class="game-launcher__loading">Loading demo…</div>
+          <iframe
+            id="game-launcher-frame"
+            class="game-launcher__frame"
+            title="Game demo"
+            allow="autoplay; fullscreen; microphone; camera; clipboard-read; clipboard-write"
+            allowfullscreen
+          ></iframe>
         </div>
       </div>
-
-      <footer
-        class="relative z-10 mt-auto shrink-0 border-t border-white/[0.05] bg-black/40 px-4 py-4 text-center text-[10px] font-medium tracking-wide text-white/28 sm:text-[11px]"
-      >
-        Spiffing Studios &mdash; Play Responsibly
-      </footer>
     </div>
   </div>
 </Layout>
 
 <script is:inline>
   (function () {
+    // CRT toggle
+    var crtBtn = document.getElementById('crt-toggle');
+    var crtLabel = document.getElementById('crt-toggle-label');
+    var STORAGE_KEY = 'spiffing-crt';
+    function setCrt(on) {
+      document.documentElement.classList.toggle('crt-off', !on);
+      if (crtBtn) crtBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (crtLabel) crtLabel.textContent = on ? 'CRT ON' : 'CRT OFF';
+      try {
+        localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
+      } catch (e) {}
+    }
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === '0') setCrt(false);
+      else setCrt(true);
+    } catch (e) {
+      setCrt(true);
+    }
+    if (crtBtn) {
+      crtBtn.addEventListener('click', function () {
+        var on = document.documentElement.classList.contains('crt-off');
+        setCrt(on);
+      });
+    }
+
+    // Game launcher modal
+    var launcher = document.getElementById('game-launcher');
+    var launcherTitle = document.getElementById('game-launcher-title');
+    var launcherFrame = document.getElementById('game-launcher-frame');
+    var launcherLoading = document.getElementById('game-launcher-loading');
+    var launcherExternal = document.getElementById('game-launcher-external');
+    var launcherClose = document.getElementById('game-launcher-close');
+
+    function openLauncher(title, href) {
+      if (!launcher || !launcherFrame) return;
+      if (launcherTitle) launcherTitle.textContent = title || 'Game';
+      if (launcherExternal) launcherExternal.href = href;
+      if (launcherLoading) launcherLoading.classList.remove('is-done');
+      launcherFrame.src = href;
+      launcher.classList.add('is-open');
+      launcher.setAttribute('aria-hidden', 'false');
+      document.documentElement.classList.add('launcher-open');
+      if (launcherClose) launcherClose.focus();
+    }
+
+    function closeLauncher() {
+      if (!launcher || !launcherFrame) return;
+      launcher.classList.remove('is-open');
+      launcher.setAttribute('aria-hidden', 'true');
+      document.documentElement.classList.remove('launcher-open');
+      // Unload iframe so audio / sockets stop
+      launcherFrame.src = 'about:blank';
+      if (launcherLoading) launcherLoading.classList.remove('is-done');
+    }
+
+    if (launcherFrame) {
+      launcherFrame.addEventListener('load', function () {
+        if (!launcherFrame.src || launcherFrame.src === 'about:blank') return;
+        if (launcherLoading) launcherLoading.classList.add('is-done');
+      });
+    }
+
+    if (launcherClose) launcherClose.addEventListener('click', closeLauncher);
+
+    if (launcher) {
+      launcher.addEventListener('click', function (e) {
+        if (e.target === launcher) closeLauncher();
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && launcher && launcher.classList.contains('is-open')) {
+        closeLauncher();
+      }
+    });
+
+    // Filter / sort
     var grid = document.querySelector('[data-lobby-grid]');
     var emptyEl = document.getElementById('lobby-empty');
     var filterBtns = document.querySelectorAll('.lobby-filter-btn');
     var sortBtn = document.getElementById('lobby-sort-btn');
     var sortLabel = document.getElementById('lobby-sort-label');
     if (!grid || !filterBtns.length) return;
+
+    grid.addEventListener('click', function (e) {
+      var tile = e.target.closest('[data-launch="1"]');
+      if (!tile) return;
+      var href = tile.getAttribute('data-launch-href');
+      var title = tile.getAttribute('data-title') || 'Game';
+      if (!href) return;
+      e.preventDefault();
+      openLauncher(title, href);
+    });
 
     var activeFilter = 'all';
     var sortMode = 'release';
@@ -460,6 +646,13 @@ const filterDefs: { id: string; label: string }[] = [
       btn.addEventListener('click', function () {
         var tag = btn.getAttribute('data-filter') || 'all';
         applyFilter(tag);
+      });
+    });
+
+    document.querySelectorAll('[data-filter-jump]').forEach(function (link) {
+      link.addEventListener('click', function () {
+        var tag = link.getAttribute('data-filter-jump');
+        if (tag) applyFilter(tag);
       });
     });
 
