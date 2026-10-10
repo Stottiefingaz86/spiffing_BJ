@@ -4,7 +4,8 @@ import { LobbySidebar } from '@/components/lobby/LobbySidebar';
 
 type LobbyTileBg =
   | { type: 'image'; src: string }
-  | { type: 'blackjack' };
+  | { type: 'blackjack' }
+  | { type: 'dealr' };
 
 interface GameTile {
   title: string;
@@ -12,6 +13,11 @@ interface GameTile {
   href: string;
   category: string;
   tileBg?: LobbyTileBg;
+  logo?: string;
+  /** Extra-large tile logo (assets with heavy padding) */
+  logoLarge?: boolean;
+  /** Compact tile logo (wide/tight crops that read too big) */
+  logoCompact?: boolean;
   icon: string;
   available: boolean;
   /** Tags for lobby filters: slots | table | exclusive */
@@ -28,7 +34,9 @@ const games: GameTile[] = [
     subtitle: 'Live Blackjack · AI Dealer Isla · Real Table',
     href: 'https://livedealr-ten.vercel.app/real',
     category: 'Live table',
-    tileBg: { type: 'image', src: '/dealr/bg.jpg' },
+    tileBg: { type: 'dealr' },
+    logo: '/dealr/logo.png',
+    logoCompact: true,
     icon: '🂡',
     available: true,
     filterTags: ['table', 'exclusive'],
@@ -41,6 +49,7 @@ const games: GameTile[] = [
     href: '/aztec',
     category: 'Slot game',
     tileBg: { type: 'image', src: '/aztec/bg.jpg' },
+    logo: '/aztec/logo.png',
     icon: '🗿',
     available: true,
     filterTags: ['slots', 'exclusive'],
@@ -52,6 +61,7 @@ const games: GameTile[] = [
     href: '/quest-raider',
     category: 'Slot game',
     tileBg: { type: 'image', src: '/quest_raiders/bg.png' },
+    logo: '/quest_raiders/logo.png',
     icon: '🧭',
     available: true,
     filterTags: ['slots', 'exclusive'],
@@ -63,6 +73,7 @@ const games: GameTile[] = [
     href: '/bamboofortunes',
     category: 'Slot game',
     tileBg: { type: 'image', src: '/bamboofortunes/bg.png' },
+    logo: '/bamboofortunes/logo.png',
     icon: '🐼',
     available: true,
     filterTags: ['slots', 'exclusive'],
@@ -74,6 +85,8 @@ const games: GameTile[] = [
     href: '/frootjarz',
     category: 'Slot game',
     tileBg: { type: 'image', src: '/frootshoot/bg.png' },
+    logo: '/frootshoot/LOGO.png',
+    logoLarge: true,
     icon: '🍓',
     available: true,
     filterTags: ['slots', 'exclusive'],
@@ -85,6 +98,7 @@ const games: GameTile[] = [
     href: '/hotfiesta',
     category: 'Slot game',
     tileBg: { type: 'image', src: '/hotfiesta/bg.png' },
+    logo: '/hotfiesta/logo.png',
     icon: '🌮',
     available: true,
     filterTags: ['slots', 'exclusive'],
@@ -96,6 +110,7 @@ const games: GameTile[] = [
     href: '/bandits',
     category: 'Slot game',
     tileBg: { type: 'image', src: '/bandits/bg2.png' },
+    logo: '/bandits/logo.png',
     icon: '🤠',
     available: true,
     filterTags: ['slots', 'exclusive'],
@@ -107,6 +122,7 @@ const games: GameTile[] = [
     href: '/blackjack',
     category: 'Table game',
     tileBg: { type: 'blackjack' },
+    logo: '/cards/multihand%20logo.png',
     icon: '🃏',
     available: true,
     filterTags: ['table', 'exclusive'],
@@ -151,7 +167,10 @@ const filterDefs: { id: string; label: string }[] = [
     </button>
 
     <!-- Hero — full-bleed manor art with VCR warp; UI stacks above -->
-    <section class="relative z-[1] flex min-h-dvh flex-col" aria-label="Hero">
+    <section
+      class="relative z-[1] flex min-h-dvh flex-col bg-black"
+      aria-label="Hero"
+    >
       <svg class="pointer-events-none absolute h-0 w-0" aria-hidden="true">
         <filter id="vcr-warp" x="-10%" y="-10%" width="120%" height="120%">
           <feTurbulence
@@ -186,20 +205,11 @@ const filterDefs: { id: string; label: string }[] = [
           loading="eager"
           decoding="async"
         />
-        <!-- Soft wash so logo/type read; keep the art visible -->
-        <div
-          class="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,8,6,0.12)_0%,rgba(10,8,6,0.08)_40%,rgba(10,8,6,0.28)_72%,rgba(12,11,9,0.55)_100%)]"
-        >
-        </div>
-        <div
-          class="absolute inset-0 opacity-50 mix-blend-screen"
-          style="box-shadow: inset 3px 0 18px rgba(255,70,40,0.22), inset -3px 0 18px rgba(40,120,255,0.18);"
-        >
-        </div>
+        <div class="hero-fade-wash absolute inset-0"></div>
       </div>
 
       <div
-        class="crt-ui mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
+        class="crt-ui relative z-[2] mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
       >
         <div class="spiffing-logo-glitch mb-8 sm:mb-10">
           <img
@@ -236,13 +246,13 @@ const filterDefs: { id: string; label: string }[] = [
       </div>
     </section>
 
-    <!-- Portfolio -->
+    <!-- Portfolio — same stacking as hero so CRT grain covers both -->
     <section
       id="games"
-      class="crt-ui toshi-grain border-t border-white/10 px-4 py-16 sm:px-6 sm:py-24 lg:px-8"
+      class="relative z-[1] bg-black px-4 pb-16 pt-8 sm:px-6 sm:pb-24 sm:pt-12 lg:px-8"
       aria-label="Game portfolio"
     >
-      <div class="mx-auto max-w-6xl">
+      <div class="crt-ui mx-auto max-w-6xl">
         <div class="mx-auto max-w-2xl text-center">
           <p class="toshi-eyebrow">Portfolio</p>
           <h2 class="mt-3 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl md:text-5xl">
@@ -306,7 +316,7 @@ const filterDefs: { id: string; label: string }[] = [
               <a
                 href={game.available ? game.href : undefined}
                 class:list={[
-                  'lobby-game-tile group relative flex w-full flex-col',
+                  'lobby-game-tile group relative block w-full',
                   game.available ? 'cursor-pointer' : 'cursor-default opacity-50',
                 ]}
                 data-lobby-tile
@@ -315,6 +325,7 @@ const filterDefs: { id: string; label: string }[] = [
                 data-release={String(game.releaseOrder)}
                 data-launch={game.available ? '1' : undefined}
                 data-launch-href={game.available ? game.href : undefined}
+                aria-label={game.available ? `Play ${game.title}` : `${game.title} — coming soon`}
               >
                 <div class="lobby-game-tile__media">
                   {game.tileBg?.type === 'image' && (
@@ -332,14 +343,14 @@ const filterDefs: { id: string; label: string }[] = [
                       <div class="lobby-tile-bg-blackjack-tint" />
                     </div>
                   )}
+                  {game.tileBg?.type === 'dealr' && (
+                    <div class="lobby-game-tile__art absolute inset-0">
+                      <div class="lobby-tile-bg-dealr" />
+                      <div class="lobby-tile-bg-dealr-tint" />
+                    </div>
+                  )}
 
-                  <div class="lobby-game-tile__crt" aria-hidden="true">
-                    <div class="lobby-game-tile__crt-grain" />
-                    <div class="lobby-game-tile__crt-scan" />
-                    <div class="lobby-game-tile__crt-chroma" />
-                  </div>
-
-                  <div class="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+                  <div class="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
 
                   <div class="absolute left-2.5 top-2.5 z-[3] flex flex-wrap gap-1.5">
                     {game.isNew && (
@@ -354,30 +365,38 @@ const filterDefs: { id: string; label: string }[] = [
                     )}
                   </div>
 
-                  <div class="absolute inset-x-0 bottom-0 z-[3] px-3 pb-3.5 pt-12 text-center">
-                    <p class="lobby-game-tile__title text-[1.2rem] leading-none text-white sm:text-[1.4rem]">
+                  {game.logo && (
+                    <img
+                      src={game.logo}
+                      alt=""
+                      class:list={[
+                        'lobby-game-tile__logo',
+                        game.logoLarge && 'lobby-game-tile__logo--large',
+                        game.logoCompact && 'lobby-game-tile__logo--compact',
+                      ]}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+
+                  <div class="absolute inset-x-0 bottom-0 z-[3] px-3 pb-3 pt-8 text-center">
+                    <p class="lobby-game-tile__title">
                       {game.title}
                     </p>
                   </div>
-                </div>
 
-                <div class="lobby-game-tile__meta flex flex-col px-3 py-2.5 sm:px-3.5 sm:py-3">
-                  <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--toshi-muted)] sm:text-[11px]">
-                    {game.category}
-                  </p>
-                  <p class="mt-1 line-clamp-1 text-[10px] leading-snug text-[var(--toshi-muted-2)] sm:text-[11px]">
-                    {game.subtitle}
-                  </p>
                   {game.available && (
-                    <span class="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--toshi-orange)] sm:text-[11px]">
-                      Demo play →
+                    <span class="lobby-game-tile__play" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="currentColor" class="lobby-game-tile__play-icon">
+                        <path d="M8 5.14v13.72L19 12 8 5.14z" />
+                      </svg>
                     </span>
                   )}
                 </div>
 
                 {!game.available && (
-                  <div class="absolute inset-0 z-[5] flex items-center justify-center rounded-[0.85rem] bg-black/40">
-                    <span class="rounded-full bg-black/70 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/70">
+                  <div class="absolute inset-0 z-[5] flex items-center justify-center bg-black/45">
+                    <span class="rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white/70">
                       Coming Soon
                     </span>
                   </div>
@@ -399,20 +418,20 @@ const filterDefs: { id: string; label: string }[] = [
 
     <!-- Partner -->
     <section
-      class="crt-ui toshi-grain border-t border-white/10 px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
+      class="relative z-[1] bg-black px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
       aria-label="Partner"
     >
-      <div class="mx-auto max-w-xl">
-        <p class="toshi-eyebrow">Operators</p>
-        <h2 class="mt-3 text-3xl tracking-tight text-[var(--toshi-text)] sm:text-4xl">
+      <div class="crt-ui lobby-partner-card mx-auto max-w-2xl px-6 py-10 text-center sm:px-10 sm:py-12">
+        <p class="lobby-partner-card__eyebrow">Operators</p>
+        <h2 class="mt-3 text-3xl tracking-tight text-[#0b0b0b] sm:text-4xl md:text-5xl">
           Become a partner
         </h2>
-        <p class="mt-3 text-sm leading-relaxed text-[var(--toshi-muted)] sm:text-base">
+        <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[#0b0b0b]/75 sm:text-base">
           Partner with Spiffing Studios — premium casino content and table games built for long-term operator growth.
         </p>
         <a
           href="mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20partnership"
-          class="lobby-brand-cta mt-8 inline-flex h-11 items-center justify-center px-6 text-xs font-bold uppercase tracking-[0.2em] sm:h-12 sm:text-sm"
+          class="lobby-partner-card__cta mt-8 inline-flex h-11 items-center justify-center px-6 text-xs font-bold uppercase tracking-[0.2em] sm:h-12 sm:text-sm"
         >
           Request a demo
         </a>
