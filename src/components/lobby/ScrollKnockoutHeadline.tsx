@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 const LINE_1 = 'exceedingly good games';
 const LINE_2 = 'that suits you sir';
-const IMAGE_SRC = '/parallax-knockout.jpg';
+const IMAGE_SRC = '/tash-pattern.jpg';
 const FONT_SIZE = 'clamp(112px, 18vw, 300px)';
 
 /** Same pacing as Scuup landing */
@@ -32,22 +32,26 @@ function textFillStyle(
     WebkitTextFillColor: 'transparent',
     /* Match site purple if fill doesn't cover a glyph edge */
     backgroundColor: '#0e0620',
-    /* Logo candy gradient + landscape — overlay keeps detail without mud */
+    /*
+      Candy wash underneath + tash pattern on top.
+      Screen drops the pattern’s black so letters stay solid and the
+      pink/orange mustaches show through the type.
+    */
     backgroundImage: `
+      url(${imageSrc}),
       linear-gradient(
         180deg,
         #ffc14a 0%,
         #ff7a28 32%,
         #ff4d3a 62%,
         #e83e8c 100%
-      ),
-      url(${imageSrc})
+      )
     `,
-    backgroundRepeat: 'no-repeat',
-    backgroundSize: '120vw auto, 120vw auto',
+    backgroundRepeat: 'repeat, no-repeat',
+    backgroundSize: 'min(72vw, 860px) auto, 120vw auto',
     /* Counter ticker so image stays fixed while text slides */
     backgroundPosition: `${pos}, ${pos}`,
-    backgroundBlendMode: 'overlay, normal',
+    backgroundBlendMode: 'screen, normal',
     WebkitBackgroundClip: 'text',
     backgroundClip: 'text',
   };
