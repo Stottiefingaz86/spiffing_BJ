@@ -1,5 +1,6 @@
 import { Application, Container, TextureSource } from 'pixi.js';
 import { useCallback, useEffect, useRef } from 'react';
+import { scaleSlotDelay, scaleSlotDelta } from '@/hooks/slot/slotSpeed';
 
 import type { BanditSnapshot } from '../engine/session';
 import { GamePhase } from '../engine/session';
@@ -192,7 +193,7 @@ export function ReelCanvas({
           const gl = gameLayerRef.current;
           if (!gl || !anim) return;
 
-          anim.tick(app.ticker.deltaMS);
+          anim.tick(scaleSlotDelta(app.ticker.deltaMS));
           const s = snapRef.current;
           const l = getLayout(app.renderer.width, app.renderer.height);
 
@@ -394,7 +395,9 @@ export function ReelCanvas({
         // Base cascade is fast; scatter anticipation delays extend specific reels.
         for (let r = 0; r < REELS; r++) {
           const extraDelay = snap.reelStopDelays[r] ?? 0;
-          const totalDelay = BANDITS_REEL_STOP_BASE_DELAY_MS + r * BANDITS_REEL_STOP_STAGGER_MS + extraDelay;
+          const totalDelay = scaleSlotDelay(
+            BANDITS_REEL_STOP_BASE_DELAY_MS + r * BANDITS_REEL_STOP_STAGGER_MS + extraDelay,
+          );
           scheduleTimer(() => {
             if (!reelStopScheduledRef.current[r]) {
               reelStopScheduledRef.current[r] = true;

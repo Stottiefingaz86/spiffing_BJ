@@ -23,10 +23,10 @@ import { cn } from '@/lib/utils';
 const CONTACT_HREF = 'mailto:hello@spiffingstudios.com?subject=Spiffing%20studio%20demo';
 
 const sidebarVars = {
-  '--sidebar': 'rgba(10, 10, 10, 0.92)',
+  '--sidebar': 'rgba(14, 6, 32, 0.94)',
   '--sidebar-foreground': '#f2f2f2',
   '--sidebar-primary': '#ff5a1f',
-  '--sidebar-primary-foreground': '#0b0b0b',
+  '--sidebar-primary-foreground': '#0e0620',
   '--sidebar-accent': 'rgba(255, 255, 255, 0.06)',
   '--sidebar-accent-foreground': '#ff5a1f',
   '--sidebar-border': 'transparent',

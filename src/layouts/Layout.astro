@@ -1,6 +1,7 @@
 ---
 import '@fontsource-variable/geist';
 import '@fontsource/staatliches';
+import '@fontsource/imperial-script';
 import '../styles/global.css';
 
 interface Props {
@@ -13,7 +14,7 @@ const { title = 'Multi-Hand Blackjack', scrollable = false } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en" class:list={[scrollable ? 'min-h-dvh' : 'h-dvh overflow-hidden']}>
+<html lang="en" class:list={[scrollable ? 'min-h-dvh scroll-smooth' : 'h-dvh overflow-hidden']}>
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -25,7 +26,7 @@ const { title = 'Multi-Hand Blackjack', scrollable = false } = Astro.props;
 	<body
 		class:list={[
 			scrollable
-				? 'min-h-dvh overflow-x-hidden bg-[#12110f] text-white antialiased'
+				? 'min-h-dvh overflow-x-hidden bg-[#0e0620] text-white antialiased'
 				: 'h-dvh overflow-hidden bg-[#2c1f3f] text-white antialiased',
 		]}
 	>

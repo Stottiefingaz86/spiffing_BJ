@@ -1,5 +1,6 @@
 import { Application, Container, TextureSource } from 'pixi.js';
 import { useCallback, useEffect, useRef } from 'react';
+import { scaleSlotDelta } from '@/hooks/slot/slotSpeed';
 
 import type { HotFiestaSnapshot } from '../engine/session';
 import { GamePhase } from '../engine/session';
@@ -130,7 +131,7 @@ export function HotFiestaCanvas({
         draw(gameLayer, app.renderer, snap.grid, snap.jarStates, layout, undefined, undefined, undefined, snap.inFreeSpins);
 
         app.ticker.add(() => {
-          tickAnimations(app.ticker.deltaMS);
+          tickAnimations(scaleSlotDelta(app.ticker.deltaMS));
           const gl = gameLayerRef.current;
           if (!gl) return;
           const shake = getCameraShakeOffset();

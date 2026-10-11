@@ -44,6 +44,7 @@ import {
   createReelAnimator,
   type ReelAnimator,
 } from '../../shared/reelAnimator';
+import { scaleSlotDelay, scaleSlotDelta } from '@/hooks/slot/slotSpeed';
 import {
   computeAztecReelLayout,
   destroyAztecReelScene,
@@ -210,13 +211,14 @@ export function AztecCanvas({
         draw(gameLayer, app.renderer, snap.grid, layout);
 
         app.ticker.add(() => {
-          tickAnimations(app.ticker.deltaMS);
+          const dt = scaleSlotDelta(app.ticker.deltaMS);
+          tickAnimations(dt);
           const gl = gameLayerRef.current;
           if (!gl) return;
 
           const anim = reelAnimatorRef.current;
           if (banditSpinActiveRef.current && anim) {
-            anim.tick(app.ticker.deltaMS);
+            anim.tick(dt);
             const target = banditSpinTargetReelsRef.current;
             const rl = computeAztecReelLayout(app.renderer.width, app.renderer.height);
             if (target) {
@@ -373,7 +375,9 @@ export function AztecCanvas({
 
       for (let r = 0; r < REELS; r++) {
         const reelIdx = r;
-        const totalDelay = BANDITS_REEL_STOP_BASE_DELAY_MS + reelIdx * BANDITS_REEL_STOP_STAGGER_MS;
+        const totalDelay = scaleSlotDelay(
+          BANDITS_REEL_STOP_BASE_DELAY_MS + reelIdx * BANDITS_REEL_STOP_STAGGER_MS,
+        );
         scheduleTimer(() => {
           if (!reelStopScheduledRef.current[reelIdx]) {
             reelStopScheduledRef.current[reelIdx] = true;

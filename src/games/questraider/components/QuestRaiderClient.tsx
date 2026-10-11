@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, Home, Music, RefreshCw, Settings, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
-import {
-  slotGlassPill,
-  slotSpinDesktopClasses,
-  slotSpinMobileClasses,
-} from '@/components/game/slotChrome';
+import { publicAssetUrl } from '@/lib/publicUrl';
+import { GamePreloader } from '@/components/GamePreloader';
+import { SlotGameShell } from '@/components/slot-ui/SlotGameShell';
+import { useSlotGameBridge } from '@/hooks/slot/useSlotGameBridge';
 
 import { QuestRaiderSession, GamePhase } from '../engine/session';
 import { QuestRaiderCanvas } from '../render/QuestRaiderCanvas';
-import { QuestRaiderSettingsModal } from './QuestRaiderSettingsModal';
 import {
   preloadTFSfx,
   playTF,
@@ -24,8 +21,38 @@ import {
 
 const ASSET_BASE = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
+const PRELOAD_ASSETS = [
+  'quest_raiders/bg.png',
+  'quest_raiders/logo.png',
+  'quest_raiders/frame.png',
+  'quest_raiders/mask.png',
+  'quest_raiders/wild.png',
+  'quest_raiders/scatter.png',
+  'quest_raiders/symbol1.png',
+  'quest_raiders/symbol2.png',
+  'quest_raiders/symbol3.png',
+  'quest_raiders/symbol4.png',
+  'quest_raiders/symbol5.png',
+  'quest_raiders/symbol6.png',
+  'quest_raiders/symbol7.png',
+  'quest_raiders/spin.mp3',
+  'quest_raiders/reel_end.mp3',
+  'quest_raiders/win.mp3',
+  'quest_raiders/bgm.mp3',
+].map((p) => publicAssetUrl(p));
+
+function handleQuestPreloaderPlay() {
+  unlockTFAudio();
+  void preloadTFSfx();
+  void startTFBgm();
+}
+
 export default function QuestRaiderClient() {
-  return <QuestRaiderGame />;
+  return (
+    <GamePreloader assets={PRELOAD_ASSETS} onPlay={handleQuestPreloaderPlay}>
+      <QuestRaiderGame />
+    </GamePreloader>
+  );
 }
 
 function QuestRaiderGame() {
@@ -38,8 +65,6 @@ function QuestRaiderGame() {
   const [snap, setSnap] = useState(() => session.getSnapshot());
   const [sfxOn, setSfxOn] = useState(true);
   const [bgmOn, setBgmOn] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [stakeOpen, setStakeOpen] = useState(false);
   const [displayedWin, setDisplayedWin] = useState(0);
   const targetWinRef = useRef(0);
   const lastSpinWinRef = useRef(0);
@@ -200,355 +225,161 @@ function QuestRaiderGame() {
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  const isSpinning = snap.phase !== GamePhase.Idle && snap.phase !== GamePhase.FreeSpinOutro;
+  const isBusy = snap.phase !== GamePhase.Idle && snap.phase !== GamePhase.FreeSpinOutro;
   const canSpin = snap.phase === GamePhase.Idle && snap.balance >= snap.bet;
   const showWin = Math.round(displayedWin);
 
+  const bridge = useSlotGameBridge({
+    balanceCents: snap.balance,
+    betCents: snap.bet,
+    betOptionsCents: session.betOptions,
+    isBusy,
+    canSpin,
+    showBuyBonus: false,
+    gameTitle: 'Quest Raider',
+    soundEnabled: sfxOn,
+    musicEnabled: bgmOn,
+    onSpin,
+    onSetBetCents: (cents) => {
+      session.setBet(cents);
+      refresh();
+    },
+    onToggleSound: () => setSfxOn((v) => !v),
+    onToggleMusic: () => setBgmOn((v) => !v),
+  });
+
   return (
-    <div
+    <SlotGameShell
+      {...bridge.overlayProps}
       className={cn(
         'relative h-dvh max-h-dvh overflow-hidden text-white transition-colors duration-700',
         isFreeSpinActive ? 'bg-[#181008]' : 'bg-[#121016]',
       )}
-      onClick={() => {
-        if (isFreeSpinOutro) {
-          session.dismissFreeSpins();
-          refresh();
-        }
-      }}
     >
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <div
-          className={cn(
-            'absolute inset-0 bg-[#0f0e12] transition-opacity duration-700',
-            isFreeSpinActive ? 'opacity-95' : 'opacity-100',
-          )}
-          style={{
-            backgroundImage: `url(${ASSET_BASE}quest_raiders/bg.png)`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        />
-        <div
-          className={cn(
-            'absolute inset-0 mix-blend-soft-light',
-            isFreeSpinActive
-              ? 'bg-gradient-to-b from-transparent via-amber-950/14 to-stone-950/18'
-              : 'bg-gradient-to-b from-transparent via-emerald-950/10 to-violet-950/14',
-          )}
-        />
-        {/* Per-area grade only — no second `bg.png` here or `cover` won’t match the layer above (visible seam). */}
-        <div
-          className={cn(
-            'absolute inset-0 mix-blend-overlay',
-            isFreeSpinActive
-              ? 'bg-gradient-to-b from-transparent via-amber-950/8 to-stone-900/14'
-              : 'bg-gradient-to-b from-transparent via-teal-950/6 to-[#12101a]/16',
-          )}
-        />
-        {/* Bottom ramp — behind board only; lighter so frame + vignette overlay can breathe */}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-[min(42vh,520px)]"
-          style={{
-            background: isFreeSpinActive
-              ? 'linear-gradient(to bottom, transparent 0%, rgba(32,18,10,0.28) 44%, rgba(18,10,6,0.58) 80%, rgba(10,6,4,0.72) 100%)'
-              : 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.28) 46%, rgba(0,0,0,0.52) 82%, rgba(0,0,0,0.68) 100%)',
-          }}
-        />
-        {/* Full-viewport edge vignette on bg (behind reels) */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          aria-hidden
-          style={{
-            background: isFreeSpinActive
-              ? 'radial-gradient(ellipse 105% 95% at 50% 48%, transparent 0%, transparent 40%, rgba(36,18,10,0.22) 72%, rgba(14,8,5,0.55) 100%)'
-              : 'radial-gradient(ellipse 105% 95% at 50% 48%, transparent 0%, transparent 40%, rgba(0,0,0,0.2) 72%, rgba(0,0,0,0.52) 100%)',
-          }}
-        />
-      </div>
-
-      <div className="absolute inset-0 z-10 min-h-0" onClick={(e) => e.stopPropagation()}>
-        <QuestRaiderCanvas
-          snapshot={snap}
-          onDropComplete={onDropComplete}
-          onCascadeStepComplete={onCascadeStepComplete}
-          cameraShakeRef={cameraShakeRef}
-          className="relative z-10 h-full w-full min-h-0"
-        />
-        {/* Vignette over the whole playfield (frame + reels) so stone doesn’t “float” above the grade; keep soft. */}
-        <div
-          className="pointer-events-none absolute inset-0 z-[15]"
-          aria-hidden
-          style={{
-            background: isFreeSpinActive
-              ? 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(48,28,16,0.12) 62%, rgba(22,12,8,0.34) 100%)'
-              : 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(0,0,0,0.1) 64%, rgba(0,0,0,0.3) 100%)',
-          }}
-        />
-
-        {isFreeSpinIntro && (
-          <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center">
-            <div className="animate-bounce rounded-2xl bg-black/70 px-10 py-6 backdrop-blur-sm">
-              <p className="text-center text-3xl font-black tracking-tight text-amber-400 sm:text-4xl">FREE FALLS</p>
-              <p className="mt-1 text-center text-5xl font-black text-white sm:text-6xl">&times;{snap.freeSpinsTotal}</p>
-            </div>
-          </div>
-        )}
-
-        {isFreeSpinOutro && (
-          <div
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center"
-            onClick={() => {
-              session.dismissFreeSpins();
-              refresh();
-            }}
-          >
-            <div className="rounded-2xl bg-black/75 px-10 py-8 backdrop-blur-sm">
-              <p className="text-center text-2xl font-black tracking-tight text-amber-400 sm:text-3xl">
-                FREE FALLS COMPLETE
-              </p>
-              <p className="mt-2 text-center text-4xl font-black text-emerald-400 sm:text-5xl">
-                {formatMoney(snap.freeSpinsTotalWin)}
-              </p>
-              <p className="mt-4 text-center text-sm text-white/50">Tap anywhere to continue</p>
-            </div>
-          </div>
-        )}
-
-        {isFreeSpinActive && !isFreeSpinIntro && !isFreeSpinOutro && (
-          <div className="absolute bottom-2 left-1/2 z-[30] -translate-x-1/2">
-            <div className="rounded-full bg-amber-600/90 px-4 py-1 shadow-lg shadow-amber-700/30">
-              <span className="text-xs font-black tabular-nums text-white">
-                FREE FALLS {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <header
-        className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center gap-2 px-3 pt-[max(0.5rem,calc(env(safe-area-inset-top)+0.15rem))] pb-1 lg:px-8 lg:pt-6 lg:pb-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <a
-          href="/"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]',
-          )}
-          aria-label="Back to lobby"
-        >
-          <Home className="size-4" strokeWidth={1.8} />
-        </a>
-        <button
-          type="button"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]',
-          )}
-          aria-label="Settings"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <Settings className="size-4" strokeWidth={1.8} />
-        </button>
-        <button
-          type="button"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]',
-          )}
-          aria-label={sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
-          onClick={() => setSfxOn((v) => !v)}
-        >
-          {sfxOn ? (
-            <Volume2 className="size-4" strokeWidth={1.8} />
-          ) : (
-            <VolumeX className="size-4" strokeWidth={1.8} />
-          )}
-        </button>
-        <button
-          type="button"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center active:scale-[0.94]',
-            bgmOn ? 'text-white/60 hover:text-white' : 'text-white/35 hover:text-white/50',
-          )}
-          aria-label={bgmOn ? 'Mute music' : 'Unmute music'}
-          onClick={() => setBgmOn((v) => !v)}
-        >
-          <Music className="size-4" strokeWidth={1.8} />
-        </button>
-        <div className="min-w-0 flex-1" />
-        <div
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5',
-          )}
-        >
-          <span className="shrink-0 text-[7px] font-semibold uppercase leading-none tracking-[0.15em] text-white/40 lg:text-[8px]">
-            Balance
-          </span>
-          <span className="text-sm font-bold leading-none tabular-nums text-white lg:text-base">
-            {formatMoney(snap.balance)}
-          </span>
-        </div>
-      </header>
-
-      {/* Dark wash: lower frame + UI; shorter + late stops so reel symbols stay clear */}
       <div
-        className={cn(
-          'pointer-events-none absolute inset-x-0 bottom-0 z-[24] h-[min(58vh,660px)] max-h-[82vh]',
-          isFreeSpinActive ? 'opacity-[0.94]' : 'opacity-100',
-        )}
-        aria-hidden
-        style={{
-          background: isFreeSpinActive
-            ? 'linear-gradient(to bottom, transparent 0%, transparent 22%, rgba(30,14,8,0.11) 36%, rgba(22,12,8,0.28) 52%, rgba(18,10,6,0.42) 68%, rgba(14,9,6,0.54) 86%, rgba(12,8,5,0.64) 100%)'
-            : 'linear-gradient(to bottom, transparent 0%, transparent 22%, rgba(0,0,0,0.1) 36%, rgba(0,0,0,0.26) 52%, rgba(0,0,0,0.4) 68%, rgba(0,0,0,0.52) 86%, rgba(0,0,0,0.62) 100%)',
+        className="relative h-full w-full"
+        onClick={() => {
+          if (isFreeSpinOutro) {
+            session.dismissFreeSpins();
+            refresh();
+          }
         }}
-      />
-
-      {!isFreeSpinActive && (
-        <div className="pointer-events-none absolute bottom-[5.25rem] left-0 right-0 z-[35] flex justify-center lg:hidden">
-          <button
-            type="button"
-            onClick={onSpin}
-            disabled={!canSpin}
-            className={cn(slotSpinMobileClasses(canSpin, 'emerald'), 'pointer-events-auto')}
-          >
-            {isSpinning ? (
-              <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <RefreshCw className="size-11" strokeWidth={2.5} />
-            )}
-          </button>
-        </div>
-      )}
-
-      <footer
-        className="pointer-events-auto absolute bottom-0 left-0 right-0 z-[32] bg-transparent px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-0 shadow-none lg:hidden"
-        onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto flex max-w-sm items-center justify-center gap-1.5">
-          <div className={cn(slotGlassPill, 'flex flex-1 flex-col items-center px-2 py-1')}>
-            <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
-            <span
-              className={cn(
-                'text-xs font-bold tabular-nums transition-colors duration-300',
-                showWin > 0 ? 'text-emerald-400' : 'text-white/40',
-              )}
-            >
-              {showWin > 0 ? formatMoney(showWin) : '—'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => !isSpinning && setStakeOpen(true)}
-            disabled={isSpinning}
-            className={cn(slotGlassPill, 'flex flex-1 items-center px-2 py-1 disabled:opacity-40')}
-          >
-            <div className="flex flex-1 flex-col items-center">
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
-              <span className="text-xs font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
-            </div>
-            <div className="flex size-5 items-center justify-center rounded bg-white/10">
-              <ChevronDown className="size-3 text-white/50" />
-            </div>
-          </button>
-        </div>
-      </footer>
-
-      <footer
-        className="pointer-events-auto absolute bottom-0 left-0 right-0 z-[32] hidden bg-transparent px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-0 shadow-none lg:block"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto flex max-w-xl items-end justify-center gap-3">
-          <div className={cn(slotGlassPill, 'flex min-w-[5.5rem] flex-col items-center px-3 py-2')}>
-            <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/35">Win</span>
-            <span
-              className={cn(
-                'text-sm font-bold tabular-nums transition-colors duration-300',
-                showWin > 0 ? 'text-emerald-400' : 'text-white/40',
-              )}
-            >
-              {showWin > 0 ? formatMoney(showWin) : '—'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onSpin}
-            disabled={!canSpin || isFreeSpinActive}
-            className={slotSpinDesktopClasses(canSpin && !isFreeSpinActive, 'emerald')}
-          >
-            {isSpinning ? (
-              <svg className="size-8 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <RefreshCw className="size-9" strokeWidth={2.5} />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => !isSpinning && setStakeOpen(true)}
-            disabled={isSpinning}
-            className={cn(slotGlassPill, 'flex min-w-[5.5rem] items-center gap-1 px-3 py-2 disabled:opacity-40')}
-          >
-            <div className="flex flex-1 flex-col items-center">
-              <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/35">Stake</span>
-              <span className="text-sm font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
-            </div>
-            <ChevronDown className="size-3.5 text-white/45" />
-          </button>
-        </div>
-      </footer>
-
-      {stakeOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 sm:items-center"
-          onClick={() => setStakeOpen(false)}
-        >
+        <div className="slot-bg">
           <div
-            className="max-h-[70dvh] w-full max-w-sm overflow-y-auto rounded-t-2xl border border-white/10 bg-[#1a1518] p-4 sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-white/50">Select stake</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {session.betOptions.map((cents) => (
-                <button
-                  key={cents}
-                  type="button"
-                  className={cn(
-                    'rounded-xl py-2.5 text-sm font-bold tabular-nums transition-colors',
-                    snap.bet === cents ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white/80 hover:bg-white/15',
-                  )}
-                  onClick={() => {
-                    session.setBet(cents);
-                    refresh();
-                    setStakeOpen(false);
-                  }}
-                >
-                  {formatMoney(cents)}
-                </button>
-              ))}
-            </div>
-          </div>
+            className={cn(
+              'absolute inset-0 bg-[#0f0e12] transition-opacity duration-700',
+              isFreeSpinActive ? 'opacity-95' : 'opacity-100',
+            )}
+            style={{
+              backgroundImage: `url(${ASSET_BASE}quest_raiders/bg.png)`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          />
+          <div
+            className={cn(
+              'absolute inset-0 mix-blend-soft-light',
+              isFreeSpinActive
+                ? 'bg-gradient-to-b from-transparent via-amber-950/14 to-stone-950/18'
+                : 'bg-gradient-to-b from-transparent via-emerald-950/10 to-violet-950/14',
+            )}
+          />
+          <div
+            className={cn(
+              'absolute inset-0 mix-blend-overlay',
+              isFreeSpinActive
+                ? 'bg-gradient-to-b from-transparent via-amber-950/8 to-stone-900/14'
+                : 'bg-gradient-to-b from-transparent via-teal-950/6 to-[#12101a]/16',
+            )}
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[min(42vh,520px)]"
+            style={{
+              background: isFreeSpinActive
+                ? 'linear-gradient(to bottom, transparent 0%, rgba(32,18,10,0.28) 44%, rgba(18,10,6,0.58) 80%, rgba(10,6,4,0.72) 100%)'
+                : 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.28) 46%, rgba(0,0,0,0.52) 82%, rgba(0,0,0,0.68) 100%)',
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden
+            style={{
+              background: isFreeSpinActive
+                ? 'radial-gradient(ellipse 105% 95% at 50% 48%, transparent 0%, transparent 40%, rgba(36,18,10,0.22) 72%, rgba(14,8,5,0.55) 100%)'
+                : 'radial-gradient(ellipse 105% 95% at 50% 48%, transparent 0%, transparent 40%, rgba(0,0,0,0.2) 72%, rgba(0,0,0,0.52) 100%)',
+            }}
+          />
         </div>
-      )}
 
-      <QuestRaiderSettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        sfxOn={sfxOn}
-        bgmOn={bgmOn}
-        onToggleSfx={() => setSfxOn((v) => !v)}
-        onToggleBgm={() => setBgmOn((v) => !v)}
-      />
-    </div>
+        <div className="slot-stage" onClick={(e) => e.stopPropagation()}>
+          <QuestRaiderCanvas
+            snapshot={snap}
+            onDropComplete={onDropComplete}
+            onCascadeStepComplete={onCascadeStepComplete}
+            cameraShakeRef={cameraShakeRef}
+            className="relative z-10 h-full w-full min-h-0"
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-[15]"
+            aria-hidden
+            style={{
+              background: isFreeSpinActive
+                ? 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(48,28,16,0.12) 62%, rgba(22,12,8,0.34) 100%)'
+                : 'radial-gradient(ellipse 102% 90% at 50% 44%, transparent 0%, transparent 42%, rgba(0,0,0,0.1) 64%, rgba(0,0,0,0.3) 100%)',
+            }}
+          />
+
+          {isFreeSpinIntro && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center">
+              <div className="animate-bounce rounded-2xl bg-black/70 px-10 py-6 backdrop-blur-sm">
+                <p className="text-center text-3xl font-black tracking-tight text-amber-400 sm:text-4xl">FREE FALLS</p>
+                <p className="mt-1 text-center text-5xl font-black text-white sm:text-6xl">&times;{snap.freeSpinsTotal}</p>
+              </div>
+            </div>
+          )}
+
+          {isFreeSpinOutro && (
+            <div
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center"
+              onClick={() => {
+                session.dismissFreeSpins();
+                refresh();
+              }}
+            >
+              <div className="rounded-2xl bg-black/75 px-10 py-8 backdrop-blur-sm">
+                <p className="text-center text-2xl font-black tracking-tight text-amber-400 sm:text-3xl">
+                  FREE FALLS COMPLETE
+                </p>
+                <p className="mt-2 text-center text-4xl font-black text-emerald-400 sm:text-5xl">
+                  {formatMoney(snap.freeSpinsTotalWin)}
+                </p>
+                <p className="mt-4 text-center text-sm text-white/50">Tap anywhere to continue</p>
+              </div>
+            </div>
+          )}
+
+          {isFreeSpinActive && !isFreeSpinIntro && !isFreeSpinOutro && (
+            <div className="slot-win-chip">
+              <div className="rounded-full bg-amber-600/90 px-4 py-1 shadow-lg shadow-amber-700/30">
+                <span className="text-xs font-black tabular-nums text-white">
+                  FREE FALLS {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {showWin > 0 && !isFreeSpinOutro && (
+            <div className="slot-win-chip">
+              <div className="rounded-full bg-black/55 px-4 py-1.5 backdrop-blur-sm">
+                <span className="text-sm font-bold tabular-nums text-emerald-400">{formatMoney(showWin)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+      </div>
+    </SlotGameShell>
   );
 }

@@ -1,5 +1,6 @@
 import { Application, Container } from 'pixi.js';
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
+import { scaleSlotDelta } from '@/hooks/slot/slotSpeed';
 
 import type { QuestRaiderSnapshot } from '../engine/session';
 import { GamePhase } from '../engine/session';
@@ -204,7 +205,7 @@ export function QuestRaiderCanvas({
         draw(gameLayer, app.renderer, snap.grid, layout);
 
         app.ticker.add(() => {
-          tickAnimations(app.ticker.deltaMS);
+          tickAnimations(scaleSlotDelta(app.ticker.deltaMS));
           const gl = gameLayerRef.current;
           if (!gl) return;
           const ph = snapRef.current.phase;

@@ -33,19 +33,17 @@ const QR_REEL_FINE_NUDGE_Y_AT_NATIVE = 6;
 
 /**
  * Move the 5×3 grid up vs the playfield (CSS px at 1×); scaled by `sx`.
- * Desktop: large value to tuck tiles under the top stone. Mobile: slightly lower than desktop so the
- * bottom row still clears the lower sill when the board is push-down toward the ground decal.
+ * Clears the lower sill and closes the empty band under the lintel.
  */
-const AZTEC_GRID_SHIFT_UP_DESKTOP_CSS = 72;
-/** Mobile: lower than desktop — strong “up” leaves a band under the last row inside the frame. */
-const AZTEC_GRID_SHIFT_UP_MOBILE_CSS = 50;
+const AZTEC_GRID_SHIFT_UP_DESKTOP_CSS = 52;
+const AZTEC_GRID_SHIFT_UP_MOBILE_CSS = 40;
 
 /**
  * After vertical centering: shift **frame + grid** up (CSS px at 1×), scaled by `sx`.
- * Desktop: pull the whole board up to reduce sky above the frame. Mobile: light touch.
+ * Keep tiny so the top stone / MULTIPLIER clear the Slot UI top bar.
  */
-const AZTEC_FRAME_SHIFT_UP_DESKTOP_CSS = 58;
-const AZTEC_FRAME_SHIFT_UP_MOBILE_CSS = 14;
+const AZTEC_FRAME_SHIFT_UP_DESKTOP_CSS = 6;
+const AZTEC_FRAME_SHIFT_UP_MOBILE_CSS = 2;
 
 /**
  * Mobile only (`cssW < 1024`): nudge **frame + tiles** down toward the bottom decal (don’t overdo — large
@@ -63,9 +61,9 @@ const AZTEC_CELL_SHRINK_PX = 0;
 const AZTEC_CELL_ENLARGE_PX = 3;
 
 /** After core layout: desktop visual scale for frame + grid (lower = smaller board on wide screens). */
-const AZTEC_STAGE_VISUAL_SCALE_DESKTOP = 0.74;
+const AZTEC_STAGE_VISUAL_SCALE_DESKTOP = 0.94;
 /** Higher = bigger frame on phones/tablets; clamped in post-process so the 5×3 stays on-screen. */
-const AZTEC_STAGE_VISUAL_SCALE_MOBILE = 0.97;
+const AZTEC_STAGE_VISUAL_SCALE_MOBILE = 0.98;
 
 function nudgeYForFrameH(
   frameH: number,

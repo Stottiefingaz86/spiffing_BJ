@@ -1,15 +1,16 @@
 /**
- * Shared HUD chrome for slot titles — header pills, footer chips, spin controls.
- * Import from here so Bamboo / Bandits / Froot Jarz / Hot Fiesta stay visually aligned.
+ * @deprecated Per-game HUD chrome — superseded by shared Slot UI
+ * (`@/components/slot-ui/SlotOverlay` + `SlotGameShell`).
+ * Kept only so older references / docs don’t break imports; prefer SlotGameShell.
  */
 
 import { cn } from '@/lib/utils';
 
-/** Home, settings, volume, balance row */
+/** @deprecated */
 export const slotGlassPill =
   'rounded-[14px] border border-white/[0.12] bg-gradient-to-b from-white/[0.12] to-white/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl';
 
-/** Bonus buy, win, stake, free-spin readouts — `rounded-2xl` matches desktop spin control */
+/** @deprecated */
 export const slotInfoPill =
   'rounded-2xl border border-white/[0.08] bg-white/[0.06]';
 
@@ -36,21 +37,18 @@ const spinDesktopEnabled: Record<SlotSpinTheme, string> = {
 const spinMobileBase =
   'pointer-events-auto flex size-24 items-center justify-center rounded-full transition-all active:scale-[0.90]';
 
-/** Glossy primary spin — mobile (circular) */
+/** @deprecated */
 export function slotSpinMobileClasses(canSpin: boolean, theme: SlotSpinTheme = 'emerald') {
   return cn(
     spinMobileBase,
-    canSpin ? spinMobileEnabled[theme] : 'border border-white/[0.06] bg-white/10 text-white/30',
+    canSpin ? spinMobileEnabled[theme] : 'border border-white/10 bg-white/10 text-white/35',
   );
 }
 
-const spinDesktopBase =
-  'flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-black transition-all active:scale-[0.97]';
-
-/** Glossy primary spin — desktop (rounded square, sits in footer row) */
+/** @deprecated */
 export function slotSpinDesktopClasses(canSpin: boolean, theme: SlotSpinTheme = 'emerald') {
   return cn(
-    spinDesktopBase,
-    canSpin ? spinDesktopEnabled[theme] : 'border border-white/[0.06] bg-white/10 text-white/30',
+    'pointer-events-auto flex size-[4.5rem] items-center justify-center rounded-full transition-all active:scale-[0.94]',
+    canSpin ? spinDesktopEnabled[theme] : 'border border-white/10 bg-white/10 text-white/35',
   );
 }

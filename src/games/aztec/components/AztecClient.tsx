@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, Home, Music, RefreshCw, Settings, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatMoney } from '@/lib/formatMoney';
-import {
-  slotGlassPill,
-  slotSpinDesktopClasses,
-  slotSpinMobileClasses,
-} from '@/components/game/slotChrome';
+import { publicAssetUrl } from '@/lib/publicUrl';
+import { GamePreloader } from '@/components/GamePreloader';
+import { SlotGameShell } from '@/components/slot-ui/SlotGameShell';
+import { useSlotGameBridge } from '@/hooks/slot/useSlotGameBridge';
 
 import { AztecSession, GamePhase } from '../engine/session';
 import { AZTEC_FRAME_SPRITE_BOTTOM_OUTSET_PX } from '../render/aztecLayout';
 import { AztecCanvas, type AztecFrameRect } from '../render/AztecCanvas';
-import { AztecSettingsModal } from './AztecSettingsModal';
 import {
   preloadTFSfx,
   playTF,
@@ -22,10 +19,6 @@ import {
   unlockTFAudio,
   preloadTFBgm,
 } from '../audio/aztecSfx';
-
-/** Darker pills + blur so Win/Stake labels read over stone and the bottom fade. */
-const aztecFooterPill =
-  'rounded-2xl border border-white/20 bg-black/60 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md';
 
 const ASSET_BASE = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
@@ -38,8 +31,38 @@ const AZTEC_BOTTOM_DECAL_URL = `${ASSET_BASE}aztec/bottomimage.png`;
  */
 const AZTEC_BOTTOM_DECAL_PIN_VIEWPORT = false;
 
+const PRELOAD_ASSETS = [
+  'aztec/bg.jpg',
+  'aztec/logo.png',
+  'aztec/frame.png',
+  'aztec/mask.png',
+  'aztec/bottomimage.png',
+  'aztec/wild.png',
+  'aztec/symbol1.png',
+  'aztec/symbol2.png',
+  'aztec/symbol3.png',
+  'aztec/symbol4.png',
+  'aztec/symbol5.png',
+  'aztec/symbol6.png',
+  'aztec/symbol7.png',
+  'aztec/spin.mp3',
+  'aztec/reel_end.mp3',
+  'aztec/win.mp3',
+  'aztec/bgm.mp3',
+].map((p) => publicAssetUrl(p));
+
+function handleAztecPreloaderPlay() {
+  unlockTFAudio();
+  void preloadTFSfx();
+  void startTFBgm();
+}
+
 export default function AztecClient() {
-  return <AztecGame />;
+  return (
+    <GamePreloader assets={PRELOAD_ASSETS} onPlay={handleAztecPreloaderPlay}>
+      <AztecGame />
+    </GamePreloader>
+  );
 }
 
 function AztecGame() {
@@ -52,8 +75,6 @@ function AztecGame() {
   const [snap, setSnap] = useState(() => session.getSnapshot());
   const [sfxOn, setSfxOn] = useState(true);
   const [bgmOn, setBgmOn] = useState(true);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [stakeOpen, setStakeOpen] = useState(false);
   const [displayedWin, setDisplayedWin] = useState(0);
   const targetWinRef = useRef(0);
   const lastSpinWinRef = useRef(0);
@@ -216,26 +237,49 @@ function AztecGame() {
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
-  const isSpinning = snap.phase !== GamePhase.Idle && snap.phase !== GamePhase.FreeSpinOutro;
+  const isBusy = snap.phase !== GamePhase.Idle && snap.phase !== GamePhase.FreeSpinOutro;
   const canSpin = snap.phase === GamePhase.Idle && snap.balance >= snap.bet;
   const showWin = Math.round(displayedWin);
+
+  const bridge = useSlotGameBridge({
+    balanceCents: snap.balance,
+    betCents: snap.bet,
+    betOptionsCents: session.betOptions,
+    isBusy,
+    canSpin,
+    showBuyBonus: false,
+    gameTitle: 'Aztec',
+    soundEnabled: sfxOn,
+    musicEnabled: bgmOn,
+    onSpin,
+    onSetBetCents: (cents) => {
+      session.setBet(cents);
+      refresh();
+    },
+    onToggleSound: () => setSfxOn((v) => !v),
+    onToggleMusic: () => setBgmOn((v) => !v),
+  });
 
   const pinAztecBottomDecalToViewport = AZTEC_BOTTOM_DECAL_PIN_VIEWPORT;
 
   return (
-    <div
+    <SlotGameShell
+      {...bridge.overlayProps}
       className={cn(
         'relative h-dvh max-h-dvh overflow-hidden text-white transition-colors duration-700',
         isFreeSpinActive ? 'bg-[#181008]' : 'bg-[#081018]',
       )}
-      onClick={() => {
-        if (isFreeSpinOutro) {
-          session.dismissFreeSpins();
-          refresh();
-        }
-      }}
     >
-      <div className="pointer-events-none absolute inset-0 z-0">
+      <div
+        className="relative h-full w-full"
+        onClick={() => {
+          if (isFreeSpinOutro) {
+            session.dismissFreeSpins();
+            refresh();
+          }
+        }}
+      >
+      <div className="slot-bg">
         <div
           className={cn(
             'absolute inset-0 transition-opacity duration-700',
@@ -334,7 +378,7 @@ function AztecGame() {
       </div>
 
       {/* Full-viewport board — header is overlaid (not flex `shrink-0`) so the canvas isn’t shortened by a top bar. */}
-      <div className="absolute inset-0 z-10 min-h-0" onClick={(e) => e.stopPropagation()}>
+      <div className="slot-stage" onClick={(e) => e.stopPropagation()}>
         <AztecCanvas
           snapshot={snap}
           onDropComplete={onDropComplete}
@@ -422,7 +466,7 @@ function AztecGame() {
         )}
 
         {isFreeSpinActive && !isFreeSpinIntro && !isFreeSpinOutro && (
-          <div className="absolute bottom-2 left-1/2 z-[30] -translate-x-1/2">
+          <div className="slot-win-chip">
             <div className="rounded-full bg-amber-600/90 px-4 py-1 shadow-lg shadow-amber-700/30">
               <span className="text-xs font-black tabular-nums text-white">
                 FREE FALLS {snap.freeSpinsRemaining}/{snap.freeSpinsTotal}
@@ -430,230 +474,16 @@ function AztecGame() {
             </div>
           </div>
         )}
-      </div>
 
-      <header
-        className="pointer-events-none absolute inset-x-0 top-0 z-40 flex items-center gap-2 px-3 pt-[max(0.5rem,calc(env(safe-area-inset-top)+0.15rem))] pb-1 lg:px-8 lg:pt-6 lg:pb-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <a
-          href="/"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]',
-          )}
-          aria-label="Back to lobby"
-        >
-          <Home className="size-4" strokeWidth={1.8} />
-        </a>
-        <button
-          type="button"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]',
-          )}
-          aria-label="Settings"
-          onClick={() => setSettingsOpen(true)}
-        >
-          <Settings className="size-4" strokeWidth={1.8} />
-        </button>
-        <button
-          type="button"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center text-white/60 hover:text-white active:scale-[0.94]',
-          )}
-          aria-label={sfxOn ? 'Mute sound effects' : 'Unmute sound effects'}
-          onClick={() => setSfxOn((v) => !v)}
-        >
-          {sfxOn ? (
-            <Volume2 className="size-4" strokeWidth={1.8} />
-          ) : (
-            <VolumeX className="size-4" strokeWidth={1.8} />
-          )}
-        </button>
-        <button
-          type="button"
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto flex size-9 items-center justify-center active:scale-[0.94]',
-            bgmOn ? 'text-white/60 hover:text-white' : 'text-white/35 hover:text-white/50',
-          )}
-          aria-label={bgmOn ? 'Mute music' : 'Unmute music'}
-          onClick={() => setBgmOn((v) => !v)}
-        >
-          <Music className="size-4" strokeWidth={1.8} />
-        </button>
-        <div className="min-w-0 flex-1" />
-        <div
-          className={cn(
-            slotGlassPill,
-            'pointer-events-auto ml-auto flex h-9 min-w-0 items-center gap-2 overflow-visible px-3 lg:h-10 lg:px-3.5',
-          )}
-        >
-          <span className="shrink-0 text-[7px] font-semibold uppercase leading-none tracking-[0.15em] text-white/40 lg:text-[8px]">
-            Balance
-          </span>
-          <span className="text-sm font-bold leading-none tabular-nums text-white lg:text-base">
-            {formatMoney(snap.balance)}
-          </span>
-        </div>
-      </header>
-
-      {/* Bottom UI legibility: tall fade so it washes over the lower stone frame, not only under the HUD */}
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-x-0 bottom-0 z-[24] h-[min(52vh,620px)] max-h-[85vh]',
-          isFreeSpinActive ? 'opacity-[0.92]' : 'opacity-100',
+        {showWin > 0 && !isFreeSpinOutro && (
+          <div className="slot-win-chip">
+            <div className="rounded-full bg-black/55 px-4 py-1.5 backdrop-blur-sm">
+              <span className="text-sm font-bold tabular-nums text-emerald-400">{formatMoney(showWin)}</span>
+            </div>
+          </div>
         )}
-        aria-hidden
-        style={{
-          background: isFreeSpinActive
-            ? 'linear-gradient(to bottom, transparent 0%, rgba(30,14,8,0.06) 18%, rgba(30,14,8,0.14) 38%, rgba(18,10,6,0.32) 68%, rgba(12,8,5,0.5) 100%)'
-            : 'linear-gradient(to bottom, transparent 0%, rgba(0,16,28,0.05) 16%, rgba(0,16,28,0.1) 32%, rgba(0,10,20,0.22) 58%, rgba(0,6,14,0.38) 100%)',
-        }}
-      />
-
-      {!isFreeSpinActive && (
-        <div className="pointer-events-none absolute bottom-[5.25rem] left-0 right-0 z-[35] flex justify-center lg:hidden">
-          <button
-            type="button"
-            onClick={onSpin}
-            disabled={!canSpin}
-            className={cn(slotSpinMobileClasses(canSpin, 'emerald'), 'pointer-events-auto')}
-          >
-            {isSpinning ? (
-              <svg className="size-9 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <RefreshCw className="size-11" strokeWidth={2.5} />
-            )}
-          </button>
-        </div>
-      )}
-
-      <footer
-        className="pointer-events-auto absolute bottom-0 left-0 right-0 z-[32] bg-transparent px-3 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-0 shadow-none lg:hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto flex max-w-sm items-center justify-center gap-1.5">
-          <div className={cn(aztecFooterPill, 'flex flex-1 flex-col items-center px-2 py-1.5')}>
-            <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/85">Win</span>
-            <span
-              className={cn(
-                'text-xs font-bold tabular-nums transition-colors duration-300',
-                showWin > 0 ? 'text-emerald-300' : 'text-white/70',
-              )}
-            >
-              {showWin > 0 ? formatMoney(showWin) : '—'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => !isSpinning && setStakeOpen(true)}
-            disabled={isSpinning}
-            className={cn(aztecFooterPill, 'flex flex-1 items-center px-2 py-1.5 disabled:opacity-40')}
-          >
-            <div className="flex flex-1 flex-col items-center">
-              <span className="text-[7px] font-semibold uppercase tracking-[0.15em] text-white/85">Stake</span>
-              <span className="text-xs font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
-            </div>
-            <div className="flex size-5 items-center justify-center rounded bg-white/15">
-              <ChevronDown className="size-3 text-white/80" />
-            </div>
-          </button>
-        </div>
-      </footer>
-
-      <footer
-        className="pointer-events-auto absolute bottom-0 left-0 right-0 z-[32] hidden bg-transparent px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-0 shadow-none lg:block"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto flex max-w-xl items-end justify-center gap-3">
-          <div className={cn(aztecFooterPill, 'flex min-w-[5.5rem] flex-col items-center px-3 py-2')}>
-            <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/85">Win</span>
-            <span
-              className={cn(
-                'text-sm font-bold tabular-nums transition-colors duration-300',
-                showWin > 0 ? 'text-emerald-300' : 'text-white/70',
-              )}
-            >
-              {showWin > 0 ? formatMoney(showWin) : '—'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onSpin}
-            disabled={!canSpin || isFreeSpinActive}
-            className={slotSpinDesktopClasses(canSpin && !isFreeSpinActive, 'emerald')}
-          >
-            {isSpinning ? (
-              <svg className="size-8 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.3" />
-                <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <RefreshCw className="size-9" strokeWidth={2.5} />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => !isSpinning && setStakeOpen(true)}
-            disabled={isSpinning}
-            className={cn(aztecFooterPill, 'flex min-w-[5.5rem] items-center gap-1 px-3 py-2 disabled:opacity-40')}
-          >
-            <div className="flex flex-1 flex-col items-center">
-              <span className="text-[8px] font-semibold uppercase tracking-[0.15em] text-white/85">Stake</span>
-              <span className="text-sm font-bold tabular-nums text-white">{formatMoney(snap.bet)}</span>
-            </div>
-            <ChevronDown className="size-3.5 text-white/80" />
-          </button>
-        </div>
-      </footer>
-
-      {stakeOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 sm:items-center"
-          onClick={() => setStakeOpen(false)}
-        >
-          <div
-            className="max-h-[70dvh] w-full max-w-sm overflow-y-auto rounded-t-2xl border border-white/10 bg-[#1a1518] p-4 sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-white/50">Select stake</p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {session.betOptions.map((cents) => (
-                <button
-                  key={cents}
-                  type="button"
-                  className={cn(
-                    'rounded-xl py-2.5 text-sm font-bold tabular-nums transition-colors',
-                    snap.bet === cents ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white/80 hover:bg-white/15',
-                  )}
-                  onClick={() => {
-                    session.setBet(cents);
-                    refresh();
-                    setStakeOpen(false);
-                  }}
-                >
-                  {formatMoney(cents)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <AztecSettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        sfxOn={sfxOn}
-        bgmOn={bgmOn}
-        onToggleSfx={() => setSfxOn((v) => !v)}
-        onToggleBgm={() => setBgmOn((v) => !v)}
-      />
-    </div>
+      </div>
+      </div>
+    </SlotGameShell>
   );
 }
