@@ -706,6 +706,7 @@ const filterDefs: { id: string; label: string }[] = [
           <div id="game-detail-hero-bg" class="game-detail__hero-bg" aria-hidden="true"></div>
           <div class="game-detail__hero-fade" aria-hidden="true"></div>
           <div class="game-detail__hero-content">
+            <div id="game-detail-badges" class="game-detail__badges"></div>
             <img id="game-detail-logo" class="game-detail__logo" src="" alt="" hidden />
             <h2 id="game-detail-title" class="game-detail__title">Game</h2>
             <p id="game-detail-subtitle" class="game-detail__subtitle"></p>
@@ -716,17 +717,16 @@ const filterDefs: { id: string; label: string }[] = [
                 </svg>
                 Play demo
               </button>
-              <div id="game-detail-badges" class="game-detail__badges"></div>
             </div>
           </div>
         </div>
 
         <div class="game-detail__body">
-          <div class="game-detail__main">
+          <div class="game-detail__intro">
             <div id="game-detail-specs" class="game-detail__specs"></div>
             <p id="game-detail-description" class="game-detail__description"></p>
           </div>
-          <aside class="game-detail__aside">
+          <div class="game-detail__meta">
             <div class="game-detail__block">
               <h3 class="game-detail__heading">Paytable</h3>
               <ul id="game-detail-paytable" class="game-detail__list"></ul>
@@ -735,9 +735,9 @@ const filterDefs: { id: string; label: string }[] = [
               <h3 class="game-detail__heading">Bonus rounds</h3>
               <ul id="game-detail-bonuses" class="game-detail__list"></ul>
             </div>
-          </aside>
+          </div>
+          <p class="game-detail__footnote">*Demo figures are design references and not certified for real-money play.</p>
         </div>
-        <p class="game-detail__footnote">*Demo figures are design references and not certified for real-money play.</p>
       </div>
     </div>
 
@@ -871,7 +871,11 @@ const filterDefs: { id: string; label: string }[] = [
         }
       }
 
-      if (detailTitle) detailTitle.textContent = game.title || 'Game';
+      if (detailTitle) {
+        detailTitle.textContent = game.title || 'Game';
+        /* Logo already carries the name — skip duplicate headline */
+        detailTitle.hidden = Boolean(game.logo);
+      }
       if (detailSubtitle) detailSubtitle.textContent = game.subtitle || '';
       if (detailDescription) detailDescription.textContent = game.description || '';
 
