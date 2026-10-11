@@ -566,13 +566,12 @@
   }
 }
 
-/* Hero image — VCR / tuning warp via SVG displacement */
+/* Hero image — clean photo, soft fade into site purple */
+.hero-bg-img,
 .hero-vcr-img {
-  opacity: 0.55;
-  filter: url(#vcr-warp) contrast(1.06) brightness(0.78) saturate(0.82);
+  opacity: 0.62;
+  filter: contrast(1.04) brightness(0.82) saturate(0.88);
   transform-origin: center;
-  animation: hero-vcr-hold 5.5s steps(2) infinite;
-  /* Fade image out before the join — midnight purple remains */
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000 0%,

@@ -2,7 +2,6 @@
 import Layout from '@/layouts/Layout.astro';
 import { LobbySidebar } from '@/components/lobby/LobbySidebar';
 import { ScrollKnockoutHeadline } from '@/components/lobby/ScrollKnockoutHeadline';
-
 type LobbyTileBg =
   | { type: 'image'; src: string }
   | { type: 'blackjack' }
@@ -312,54 +311,16 @@ const filterDefs: { id: string; label: string }[] = [
     </div>
     <LobbySidebar client:load />
 
-    <!-- CRT FX — VCR / TV-tuning warp (under .crt-ui) -->
-    <div class="crt-overlay" aria-hidden="true">
-      <div class="crt-overlay__grain"></div>
-      <div class="crt-overlay__scanlines"></div>
-      <div class="crt-overlay__scanlines-thick"></div>
-      <div class="crt-overlay__tracking"></div>
-      <div class="crt-overlay__tracking crt-overlay__tracking--b"></div>
-      <div class="crt-overlay__refresh"></div>
-      <div class="crt-overlay__wobble"></div>
-      <div class="crt-overlay__vignette"></div>
-    </div>
-
-    <!-- Hero — full-bleed manor art with VCR warp; UI stacks above -->
+    <!-- Hero — full-bleed manor art -->
     <section
       class="relative flex min-h-dvh flex-col"
       aria-label="Hero"
     >
-      <svg class="pointer-events-none absolute h-0 w-0" aria-hidden="true">
-        <filter id="vcr-warp" x="-10%" y="-10%" width="120%" height="120%">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.008 0.03"
-            numOctaves="2"
-            seed="2"
-            result="noise"
-          >
-            <animate
-              attributeName="baseFrequency"
-              dur="4.5s"
-              values="0.008 0.028;0.012 0.038;0.008 0.03;0.008 0.028"
-              repeatCount="indefinite"
-            />
-          </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.5" xChannelSelector="R" yChannelSelector="G">
-            <animate
-              attributeName="scale"
-              dur="5s"
-              values="1.5;3.5;2;3;1.5"
-              repeatCount="indefinite"
-            />
-          </feDisplacementMap>
-        </filter>
-      </svg>
       <div class="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
         <img
           src="/lobby/hero.jpg"
           alt=""
-          class="hero-vcr-img absolute inset-0 h-full w-full scale-110 object-cover object-center"
+          class="hero-bg-img absolute inset-0 h-full w-full scale-105 object-cover object-center"
           loading="eager"
           decoding="async"
         />
@@ -367,7 +328,7 @@ const filterDefs: { id: string; label: string }[] = [
       </div>
 
       <div
-        class="crt-ui relative z-[2] mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
+        class="relative z-[2] mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8"
       >
         <div class="spiffing-logo-stage mb-8 sm:mb-10">
           <div class="spiffing-logo-particles" aria-hidden="true">
@@ -448,7 +409,7 @@ const filterDefs: { id: string; label: string }[] = [
       class="relative px-4 pb-16 pt-8 sm:px-6 sm:pb-24 sm:pt-12 lg:px-8"
       aria-label="Game portfolio"
     >
-      <div class="crt-ui mx-auto max-w-6xl">
+      <div class="mx-auto max-w-6xl">
         <div class="mx-auto max-w-2xl text-center">
           <img
             src="/tash.png"
@@ -684,7 +645,7 @@ const filterDefs: { id: string; label: string }[] = [
       class="relative px-4 py-16 sm:px-6 sm:py-20 lg:px-8"
       aria-label="Partner"
     >
-      <div class="crt-ui lobby-partner-card mx-auto max-w-4xl px-6 py-10 text-center font-staatliches sm:px-12 sm:py-12">
+      <div class="lobby-partner-card mx-auto max-w-4xl px-6 py-10 text-center font-staatliches sm:px-12 sm:py-12">
         <img
           src="/tash.png"
           alt=""
@@ -710,7 +671,7 @@ const filterDefs: { id: string; label: string }[] = [
     </section>
 
     <footer
-      class="crt-ui flex flex-col items-center gap-2.5 border-t border-white/10 px-4 py-6 text-center text-[10px] font-medium tracking-wide text-white/35 sm:text-[11px]"
+      class="flex flex-col items-center gap-2.5 border-t border-white/10 px-4 py-6 text-center text-[10px] font-medium tracking-wide text-white/35 sm:text-[11px]"
     >
       <img
         src="/tash.png"
